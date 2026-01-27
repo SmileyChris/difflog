@@ -1,0 +1,13 @@
+name = "difflog"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "difflog-db"
+database_id = "YOUR_DATABASE_ID_HERE"  # Run: wrangler d1 create difflog-db
+migrations_dir = "migrations"
+
+[vars]
+# Environment variables can be set here or via wrangler secret
+

@@ -1,0 +1,44 @@
+[project]
+site_name = "Difflog Developer Docs"
+site_description = "Developer documentation for Difflog - a personalized developer intelligence app"
+site_author = "Chris"
+
+copyright = """
+Copyright &copy; 2026 Difflog
+"""
+
+nav = [
+  { "Home" = "index.md" },
+  { "Concepts" = "concepts/index.md" },
+  { "Architecture" = [
+    { "Overview" = "architecture/overview.md" },
+    { "Sync System" = "architecture/sync.md" },
+    { "Encryption" = "architecture/encryption.md" },
+    { "API Endpoints" = "architecture/api.md" },
+  ]},
+  { "Operations" = "operations/index.md" },
+]
+
+[project.theme]
+language = "en"
+features = [
+    "content.code.annotate",
+    "content.code.copy",
+    "content.code.select",
+    "navigation.footer",
+    "navigation.indexes",
+    "navigation.instant",
+    "navigation.sections",
+    "navigation.top",
+    "search.highlight",
+]
+
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"

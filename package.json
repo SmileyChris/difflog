@@ -1,0 +1,26 @@
+{
+  "name": "difflog",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run build && bun run dev:migrate && (trap 'kill -INT 0' EXIT; bun run watch.ts & wrangler pages dev dist --persist-to=.wrangler/state --live-reload)",
+    "dev:static": "bun --hot server.ts",
+    "build": "bun run build.ts",
+    "deploy": "bun run build && wrangler pages deploy dist",
+    "db:create": "wrangler d1 create difflog-db",
+    "db:migrate": "wrangler d1 migrations apply difflog-db --remote",
+    "dev:migrate": "wrangler d1 migrations apply difflog-db --local --persist-to=.wrangler/state",
+    "docs": "uvx zensical serve",
+    "cleanup": "bun run scripts/cleanup-profiles.ts"
+  },
+  "dependencies": {
+    "alpinejs": "^3.14.9",
+    "@alpinejs/persist": "^3.14.9",
+    "@imacrayon/alpine-ajax": "^0.10.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "wrangler": "^3.93.0"
+  }
+}

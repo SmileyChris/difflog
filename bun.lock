@@ -1,0 +1,93 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "difflog",
+      "dependencies": {
+        "@alpinejs/persist": "^3.14.9",
+        "@anthropic-ai/sdk": "^0.71.2",
+        "@imacrayon/alpine-ajax": "^0.10.1",
+        "alpinejs": "^3.14.9",
+      },
+    },
+  },
+  "packages": {
+    "@alpinejs/persist": [
+      "@alpinejs/persist@3.15.4",
+      "",
+      {},
+      "sha512-PdSpPTh8sUN8a3S2BoJWpXbod68RqjuW9QGtDp0LJclAFERVjLLx2K5YzQSSg5IDQJV9OMiknSpzcEYeZPwLNw==",
+    ],
+
+    "@anthropic-ai/sdk": [
+      "@anthropic-ai/sdk@0.71.2",
+      "",
+      {
+        "dependencies": { "json-schema-to-ts": "^3.1.1" },
+        "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" },
+        "optionalPeers": ["zod"],
+        "bin": { "anthropic-ai-sdk": "bin/cli" },
+      },
+      "sha512-TGNDEUuEstk/DKu0/TflXAEt+p+p/WhTlFzEnoosvbaDU2LTjm42igSdlL0VijrKpWejtOKxX0b8A7uc+XiSAQ==",
+    ],
+
+    "@babel/runtime": [
+      "@babel/runtime@7.28.6",
+      "",
+      {},
+      "sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA==",
+    ],
+
+    "@imacrayon/alpine-ajax": [
+      "@imacrayon/alpine-ajax@0.10.5",
+      "",
+      {},
+      "sha512-Hk4+Smb6vP3K5HME51/2Q1npnI+heaOQd8Ic9JkS4UTXcRdvV/MhHdM038NCVY87Voktoa5Y7teQaLzfg5kCAw==",
+    ],
+
+    "@vue/reactivity": [
+      "@vue/reactivity@3.1.5",
+      "",
+      { "dependencies": { "@vue/shared": "3.1.5" } },
+      "sha512-1tdfLmNjWG6t/CsPldh+foumYFo3cpyCHgBYQ34ylaMsJ+SNHQ1kApMIa8jN+i593zQuaw3AdWH0nJTARzCFhg==",
+    ],
+
+    "@vue/shared": [
+      "@vue/shared@3.1.5",
+      "",
+      {},
+      "sha512-oJ4F3TnvpXaQwZJNF3ZK+kLPHKarDmJjJ6jyzVNDKH9md1dptjC7lWR//jrGuLdek/U6iltWxqAnYOu8gCiOvA==",
+    ],
+
+    "alpinejs": [
+      "alpinejs@3.15.4",
+      "",
+      { "dependencies": { "@vue/reactivity": "~3.1.1" } },
+      "sha512-lDpOdoVo0bhFjgl310k1qw3kbpUYwM/v0WByvAchsO93bl3o1rrgr0P/ssx3CimwEtNfXbmwKbtHbqTRCTTH9g==",
+    ],
+
+    "json-schema-to-ts": [
+      "json-schema-to-ts@3.1.1",
+      "",
+      {
+        "dependencies": { "@babel/runtime": "^7.18.3", "ts-algebra": "^2.0.0" },
+      },
+      "sha512-+DWg8jCJG2TEnpy7kOm/7/AxaYoaRbjVB4LFZLySZlWn8exGs3A4OLJR966cVvU26N7X9TWxl+Jsw7dzAqKT6g==",
+    ],
+
+    "ts-algebra": [
+      "ts-algebra@2.0.0",
+      "",
+      {},
+      "sha512-FPAhNPFMrkwz76P7cdjdmiShwMynZYN6SgOujD1urY4oNm80Ou9oMdmbR45LotcKOXoy7wSmHkRFE6Mxbrhefw==",
+    ],
+
+    "zod": [
+      "zod@4.3.6",
+      "",
+      {},
+      "sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==",
+    ],
+  },
+}
