@@ -249,6 +249,8 @@ body {
   width: 0.9rem;
   height: 0.9rem;
   color: var(--accent);
+  position: relative;
+  top: -1px;
 }
 
 .profile-caret {
@@ -350,7 +352,6 @@ body {
 .sync-dropdown-wrapper {
   position: relative;
   display: inline-flex;
-  margin-left: auto;
 }
 
 .sync-dropdown {
@@ -528,6 +529,22 @@ body {
   color: var(--text-dim);
 }
 
+.remember-password {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.remember-password input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
 /* Wizard */
 .setup-container {
   max-width: 640px;
@@ -615,6 +632,32 @@ body {
 
 .input-group {
   margin-bottom: 1rem;
+}
+
+.input-with-action {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.input-with-action .text-input {
+  flex: 1;
+}
+
+.btn-inline-action {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-chip);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.btn-inline-action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .input-label {
@@ -1144,8 +1187,11 @@ button:disabled {
 
 .welcome-bar-right {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 1rem;
+  font-size: 0.85rem;
+  align-self: flex-end;
+  margin-bottom: 2px;
 }
 
 .welcome-greeting {
@@ -1211,7 +1257,7 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.25rem 0.5rem;
+  padding: 0 0.5rem;
   margin-left: 0.5rem;
   font-size: 0.85rem;
   font-weight: 500;
@@ -1221,6 +1267,9 @@ button:disabled {
   color: var(--accent);
   cursor: pointer;
   transition: background 0.15s;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
 }
 
 .btn-generate-inline:hover {

@@ -186,7 +186,7 @@
                     <span class="profile-count"
                       ><span class="profile-count-icon">&#9632;</span>
                       <span
-                        x-text="($store.app.histories[id] || []).length"
+                        x-text="(($store.app.histories[id] || []).length) + ' ' + (($store.app.histories[id] || []).length === 1 ? 'diff' : 'diffs')"
                       ></span
                     ></span>
                     <span
@@ -194,7 +194,7 @@
                       x-show="($store.app.bookmarks[id] || []).length > 0"
                       ><span class="profile-count-icon">★</span>
                       <span
-                        x-text="($store.app.bookmarks[id] || []).length"
+                        x-text="(($store.app.bookmarks[id] || []).length) + ' ' + (($store.app.bookmarks[id] || []).length === 1 ? 'star' : 'stars')"
                       ></span
                     ></span>
                   </div>
@@ -232,17 +232,23 @@
           >
             <div class="unlock-modal-body">
               <h2 class="unlock-title">Import Shared Profile</h2>
-              <p class="unlock-subtitle">Enter the profile ID and password</p>
+              <p class="unlock-subtitle">Sync a profile that's been uploaded to the server from another device.</p>
 
               <div class="input-group">
                 <label class="input-label">Profile ID</label>
-                <input
-                  type="text"
-                  class="text-input"
-                  placeholder="UUID from share link"
-                  x-model="importProfileId"
-                  autofocus
-                />
+                <div class="input-with-action">
+                  <input
+                    type="text"
+                    class="text-input"
+                    placeholder="UUID from share link"
+                    x-model="importProfileId"
+                    autofocus
+                  />
+                  <button
+                    class="btn-inline-action"
+                    @click="showImport = false; startScanner()"
+                  >Scan QR</button>
+                </div>
               </div>
 
               <div class="input-group">
@@ -256,15 +262,10 @@
                 />
               </div>
 
-              <div class="import-or">or</div>
-
-              <button
-                class="btn-scan-large"
-                @click="showImport = false; startScanner()"
-              >
-                <span class="btn-scan-icon">&#9638;</span>
-                Scan QR Code
-              </button>
+              <label class="remember-password">
+                <input type="checkbox" x-model="importRemember" />
+                <span>Remember password</span>
+              </label>
 
               <div
                 class="unlock-error"
@@ -383,6 +384,11 @@
                   @keydown.enter="shareProfile()"
                 />
               </div>
+
+              <label class="remember-password">
+                <input type="checkbox" x-model="shareRemember" />
+                <span>Remember password</span>
+              </label>
 
               <div
                 class="unlock-error"

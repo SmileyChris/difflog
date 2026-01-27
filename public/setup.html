@@ -32,7 +32,7 @@
           <h2 class="step-title" x-text="data.name.trim() ? 'Welcome, ' + data.name.trim() : 'Welcome'"></h2>
           <p class="step-desc">Configure your personalized diff. We'll scan the developer ecosystem and surface only what's changed since you last checked in.</p>
           <p class="step-desc" style="margin-top: 0.5rem;">
-            <a href="/profiles" class="link-subtle">Have an existing profile? Sign in here.</a>
+            <a href="/profiles" class="link-subtle" @click="sessionStorage.setItem('openImport', '1')">Have an existing profile? Sign in here.</a>
           </p>
           <div class="input-group">
             <label class="input-label">What should we call you?</label>

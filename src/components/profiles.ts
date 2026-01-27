@@ -4,6 +4,7 @@ Alpine.data('profiles', () => ({
   showImport: false,
   importProfileId: '',
   importPassword: '',
+  importRemember: true,
   importError: '',
   importing: false,
   showScanner: false,
@@ -14,6 +15,7 @@ Alpine.data('profiles', () => ({
   shareProfileId: '',
   sharePassword: '',
   sharePasswordConfirm: '',
+  shareRemember: true,
   shareError: '',
   sharing: false,
   showInfo: false,
@@ -33,6 +35,13 @@ Alpine.data('profiles', () => ({
   get profiles() { return (this as any).$store.app.profiles; },
   get activeProfileId() { return (this as any).$store.app.activeProfileId; },
   get syncing() { return (this as any).$store.app.syncing; },
+
+  init() {
+    if (sessionStorage.getItem('openImport')) {
+      sessionStorage.removeItem('openImport');
+      this.showImport = true;
+    }
+  },
 
   switchProfile(id: string) {
     (this as any).$store.app.switchProfile(id);
@@ -60,6 +69,9 @@ Alpine.data('profiles', () => ({
     this.importing = true;
     try {
       await (this as any).$store.app.importProfile(id, this.importPassword);
+      if (this.importRemember) {
+        (this as any).$store.app.rememberPassword(this.importPassword);
+      }
       window.location.href = '/';
     } catch (e: unknown) {
       this.importError = e instanceof Error ? e.message : 'Failed to import profile';
@@ -90,6 +102,9 @@ Alpine.data('profiles', () => ({
         ...(this as any).$store.app.profiles,
         [this.shareProfileId]: { ...profile, syncedAt: new Date().toISOString() }
       };
+      if (this.shareRemember) {
+        (this as any).$store.app.rememberPassword(this.sharePassword);
+      }
       this.showShare = false;
       (this as any).$store.app.checkSyncStatus();
     } catch (e: unknown) {
