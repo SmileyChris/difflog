@@ -29,14 +29,14 @@
       <div class="setup-content">
         <!-- Step 0: Name -->
         <div x-show="step === 0" x-transition.opacity>
-          <h2 class="step-title" x-text="data.name.trim() ? 'Welcome, ' + data.name.trim() : 'Welcome'"></h2>
+          <h2 class="step-title" x-text="data.name.trim() ? (hasExistingProfiles ? data.name.trim() : 'Welcome, ' + data.name.trim()) : (hasExistingProfiles ? 'New Profile' : 'Welcome')"></h2>
           <p class="step-desc">Configure your personalized diff. We'll scan the developer ecosystem and surface only what's changed since you last checked in.</p>
           <p class="step-desc" style="margin-top: 0.5rem;">
-            <a href="/profiles" class="link-subtle" @click="sessionStorage.setItem('openImport', '1')">Have an existing profile? Sign in here.</a>
+            <a href="/profiles" class="link-subtle" @click="sessionStorage.setItem('openImport', '1')">Have an uploaded profile? Sign in here.</a>
           </p>
           <div class="input-group">
-            <label class="input-label">What should we call you?</label>
-            <input type="text" class="text-input" placeholder="Enter your name or handle"
+            <label class="input-label" x-text="hasExistingProfiles ? 'Name this profile' : 'What should we call you?'"></label>
+            <input type="text" class="text-input" :placeholder="hasExistingProfiles ? 'Profile name' : 'Enter your name or handle'"
               x-model="data.name" autofocus @keydown.enter.prevent="if (data.name.trim()) step++" />
           </div>
         </div>

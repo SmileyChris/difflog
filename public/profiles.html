@@ -39,7 +39,7 @@
         <!-- Saved Profiles -->
         <div class="profiles-section" x-show="Object.keys(profiles).length > 0">
           <h2 class="profiles-section-title">Your Profiles</h2>
-          <p class="profiles-section-desc">Click to switch</p>
+          <p class="profiles-section-desc" x-show="Object.keys(profiles).length > 1">Click to switch</p>
 
           <div class="profiles-list">
             <template
@@ -210,7 +210,7 @@
           <a href="/setup" class="profile-card profile-card-action">
             <div class="profile-card-action-icon">+</div>
             <div class="profile-card-name">Create New</div>
-            <div class="profile-card-id">Set up a fresh profile</div>
+            <div class="profile-card-id">Configure your personalized diff</div>
           </a>
 
           <!-- Import Existing -->
@@ -240,7 +240,7 @@
                   <input
                     type="text"
                     class="text-input"
-                    placeholder="UUID from share link"
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                     x-model="importProfileId"
                     autofocus
                   />
