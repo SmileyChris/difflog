@@ -1207,6 +1207,30 @@ button:disabled {
   color: var(--accent);
 }
 
+.btn-generate-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  margin-left: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-generate-inline:hover {
+  background: rgba(0, 212, 170, 0.1);
+}
+
+.btn-generate-inline .generate-icon {
+  font-size: 0.7rem;
+}
+
 .btn-generate-sm {
   display: inline-flex;
   align-items: center;

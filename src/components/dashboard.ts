@@ -148,9 +148,9 @@ Alpine.data('dashboard', () => ({
     const history = (this as any).$store.app.history;
     if (history.length === 0) return "A diff is your personalized changelog for the developer ecosystem — releases, announcements, and developments filtered to what you care about.<br><br>Hit the button to generate your first one.";
 
+    if (this.isTodayDiff()) return 'Your diff is current. Regenerate to get the latest <small>(or hold <kbd>Ctrl</kbd> to generate another)</small>';
     const days = this.lastDiffDays;
-    if (days === 0) return 'Your diff is current. Regenerate to get the latest <small>(or hold <kbd>Ctrl</kbd> to generate another)</small>';
-    if (days === 1) return 'A lot can change overnight. Ready to catch you up.';
+    if (days <= 1) return 'A lot can change overnight. Ready to catch you up.';
     if (days <= 3) return "A few days of updates are waiting for you.";
     if (days <= 7) return "The dev world moves fast — time to catch up.";
     if (days <= 14) return "Quite a bit has happened. Let's get you back up to speed.";
