@@ -4,77 +4,84 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**difflog** — A multi-page app that generates personalized developer intelligence diffs using the Anthropic Claude API. Shows you what's changed in the dev ecosystem since you last checked in. Uses Alpine.js for client-side reactivity, Alpine AJAX for SPA-like page navigation, and Bun's built-in HTTP server with HTML imports for bundling.
+**difflog** — A multi-page app that generates personalized developer intelligence diffs using the Anthropic Claude API. Shows you what's changed in the dev ecosystem since you last checked in. Uses Alpine.js for client-side reactivity, Alpine AJAX for SPA-like page navigation, and Bun for bundling/dev server.
 
 ## Commands
 
 ```bash
 bun install          # Install dependencies
-bun run dev          # Start Bun dev server at localhost:3000
+bun run dev          # Full dev with wrangler (D1 database, functions)
+bun run dev:static   # Quick dev server (no D1)
 bun test             # Run tests
 bun run build        # Build to dist/ (also verifies TypeScript compiles)
 bun run cleanup      # List stale profiles (--days, --remote, --confirm flags)
+bun run db:migrate   # Apply D1 migrations
+bun run docs         # Serve architecture documentation locally
 ```
 
-**Note:** This project has no tsconfig.json. Use `bun run build` to verify TypeScript compiles correctly. Do not use `npx tsc` - it won't work.
+**Note:** This project has no tsconfig.json. Use `bun run build` to verify TypeScript compiles correctly. Do not use `npx tsc`.
 
 ## Architecture
 
-**Multi-page with Alpine AJAX navigation** — each page is a full HTML document. Alpine AJAX swaps the `#content` area on navigation, giving SPA-like transitions while pages work standalone on direct load.
+**Multi-page with Alpine AJAX navigation** — each page is a full HTML document in `public/`. Alpine AJAX swaps the `#content` area on navigation, giving SPA-like transitions while pages work standalone on direct load.
 
-- **Splash** (`pages/splash.html`): Landing page for new users at `/welcome`
-- **Setup** (`pages/setup.html`): 6-step profile setup with chip toggling at `/setup`
-- **Dashboard** (`pages/dashboard.html`): Main app at `/` — profile summary, generate button, diff display
-- **History** (`pages/history.html`): Past diffs list at `/history`
-- **Stars** (`pages/stars.html`): Bookmarked paragraphs at `/stars`
-- **Server** (`server.ts`): Bun.serve() with page routes + `/api/generate` endpoint
+### Pages (in `public/`)
+- `index.html` (`/`) — Dashboard: profile summary, generate button, diff display
+- `welcome.html` (`/welcome`) — Landing page for new users
+- `setup.html` (`/setup`) — 7-step profile setup wizard
+- `profiles.html` (`/profiles`) — Profile management, sync, sharing
+- `archive.html` (`/archive`) — Past diffs list
+- `stars.html` (`/stars`) — Bookmarked paragraphs
 
-**Client-side state**: Alpine.js with `$persist` plugin for localStorage persistence across pages. Keys are `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-active-profile`.
+### Client-Side State
+Alpine.js with `$persist` plugin for localStorage persistence. Keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-active-profile`.
 
-**Styling**: Class-based CSS (`styles.css`) with CSS custom properties (dark theme, `#00d4aa` accent).
+### API Flow
+1. User clicks Generate → fetches `/api/feeds` for context
+2. Builds prompt with `src/lib/prompt.ts`
+3. Calls Anthropic API directly from browser (API key in localStorage)
+4. Stores markdown in history, renders with `src/lib/markdown.ts`
 
-**Bundling**: Bun's HTML imports automatically bundle `app.ts` and `styles.css` referenced in each page.
-
-**Partials**: Build-time includes via `<!-- @include partials/filename.html -->`. Processed during build, inlined into dist/.
-
-## API Integration
-
-- Server-side `@anthropic-ai/sdk` (no browser access needed)
-- Client-side API integration (keys stored in localStorage)
-- `/api/generate` POST endpoint accepts profile JSON, calls Claude, returns `{ content, html }`
+### Sync System
+Local-first with optional password-protected cloud sync via Cloudflare D1. All data encrypted client-side (AES-GCM) before upload. See `src/lib/sync.ts` and `src/lib/crypto.ts`.
 
 ## Key Directories
 
-- `src/` — Source files (TypeScript, CSS, HTML pages)
-- `public/` — Static HTML pages served directly
-- `partials/` — Reusable HTML snippets (inlined at build time via `<!-- @include -->`)
-- `functions/` — Cloudflare Pages Functions (API endpoints)
-- `dist/` — **Built output, do not edit directly** (generated from src/)
-- `docs/` — Architecture documentation (MkDocs format)
+- `src/` — TypeScript source (components, lib utilities, styles)
+- `public/` — HTML pages served directly
+- `partials/` — HTML snippets inlined at build time via `<!-- @include partials/filename.html -->`
+- `functions/` — Cloudflare Pages Functions (D1 API endpoints)
+- `dist/` — Built output, do not edit (generated from src/ and public/)
+- `docs/` — Architecture documentation (Zensical/MkDocs format)
 
 ## Key Files
 
-- `server.ts` — Bun.serve() entry with routes (local dev)
-- `src/app.ts` — Entry point, Alpine plugin setup
-- `src/store.ts` — Alpine store with profile/history/sync state
-- `src/styles.css` — All styles (dark theme)
-- `src/components/` — Alpine components (dashboard, profiles, setup, share-profile)
-- `src/lib/sync.ts` — Sync service (upload, download, change tracking)
-- `src/lib/sync.test.ts` — Bun tests for sync logic (hash determinism, change tracking)
-- `src/lib/time.ts` — Time utilities (timeAgo, daysSince)
-- `src/lib/api.ts` — Fetch utilities, ApiError class
-- `src/lib/constants.ts` — Shared constants (LANGUAGES, FRAMEWORKS, DEPTHS, etc.)
-- `src/lib/markdown.ts` — Markdown-to-HTML renderer
+- `server.ts` — Bun.serve() for local dev
+- `build.ts` — Build script (bundles JS, processes HTML includes)
+- `src/app.ts` — Entry point, Alpine plugin registration
+- `src/store.ts` — Central Alpine store (profiles, histories, bookmarks, sync state)
+- `src/components/dashboard.ts` — Main diff generation and display logic
+- `src/components/setup.ts` — Profile setup wizard
 - `src/lib/prompt.ts` — Prompt construction for Claude API
+- `src/lib/sync.ts` — Sync service (upload, download, change tracking)
 - `src/lib/crypto.ts` — Client-side encryption (AES-GCM, PBKDF2)
-- `functions/api/` — Cloudflare D1 API endpoints for sync
+- `src/lib/markdown.ts` — Markdown-to-HTML renderer with `data-p` indices for bookmarking
+- `functions/api/profile/` — D1 endpoints for profile sync
+
+## Testing
+
+```bash
+bun test                           # Run all tests
+bun test src/lib/sync.test.ts      # Run specific test file
+```
+
+## Styling
+
+Class-based CSS in `src/styles.css` with CSS custom properties. Dark theme with `#00d4aa` accent color.
 
 ## Documentation
 
-Docs use [Zensical](https://zensical.com/) (MkDocs-based). Config in `zensical.toml`. Run `bun run docs` to serve locally.
+Docs use [Zensical](https://zensical.com/) (MkDocs-based). Config in `zensical.toml`.
 
-- `docs/architecture/` — System design docs (encryption, sync, API endpoints)
-- `docs/operations/` — Deployment and maintenance (cleanup command, migrations)
-- `docs/concepts/` — Core concepts
-
-Don't verify the server starts
+- `docs/architecture/` — System design (encryption, sync, API)
+- `docs/operations/` — Deployment, cleanup, migrations
