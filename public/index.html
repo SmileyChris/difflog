@@ -66,7 +66,7 @@
           <span class="profile-value" x-text="depthLabel()"></span>
         </div>
         <div class="profile-section">
-          <a href="/archive" x-target="content" class="btn-archive">
+          <a href="/archive" class="btn-archive">
             <span class="archive-icon">&#9632;</span> Archive (<span x-text="$store.app.history.length"></span>)
           </a>
         </div>
@@ -86,10 +86,10 @@
             </span>
           </div>
           <div class="welcome-bar-right">
-            <a x-show="$store.app.history.length === 1" href="/archive" x-target="content" class="diff-position-link" x-text="diffPosition()"></a>
+            <a x-show="$store.app.history.length === 1" href="/archive" class="diff-position-link" x-text="diffPosition()"></a>
             <span class="diff-nav-inline" x-show="$store.app.history.length > 1">
               <button class="diff-nav-arrow" :class="{ 'diff-nav-arrow-disabled': !prevDiff() }" @click="if (prevDiff()) diff = prevDiff()" title="Older">&lsaquo;</button>
-              <a href="/archive" x-target="content" class="diff-position-link" x-text="diffPosition()"></a>
+              <a href="/archive" class="diff-position-link" x-text="diffPosition()"></a>
               <button class="diff-nav-arrow" :class="{ 'diff-nav-arrow-disabled': !nextDiff() }" @click="if (nextDiff()) diff = nextDiff()" title="Newer">&rsaquo;</button>
             </span>
           </div>
@@ -142,7 +142,7 @@
               <span class="recent-archive-preview" x-text="b.title || (b.content.slice(0, 80).replace(/[#*\[\]]/g, '') + '...')"></span>
             </div>
           </template>
-          <a x-show="$store.app.history.length > 3" href="/archive" x-target="content" class="recent-archive-more">more...</a>
+          <a x-show="$store.app.history.length > 3" href="/archive" class="recent-archive-more">more...</a>
         </div>
       </div>
 

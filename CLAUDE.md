@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**difflog** — A multi-page app that generates personalized developer intelligence diffs using the Anthropic Claude API. Shows you what's changed in the dev ecosystem since you last checked in. Uses Alpine.js for client-side reactivity, Alpine AJAX for SPA-like page navigation, and Bun for bundling/dev server.
+**difflog** — A multi-page app that generates personalized developer intelligence diffs using the Anthropic Claude API. Shows you what's changed in the dev ecosystem since you last checked in. Uses Alpine.js for client-side reactivity, CSS View Transitions for smooth page navigation, and Bun for bundling/dev server.
 
 ## Commands
 
@@ -23,7 +23,7 @@ bun run docs         # Serve architecture documentation locally
 
 ## Architecture
 
-**Multi-page with Alpine AJAX navigation** — each page is a full HTML document in `public/`. Alpine AJAX swaps the `#content` area on navigation, giving SPA-like transitions while pages work standalone on direct load.
+**Multi-page with View Transitions** — each page is a full HTML document in `public/`. CSS View Transitions provide smooth cross-document animations. Each page works standalone on direct load.
 
 ### Pages (in `public/`)
 - `index.html` (`/`) — Dashboard: profile summary, generate button, diff display

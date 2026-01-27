@@ -16,8 +16,7 @@
   },
   "dependencies": {
     "alpinejs": "^3.14.9",
-    "@alpinejs/persist": "^3.14.9",
-    "@imacrayon/alpine-ajax": "^0.10.1"
+    "@alpinejs/persist": "^3.14.9"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
