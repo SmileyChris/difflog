@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>diff·log - Profiles</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <div class="container" id="content" x-cloak x-data="profiles()">
+      <div class="main-container">
+        <header class="header">
+          <div class="header-left">
+            <div class="logo-mark-header logo-mark-user">
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="currentColor"
+              >
+                <circle cx="12" cy="11" r="4" />
+                <path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+              </svg>
+            </div>
+            <div>
+              <h1 class="main-title">
+                <a href="/" class="main-title-link"
+                  >diff<span class="title-diamond">&#9670;</span>log</a
+                >
+                profiles
+              </h1>
+              <p class="header-date">Manage your profiles</p>
+            </div>
+          </div>
+        </header>
+
+        <!-- Saved Profiles -->
+        <div class="profiles-section" x-show="Object.keys(profiles).length > 0">
+          <h2 class="profiles-section-title">Your Profiles</h2>
+          <p class="profiles-section-desc">Click to switch</p>
+
+          <div class="profiles-list">
+            <template
+              x-for="[id, profile] in Object.entries(profiles)"
+              :key="id"
+            >
+              <div
+                class="profile-card-full"
+                :class="{ 'profile-card-full-active': id === activeProfileId }"
+              >
+                <div
+                  class="profile-card-full-header"
+                  @click="switchProfile(id)"
+                >
+                  <div class="profile-card-icon">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="20"
+                      height="20"
+                      fill="currentColor"
+                    >
+                      <circle cx="12" cy="11" r="4" />
+                      <path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+                    </svg>
+                  </div>
+                  <div class="profile-card-full-title">
+                    <div class="profile-card-name">
+                      <span x-text="profile.name"></span>
+                      <span
+                        class="profile-status profile-status-shared"
+                        x-show="profile.syncedAt"
+                        x-text="'synced ' + new Date(profile.syncedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })"
+                      ></span>
+                      <button
+                        class="profile-status-share"
+                        x-show="profile.syncedAt"
+                        @click.stop="showShareInfo(id)"
+                      >
+                        &#8599; share
+                      </button>
+                      <span
+                        class="profile-status profile-status-warning"
+                        x-show="profile.syncedAt === null"
+                        title="Profile not found on server"
+                        >not on server</span
+                      >
+                      <span
+                        class="profile-status profile-status-local"
+                        x-show="!('syncedAt' in profile)"
+                        >local</span
+                      >
+                      <button
+                        class="profile-status-share"
+                        x-show="!profile.syncedAt"
+                        @click.stop="startShare(id)"
+                      >
+                        &#8599; upload
+                      </button>
+                    </div>
+                    <div class="profile-card-id">
+                      <span x-text="id.slice(0, 8)"></span>
+                      <!-- Active profile: full dropdown -->
+                      <template x-if="id === $store.app.activeProfileId">
+                        <!-- @include partials/sync-dropdown.html -->
+                      </template>
+                      <!-- Non-active synced profiles: status only -->
+                      <template x-if="profile.syncedAt && id !== $store.app.activeProfileId">
+                        <span class="sync-status-static" :title="$store.app.hasRememberedPasswordFor(id) ? 'Synced' : 'Password required'">
+                          <span class="sync-status-cloud">&#9729;</span>
+                          <span class="sync-status-indicator sync-status-pending" x-show="!$store.app.hasRememberedPasswordFor(id)">&#9670;</span>
+                        </span>
+                      </template>
+                    </div>
+                  </div>
+                  <div class="profile-card-full-actions">
+                    <a
+                      class="profile-card-edit"
+                      @click.stop="$store.app.switchProfile(id); window.location.href='/setup?edit=0'"
+                      title="Edit profile"
+                      >&#9998;</a
+                    >
+                    <button
+                      class="profile-card-password"
+                      x-show="profile.syncedAt"
+                      @click.stop="startPasswordUpdate(id)"
+                      title="Change password"
+                    >
+                      ***
+                    </button>
+                    <button
+                      class="profile-card-remove"
+                      @click.stop="deleteProfile(id)"
+                      title="Delete profile"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                </div>
+                <div
+                  class="profile-card-full-details"
+                  @click="switchProfile(id)"
+                >
+                  <div
+                    class="profile-detail-row"
+                    x-show="profile.languages?.length"
+                  >
+                    <span class="profile-detail-label">Languages</span>
+                    <span
+                      class="profile-detail-value"
+                      x-text="profile.languages?.join(', ')"
+                    ></span>
+                  </div>
+                  <div
+                    class="profile-detail-row"
+                    x-show="profile.frameworks?.length"
+                  >
+                    <span class="profile-detail-label">Frameworks</span>
+                    <span
+                      class="profile-detail-value"
+                      x-text="profile.frameworks?.join(', ')"
+                    ></span>
+                  </div>
+                  <div
+                    class="profile-detail-row"
+                    x-show="profile.tools?.length"
+                  >
+                    <span class="profile-detail-label">Tools</span>
+                    <span
+                      class="profile-detail-value"
+                      x-text="profile.tools?.join(', ')"
+                    ></span>
+                  </div>
+                  <div
+                    class="profile-detail-row"
+                    x-show="profile.topics?.length"
+                  >
+                    <span class="profile-detail-label">Topics</span>
+                    <span
+                      class="profile-detail-value"
+                      x-text="profile.topics?.join(', ')"
+                    ></span>
+                  </div>
+                  <div class="profile-detail-row profile-detail-counts">
+                    <span class="profile-count"
+                      ><span class="profile-count-icon">&#9632;</span>
+                      <span
+                        x-text="($store.app.histories[id] || []).length"
+                      ></span
+                    ></span>
+                    <span
+                      class="profile-count"
+                      x-show="($store.app.bookmarks[id] || []).length > 0"
+                      ><span class="profile-count-icon">★</span>
+                      <span
+                        x-text="($store.app.bookmarks[id] || []).length"
+                      ></span
+                    ></span>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Action Cards -->
+        <div class="profiles-actions">
+          <!-- Create New -->
+          <a href="/setup" class="profile-card profile-card-action">
+            <div class="profile-card-action-icon">+</div>
+            <div class="profile-card-name">Create New</div>
+            <div class="profile-card-id">Set up a fresh profile</div>
+          </a>
+
+          <!-- Import Existing -->
+          <button
+            class="profile-card profile-card-action profile-card-action-alt"
+            @click="showImport = true"
+          >
+            <div class="profile-card-action-icon">&#8595;</div>
+            <div class="profile-card-name">Import Existing</div>
+            <div class="profile-card-id">Add from another device</div>
+          </button>
+        </div>
+
+        <!-- Import Modal -->
+        <div class="unlock-modal" x-show="showImport" x-transition.opacity>
+          <div
+            class="unlock-modal-content"
+            @click.outside="showImport = false; importError = ''"
+          >
+            <div class="unlock-modal-body">
+              <h2 class="unlock-title">Import Shared Profile</h2>
+              <p class="unlock-subtitle">Enter the profile ID and password</p>
+
+              <div class="input-group">
+                <label class="input-label">Profile ID</label>
+                <input
+                  type="text"
+                  class="text-input"
+                  placeholder="UUID from share link"
+                  x-model="importProfileId"
+                  autofocus
+                />
+              </div>
+
+              <div class="input-group">
+                <label class="input-label">Password</label>
+                <input
+                  type="password"
+                  class="text-input"
+                  placeholder="Enter the share password"
+                  x-model="importPassword"
+                  @keydown.enter="importProfile()"
+                />
+              </div>
+
+              <div class="import-or">or</div>
+
+              <button
+                class="btn-scan-large"
+                @click="showImport = false; startScanner()"
+              >
+                <span class="btn-scan-icon">&#9638;</span>
+                Scan QR Code
+              </button>
+
+              <div
+                class="unlock-error"
+                x-show="importError"
+                x-text="importError"
+              ></div>
+            </div>
+
+            <div class="unlock-actions">
+              <button
+                class="btn-secondary"
+                @click="showImport = false; importError = ''"
+              >
+                Cancel
+              </button>
+              <button
+                class="btn-primary"
+                @click="importProfile()"
+                :disabled="!importProfileId.trim() || !importPassword || importing"
+              >
+                <span x-show="!importing">Import</span>
+                <span x-show="importing">Importing...</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- QR Scanner Modal -->
+        <div class="unlock-modal" x-show="showScanner" x-transition.opacity>
+          <div
+            class="unlock-modal-content scanner-modal"
+            @click.outside="stopScanner()"
+          >
+            <div class="unlock-modal-body">
+              <h2 class="unlock-title">Scan QR Code</h2>
+              <p class="unlock-subtitle">
+                Point your camera at a profile QR code
+              </p>
+
+              <div class="scanner-container">
+                <video
+                  x-ref="scannerVideo"
+                  class="scanner-video"
+                  playsinline
+                ></video>
+                <div class="scanner-overlay">
+                  <div class="scanner-frame"></div>
+                </div>
+              </div>
+
+              <div
+                class="scanner-error"
+                x-show="scannerError"
+                x-text="scannerError"
+              ></div>
+            </div>
+
+            <div class="unlock-actions">
+              <button
+                class="btn-secondary"
+                @click="stopScanner(); showImport = true"
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Share Modal -->
+        <div class="unlock-modal" x-show="showShare" x-transition.opacity>
+          <div
+            class="unlock-modal-content"
+            @click.outside="showShare = false; shareError = ''"
+          >
+            <div class="unlock-modal-body">
+              <h2 class="unlock-title">Upload Profile</h2>
+              <p class="unlock-subtitle">
+                Your profile data and API key will be encrypted with your
+                password, then uploaded securely.
+              </p>
+
+              <div class="share-info">
+                <div class="share-info-item">
+                  <span class="share-info-icon">&#128274;</span>
+                  <span>Password encrypts your API key locally</span>
+                </div>
+                <div class="share-info-item">
+                  <span class="share-info-icon">&#9729;</span>
+                  <span>Encrypted data stored on server</span>
+                </div>
+                <div class="share-info-item">
+                  <span class="share-info-icon">&#128273;</span>
+                  <span>Only someone with the password can decrypt</span>
+                </div>
+              </div>
+
+              <div class="input-group">
+                <label class="input-label">Choose a password</label>
+                <input
+                  type="password"
+                  class="text-input"
+                  placeholder="Enter a secure password"
+                  x-model="sharePassword"
+                  @keydown.enter="shareProfile()"
+                  autofocus
+                />
+              </div>
+
+              <div class="input-group">
+                <label class="input-label">Confirm password</label>
+                <input
+                  type="password"
+                  class="text-input"
+                  placeholder="Re-enter password"
+                  x-model="sharePasswordConfirm"
+                  @keydown.enter="shareProfile()"
+                />
+              </div>
+
+              <div
+                class="unlock-error"
+                x-show="shareError"
+                x-text="shareError"
+              ></div>
+            </div>
+
+            <div class="unlock-actions">
+              <button
+                class="btn-secondary"
+                @click="showShare = false; shareError = ''"
+              >
+                Cancel
+              </button>
+              <button
+                class="btn-primary"
+                @click="shareProfile()"
+                :disabled="!sharePassword || sharePassword !== sharePasswordConfirm || sharing"
+              >
+                <span x-show="!sharing">Upload</span>
+                <span x-show="sharing">Uploading...</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Share Info Modal -->
+        <div class="unlock-modal" x-show="showInfo" x-transition.opacity>
+          <div class="unlock-modal-content" @click.outside="showInfo = false">
+            <div class="unlock-modal-body">
+              <h2 class="unlock-title">Share Profile</h2>
+              <p class="unlock-subtitle">
+                Share this profile with another device or person
+              </p>
+
+              <div class="share-qr-container" x-show="qrDataUrl">
+                <img :src="qrDataUrl" alt="QR Code" class="share-qr" />
+              </div>
+
+              <div class="share-id-box">
+                <label class="input-label">Profile ID</label>
+                <div class="share-id-row">
+                  <code class="share-id-code" x-text="infoProfileId"></code>
+                  <button
+                    class="btn-copy"
+                    @click="copyId()"
+                    x-text="copied ? 'Copied!' : 'Copy'"
+                  ></button>
+                </div>
+              </div>
+
+              <p class="share-note">
+                The recipient will need this ID and your password to import the
+                profile.
+              </p>
+            </div>
+
+            <div class="unlock-actions">
+              <button class="btn-secondary" @click="showInfo = false">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Password Update Modal -->
+        <div
+          class="unlock-modal"
+          x-show="showPasswordUpdate"
+          x-transition.opacity
+        >
+          <div
+            class="unlock-modal-content"
+            @click.outside="showPasswordUpdate = false; passwordUpdateError = ''; passwordUpdateSuccess = false"
+          >
+            <div class="unlock-modal-body">
+              <h2 class="unlock-title">Change Password</h2>
+              <p class="unlock-subtitle" x-show="!passwordUpdateSuccess">
+                Update your sync password. All data will be re-encrypted with the
+                new password.
+              </p>
+
+              <template x-if="!passwordUpdateSuccess">
+                <div>
+                  <div class="share-info">
+                    <div class="share-info-item">
+                      <span class="share-info-icon">&#128274;</span>
+                      <span>Your API key and data will be re-encrypted</span>
+                    </div>
+                    <div class="share-info-item">
+                      <span class="share-info-icon">&#9729;</span>
+                      <span>Server data updated atomically</span>
+                    </div>
+                    <div class="share-info-item">
+                      <span class="share-info-icon">&#128273;</span>
+                      <span>Old password will no longer work</span>
+                    </div>
+                  </div>
+
+                  <div class="input-group">
+                    <label class="input-label">Current password</label>
+                    <input
+                      type="password"
+                      class="text-input"
+                      placeholder="Enter your current password"
+                      x-model="currentPassword"
+                      autofocus
+                    />
+                  </div>
+
+                  <div class="input-group">
+                    <label class="input-label">New password</label>
+                    <input
+                      type="password"
+                      class="text-input"
+                      placeholder="At least 8 characters"
+                      x-model="newPassword"
+                    />
+                  </div>
+
+                  <div class="input-group">
+                    <label class="input-label">Confirm new password</label>
+                    <input
+                      type="password"
+                      class="text-input"
+                      placeholder="Re-enter new password"
+                      x-model="newPasswordConfirm"
+                      @keydown.enter="doPasswordUpdate()"
+                    />
+                  </div>
+
+                  <div
+                    class="unlock-error"
+                    x-show="passwordUpdateError"
+                    x-text="passwordUpdateError"
+                  ></div>
+                </div>
+              </template>
+
+              <template x-if="passwordUpdateSuccess">
+                <div class="sync-result">
+                  <div class="sync-result-icon">&#10003;</div>
+                  <p class="sync-result-text">Password updated successfully!</p>
+                </div>
+              </template>
+            </div>
+
+            <div class="unlock-actions" x-show="!passwordUpdateSuccess">
+              <button
+                class="btn-secondary"
+                @click="showPasswordUpdate = false; passwordUpdateError = ''"
+              >
+                Cancel
+              </button>
+              <button
+                class="btn-primary"
+                @click="doPasswordUpdate()"
+                :disabled="!currentPassword || !newPassword || newPassword !== newPasswordConfirm || passwordUpdating"
+              >
+                <span x-show="!passwordUpdating">Update Password</span>
+                <span x-show="passwordUpdating">Updating...</span>
+              </button>
+            </div>
+
+            <div class="unlock-actions" x-show="passwordUpdateSuccess">
+              <button
+                class="btn-primary"
+                @click="showPasswordUpdate = false; passwordUpdateSuccess = false"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

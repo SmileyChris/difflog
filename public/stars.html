@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>diff·log - Stars</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div class="container" id="content" x-cloak x-data>
+    <div class="main-container">
+      <header class="header">
+        <div class="header-left">
+          <div class="logo-mark-header logo-mark-star">&#9733;</div>
+          <div>
+            <h1 class="main-title"><a href="/" class="main-title-link">diff<span class="title-diamond">&#9670;</span>log</a> stars</h1>
+            <p class="header-date" x-text="$store.app.starCountLabel"></p>
+          </div>
+        </div>
+        <div class="header-right">
+          <a href="/profiles" class="profile-badge">
+            <svg class="profile-badge-icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="11" r="4"/><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+            <span x-text="$store.app.profile?.name || 'Profile'"></span>
+          </a>
+          <!-- @include partials/sync-dropdown.html -->
+        </div>
+      </header>
+
+      <template x-if="!$store.app.stars?.length">
+        <div class="empty-state">
+          <p>No stars yet.</p>
+          <p class="empty-hint">Hover over paragraphs in your diffs and click the star button to save them here.</p>
+        </div>
+      </template>
+
+      <template x-if="$store.app.stars?.length > 0">
+        <div class="bookmarks-list">
+          <template x-for="b in $store.app.stars" :key="b.id">
+            <div class="bookmark-card" x-data="{ starContent: $store.app.getStarContent(b) }">
+              <template x-if="starContent">
+                <div class="bookmark-card-content">
+                  <div class="bookmark-meta">
+                    <span class="diff-title-icon">&#9632;</span>
+                    <a href="/" class="bookmark-source"
+                       @click="sessionStorage.setItem('viewDiffId', b.diff_id); sessionStorage.setItem('scrollToPIndex', b.p_index)"
+                       x-text="starContent.diff_title"></a>
+                    <span class="bookmark-dot">&middot;</span>
+                    <span class="bookmark-date" x-text="$store.app.formatTimeAgo(starContent.diff_date)"></span>
+                  </div>
+                  <div class="bookmark-preview" x-html="starContent.html"></div>
+                  <div class="bookmark-added">
+                    Saved <span x-text="$store.app.formatTimeAgo(b.added_at)"></span>
+                  </div>
+                </div>
+              </template>
+              <template x-if="!starContent">
+                <div class="bookmark-card-content bookmark-orphan">
+                  <div class="bookmark-meta">
+                    <span class="diff-title-icon">&#9632;</span>
+                    <span class="bookmark-source">Diff deleted</span>
+                  </div>
+                  <div class="bookmark-preview bookmark-orphan-message">
+                    The diff containing this star has been deleted.
+                  </div>
+                  <div class="bookmark-orphan-footer">
+                    <span class="bookmark-added">Saved <span x-text="$store.app.formatTimeAgo(b.added_at)"></span></span>
+                    <button class="btn-delete" @click="$store.app.removeStar(b.id)">Remove</button>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+  </div>
+</body>
+</html>

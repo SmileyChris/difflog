@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>diff·log - Archive</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div class="container" id="content" x-cloak x-data="{
+    goToDiff(diffId) {
+      sessionStorage.setItem('viewDiffId', diffId);
+      window.location.href = '/';
+    }
+  }">
+    <div class="main-container">
+      <header class="header">
+        <div class="header-left">
+          <div class="logo-mark-header logo-mark-square">&#9632;</div>
+          <div>
+            <h1 class="main-title"><a href="/" class="main-title-link">diff<span class="title-diamond">&#9670;</span>log</a> archive</h1>
+            <p class="header-date" x-text="$store.app.history.length + ' saved diffs'"></p>
+          </div>
+        </div>
+        <div class="header-right">
+          <a href="/stars" class="header-link" x-show="$store.app.stars?.length > 0">
+            <span class="header-link-icon">&#9733;</span> <span x-text="$store.app.starCountLabel"></span>
+          </a>
+          <a href="/profiles" class="profile-badge">
+            <svg class="profile-badge-icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="11" r="4"/><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+            <span x-text="$store.app.profile?.name || 'Profile'"></span>
+          </a>
+          <!-- @include partials/sync-dropdown.html -->
+        </div>
+      </header>
+
+      <template x-if="$store.app.history.length === 0">
+        <div class="empty-state">
+          <p>No diffs yet. Generate your first one!</p>
+        </div>
+      </template>
+
+      <template x-if="$store.app.history.length > 0">
+        <div class="archive-list">
+          <template x-for="b in $store.app.history" :key="b.id">
+            <div class="archive-card">
+              <div class="archive-card-content" @click="goToDiff(b.id)">
+                <div class="archive-date">
+                  <span x-text="new Date(b.generated_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })"></span>
+                  <span class="archive-cost" x-show="b.cost" x-text="'$' + (b.cost?.toFixed(3) ?? '')"></span>
+                </div>
+                <div class="archive-preview" x-text="b.title || (b.content.slice(0, 120).replace(/[#*\[\]]/g, '') + '...')"></div>
+              </div>
+              <button class="btn-delete" @click.stop="if (confirm('Delete this diff?')) $store.app.deleteDiff(b.id)">
+                &times;
+              </button>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+  </div>
+</body>
+</html>

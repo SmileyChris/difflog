@@ -1,0 +1,25 @@
+<div id="edit-content" x-data="stepEditorDepth()">
+  <h2 class="step-title">Diff Preferences</h2>
+  <p class="step-desc">How detailed should your diffs be?</p>
+  <div class="depth-options">
+    <template x-for="d in depths" :key="d.id">
+      <button class="depth-card" :class="{ 'depth-card-selected': depth === d.id }"
+        @click="depth = d.id">
+        <span class="depth-icon" x-text="d.icon"></span>
+        <span class="depth-label" x-text="d.label"></span>
+        <span class="depth-desc" x-text="d.desc"></span>
+      </button>
+    </template>
+  </div>
+  <div class="input-group" style="margin-top: 1.5rem;">
+    <label class="input-label">Any specific focus areas? (optional)</label>
+    <input type="text" class="text-input"
+      placeholder="e.g., 'AI coding assistants', 'Rust in production'"
+      x-model="customFocus" />
+  </div>
+  <div class="setup-footer">
+    <button class="btn-secondary" @click="showEditor = false">Cancel</button>
+    <div class="setup-footer-spacer"></div>
+    <button class="btn-primary" @click="save()">Save</button>
+  </div>
+</div>

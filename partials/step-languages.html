@@ -1,0 +1,25 @@
+<div id="edit-content" x-data="stepEditor('languages')">
+  <h2 class="step-title">Languages</h2>
+  <p class="step-desc">Select the programming languages you work with or follow.</p>
+  <div class="chip-grid">
+    <template x-for="item in options" :key="item">
+      <button class="chip" :class="{ 'chip-selected': items.includes(item) }"
+        @click="toggle(item)" x-text="item"></button>
+    </template>
+    <template x-for="item in getCustomItems()" :key="item">
+      <span class="chip chip-selected chip-custom">
+        <span x-text="item"></span>
+        <button class="chip-remove" @click="removeCustom(item)">&times;</button>
+      </span>
+    </template>
+    <span class="chip-add-inline">
+      <input type="text" class="chip-add-input" placeholder="+ Add custom"
+        x-model="customInput" @keydown.enter.prevent="addCustom()" />
+    </span>
+  </div>
+  <div class="setup-footer">
+    <button class="btn-secondary" @click="showEditor = false">Cancel</button>
+    <div class="setup-footer-spacer"></div>
+    <button class="btn-primary" @click="save()">Save</button>
+  </div>
+</div>

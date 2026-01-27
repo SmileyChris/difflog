@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>diff·log</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div class="splash-container" x-cloak x-data x-init="if ($store.app.isUnlocked) window.location.href = '/'">
+    <div class="splash-content">
+      <h1 class="splash-title">diff<span class="splash-diamond">&#9670;</span>log</h1>
+      <p class="splash-tagline">Your personalized diff of the developer ecosystem.</p>
+
+      <div class="splash-features">
+        <div class="splash-feature">
+          <span class="splash-feature-icon">&#9881;</span>
+          <div>
+            <strong>Track your stack</strong>
+            <span>Languages, frameworks, tools, and topics</span>
+          </div>
+        </div>
+        <div class="splash-feature">
+          <span class="splash-feature-icon">&#9889;</span>
+          <div>
+            <strong>See what's changed</strong>
+            <span>HN, Reddit, GitHub, Lobsters, dev.to</span>
+          </div>
+        </div>
+        <div class="splash-feature">
+          <span class="splash-feature-icon">&#10024;</span>
+          <div>
+            <strong>AI-powered curation</strong>
+            <span>Claude filters the noise for you</span>
+          </div>
+        </div>
+        <div class="splash-feature">
+          <span class="splash-feature-icon">&#128274;</span>
+          <div>
+            <strong>Encrypted &amp; synced</strong>
+            <span>Password-protected, works on any device</span>
+          </div>
+        </div>
+      </div>
+
+      <a href="/setup" class="splash-cta">
+        <span class="splash-cta-icon">&#9670;</span>
+        Get Started
+      </a>
+
+      <div class="splash-or">or</div>
+
+      <a href="/profiles" class="splash-link">
+        Sign in to existing profile
+      </a>
+
+      <p class="splash-note">
+        Requires your own <a href="https://platform.claude.com/settings/keys/" target="_blank">Anthropic API key</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>diff·log - Setup</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div class="container" id="content" x-cloak x-data="setup()">
+    <div class="setup-container">
+      <div class="setup-header">
+        <div class="logo-mark">&#9670;</div>
+        <h1 class="setup-title">diff<span class="setup-diamond">&#9670;</span>log</h1>
+        <p class="setup-subtitle" x-text="isEditing ? 'Edit Profile' : 'Configure Your Diff'"></p>
+        <div class="step-indicator">
+          <template x-for="i in 7" :key="i">
+            <div class="step-dot"
+              :class="{
+                'step-dot-active': (i - 1) === step,
+                'step-dot-complete': (i - 1) < step
+              }"></div>
+          </template>
+        </div>
+      </div>
+
+      <div class="setup-content">
+        <!-- Step 0: Name -->
+        <div x-show="step === 0" x-transition.opacity>
+          <h2 class="step-title" x-text="data.name.trim() ? 'Welcome, ' + data.name.trim() : 'Welcome'"></h2>
+          <p class="step-desc">Configure your personalized diff. We'll scan the developer ecosystem and surface only what's changed since you last checked in.</p>
+          <p class="step-desc" style="margin-top: 0.5rem;">
+            <a href="/profiles" class="link-subtle">Have an existing profile? Sign in here.</a>
+          </p>
+          <div class="input-group">
+            <label class="input-label">What should we call you?</label>
+            <input type="text" class="text-input" placeholder="Enter your name or handle"
+              x-model="data.name" autofocus @keydown.enter.prevent="if (data.name.trim()) step++" />
+          </div>
+        </div>
+
+        <!-- Step 1: API Key -->
+        <div x-show="step === 1" x-transition.opacity>
+          <h2 class="step-title">Connect Your API Key</h2>
+          <p class="step-desc">difflog uses Claude to generate your personalized diffs. Your key is stored locally in your browser.</p>
+
+          <!-- Show choice when creating new profile and existing profiles have API keys -->
+          <div x-show="showKeyChoice" class="api-key-choice">
+            <button class="api-key-option" @click="selectUseExistingKey()">
+              <span class="api-key-option-icon">&#10003;</span>
+              <span class="api-key-option-text">
+                <strong>Use same API key</strong>
+                <span>From your existing profile</span>
+              </span>
+            </button>
+            <button class="api-key-option" @click="selectEnterNewKey()">
+              <span class="api-key-option-icon">&#9998;</span>
+              <span class="api-key-option-text">
+                <strong>Enter a different key</strong>
+                <span>Use a new or separate API key</span>
+              </span>
+            </button>
+          </div>
+
+          <!-- Show confirmed existing key -->
+          <div x-show="!isEditing && useExistingKey" class="input-group">
+            <label class="input-label">API Key</label>
+            <div class="api-key-confirmed">
+              <span class="api-key-confirmed-icon">&#10003;</span>
+              <span>Using API key from existing profile</span>
+            </div>
+            <button class="btn-link" @click="selectEnterNewKey()" style="margin-top: 0.5rem;">
+              Use a different key instead
+            </button>
+          </div>
+
+          <!-- Show validated key confirmation -->
+          <div x-show="showKeyInput && apiKeyValid === true" class="input-group">
+            <label class="input-label">API Key</label>
+            <div class="api-key-confirmed">
+              <span class="api-key-confirmed-icon">&#10003;</span>
+              <span>API key validated</span>
+            </div>
+            <button class="btn-link" @click="apiKeyValid = null; apiKey = ''" style="margin-top: 0.5rem;">
+              Use a different key
+            </button>
+          </div>
+
+          <!-- Show input for new key -->
+          <div class="input-group" x-show="showKeyInput && apiKeyValid !== true">
+            <label class="input-label">Anthropic API Key</label>
+            <div class="input-with-status">
+              <input type="password" class="text-input" placeholder="sk-ant-..."
+                x-model="apiKey" @input="apiKeyValid = null"
+                autocomplete="off" data-1p-ignore data-lpignore="true" />
+              <span class="input-status input-status-invalid" x-show="apiKeyValid === false">&#10007;</span>
+            </div>
+            <span class="input-hint">Get one at <a href="https://platform.claude.com/settings/keys/" target="_blank">platform.claude.com/settings/keys</a></span>
+          </div>
+
+          <!-- When editing but not changing key -->
+          <template x-if="isEditing && !changeApiKey">
+            <div>
+              <div class="input-group">
+                <label class="input-label">API Key</label>
+                <div class="api-key-confirmed">
+                  <span class="api-key-confirmed-icon">&#10003;</span>
+                  <span>API key configured</span>
+                </div>
+              </div>
+              <button class="btn-secondary" @click="changeApiKey = true" style="margin-top: 1rem;">
+                Change API Key
+              </button>
+            </div>
+          </template>
+
+          <div class="setup-error" x-show="setupError" x-text="setupError"></div>
+        </div>
+
+        <!-- Step 2: Languages -->
+        <div x-show="step === 2" x-transition.opacity>
+          <h2 class="step-title">Languages</h2>
+          <p class="step-desc">Select the programming languages you work with or follow.</p>
+          <div class="chip-grid">
+            <template x-for="lang in languages" :key="lang">
+              <button class="chip" :class="{ 'chip-selected': data.languages.includes(lang) }"
+                @click="toggle('languages', lang)" x-text="lang"></button>
+            </template>
+            <template x-for="item in getCustomItems('languages')" :key="item">
+              <span class="chip chip-selected chip-custom">
+                <span x-text="item"></span>
+                <button class="chip-remove" @click="removeCustom('languages', item)">&times;</button>
+              </span>
+            </template>
+            <span class="chip-add-inline">
+              <input type="text" class="chip-add-input" placeholder="+ Add custom"
+                x-model="customInput" @keydown.enter.prevent="addCustom('languages')" />
+            </span>
+          </div>
+        </div>
+
+        <!-- Step 3: Frameworks -->
+        <div x-show="step === 3" x-transition.opacity>
+          <h2 class="step-title">Frameworks &amp; Platforms</h2>
+          <p class="step-desc">What frameworks and platforms are in your stack?</p>
+          <div class="chip-grid">
+            <template x-for="fw in frameworks" :key="fw">
+              <button class="chip" :class="{ 'chip-selected': data.frameworks.includes(fw) }"
+                @click="toggle('frameworks', fw)" x-text="fw"></button>
+            </template>
+            <template x-for="item in getCustomItems('frameworks')" :key="item">
+              <span class="chip chip-selected chip-custom">
+                <span x-text="item"></span>
+                <button class="chip-remove" @click="removeCustom('frameworks', item)">&times;</button>
+              </span>
+            </template>
+            <span class="chip-add-inline">
+              <input type="text" class="chip-add-input" placeholder="+ Add custom"
+                x-model="customInput" @keydown.enter.prevent="addCustom('frameworks')" />
+            </span>
+          </div>
+        </div>
+
+        <!-- Step 4: Tools -->
+        <div x-show="step === 4" x-transition.opacity>
+          <h2 class="step-title">Tools &amp; Infrastructure</h2>
+          <p class="step-desc">Select the tools and infrastructure you care about.</p>
+          <div class="chip-grid">
+            <template x-for="tool in tools" :key="tool">
+              <button class="chip" :class="{ 'chip-selected': data.tools.includes(tool) }"
+                @click="toggle('tools', tool)" x-text="tool"></button>
+            </template>
+            <template x-for="item in getCustomItems('tools')" :key="item">
+              <span class="chip chip-selected chip-custom">
+                <span x-text="item"></span>
+                <button class="chip-remove" @click="removeCustom('tools', item)">&times;</button>
+              </span>
+            </template>
+            <span class="chip-add-inline">
+              <input type="text" class="chip-add-input" placeholder="+ Add custom"
+                x-model="customInput" @keydown.enter.prevent="addCustom('tools')" />
+            </span>
+          </div>
+        </div>
+
+        <!-- Step 5: Topics -->
+        <div x-show="step === 5" x-transition.opacity>
+          <h2 class="step-title">Topics &amp; Interests</h2>
+          <p class="step-desc">What areas of tech do you want to track?</p>
+          <div class="chip-grid">
+            <template x-for="topic in topics" :key="topic">
+              <button class="chip" :class="{ 'chip-selected': data.topics.includes(topic) }"
+                @click="toggle('topics', topic)" x-text="topic"></button>
+            </template>
+            <template x-for="item in getCustomItems('topics')" :key="item">
+              <span class="chip chip-selected chip-custom">
+                <span x-text="item"></span>
+                <button class="chip-remove" @click="removeCustom('topics', item)">&times;</button>
+              </span>
+            </template>
+            <span class="chip-add-inline">
+              <input type="text" class="chip-add-input" placeholder="+ Add custom"
+                x-model="customInput" @keydown.enter.prevent="addCustom('topics')" />
+            </span>
+          </div>
+        </div>
+
+        <!-- Step 6: Depth -->
+        <div x-show="step === 6" x-transition.opacity>
+          <h2 class="step-title">Diff Preferences</h2>
+          <p class="step-desc">How detailed should your diffs be?</p>
+          <div class="depth-options">
+            <template x-for="d in depths" :key="d.id">
+              <button class="depth-card" :class="{ 'depth-card-selected': data.depth === d.id }"
+                @click="data.depth = d.id">
+                <span class="depth-icon" x-text="d.icon"></span>
+                <span class="depth-label" x-text="d.label"></span>
+                <span class="depth-desc" x-text="d.desc"></span>
+              </button>
+            </template>
+          </div>
+          <div class="input-group" style="margin-top: 1.5rem;">
+            <label class="input-label">Any specific focus areas? (optional)</label>
+            <input type="text" class="text-input"
+              placeholder="e.g., 'AI coding assistants', 'Rust in production'"
+              x-model="data.customFocus" />
+          </div>
+          <div class="setup-error" x-show="setupError" x-text="setupError"></div>
+        </div>
+      </div>
+
+      <div class="setup-footer">
+        <!-- Back button: only in create mode -->
+        <button x-show="step > 0 && !isEditing" class="btn-secondary" @click="step--">
+          &larr; Back
+        </button>
+
+        <!-- Cancel buttons -->
+        <button x-show="step === 0 && hasExistingProfiles && !isEditing" class="btn-secondary" @click="cancelWizard()">
+          Cancel
+        </button>
+        <button x-show="isEditing" class="btn-secondary" @click="cancelWizard()">
+          Cancel
+        </button>
+
+        <div class="setup-footer-spacer"></div>
+
+        <!-- Edit mode: Save + < > navigation -->
+        <template x-if="isEditing">
+          <div class="edit-footer-actions">
+            <button class="btn-primary" @click="saveProfile()" :disabled="saving || validatingKey">
+              <span x-show="!saving && !validatingKey">Save</span>
+              <span x-show="validatingKey">Validating...</span>
+              <span x-show="saving">Saving...</span>
+            </button>
+            <div class="step-nav-btns">
+              <button class="btn-step-nav" @click="prevStep()" :disabled="step === 0">&lt;</button>
+              <button class="btn-step-nav" @click="step < 6 ? (step === 1 ? nextStep() : step++) : null" :disabled="step === 6">&gt;</button>
+            </div>
+          </div>
+        </template>
+
+        <!-- Create mode: Continue / Start buttons -->
+        <template x-if="!isEditing">
+          <div class="create-footer-actions">
+            <button x-show="step < 6" class="btn-primary" @click="step === 1 ? nextStep() : step++"
+              :disabled="(step === 0 && !data.name.trim()) || (step === 1 && (!apiKey.trim() || validatingKey))">
+              <span x-show="!validatingKey">Continue &rarr;</span>
+              <span x-show="validatingKey">Validating...</span>
+            </button>
+            <button x-show="step === 6" class="btn-primary" @click="saveProfile()" :disabled="saving">
+              <span x-show="!saving">Start Diffing &#9670;</span>
+              <span x-show="saving">Saving...</span>
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
