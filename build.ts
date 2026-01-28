@@ -63,18 +63,30 @@ async function bundleClientJS() {
 }
 
 async function copyPublicFiles() {
-  const files = await readdir(PUBLIC);
-  for (const file of files) {
-    if (file.endsWith('.html')) {
-      // Process HTML files for includes
-      const content = await readFile(join(PUBLIC, file), 'utf-8');
-      const processed = await processIncludes(content);
-      await writeFile(join(DIST, file), processed);
-    } else if (file.endsWith('.svg') || file.endsWith('.png') || file.endsWith('.ico')) {
-      // Copy other static assets directly
-      await cp(join(PUBLIC, file), join(DIST, file));
+  async function processDir(srcDir: string, destDir: string) {
+    await mkdir(destDir, { recursive: true });
+    const entries = await readdir(srcDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const srcPath = join(srcDir, entry.name);
+      const destPath = join(destDir, entry.name);
+
+      if (entry.isDirectory()) {
+        // Recursively process subdirectories
+        await processDir(srcPath, destPath);
+      } else if (entry.name.endsWith('.html')) {
+        // Process HTML files for includes
+        const content = await readFile(srcPath, 'utf-8');
+        const processed = await processIncludes(content);
+        await writeFile(destPath, processed);
+      } else if (entry.name.endsWith('.svg') || entry.name.endsWith('.png') || entry.name.endsWith('.ico')) {
+        // Copy other static assets directly
+        await cp(srcPath, destPath);
+      }
     }
   }
+
+  await processDir(PUBLIC, DIST);
   console.log('✓ Processed HTML files and assets → dist/');
 }
 

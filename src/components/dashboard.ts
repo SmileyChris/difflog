@@ -26,7 +26,7 @@ Alpine.data('dashboard', () => ({
       if (ids.length > 0) {
         window.location.href = '/profiles';
       } else {
-        window.location.href = '/welcome';
+        window.location.href = '/about';
       }
       return;
     }

@@ -3,14 +3,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>diff·log</title>
+  <title>About - diff·log</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="stylesheet" href="/styles.css" />
   <script type="module" src="/app.js"></script>
 </head>
 <body>
-  <div class="splash-container" x-cloak x-data>
-    <div class="splash-content">
+  <main id="content" x-data>
+    <!-- No profile: top nav -->
+    <nav class="about-nav" x-show="!$store.app.profile">
+      <span class="about-nav-link about-nav-link-active">welcome</span>
+      <span class="about-nav-sep">&#9670;</span>
+      <a href="/about/privacy" class="about-nav-link">privacy</a>
+      <span class="about-nav-sep">&#9670;</span>
+      <a href="/about/terms" class="about-nav-link">terms</a>
+    </nav>
+
+    <!-- Has profile: header -->
+    <header x-cloak x-show="$store.app.profile">
+      <div class="header-left">
+        <a href="/" class="main-title-link">
+          <div class="logo-mark-header">&#9670;</div>
+        </a>
+        <div>
+          <h1 class="main-title"><a href="/" class="main-title-link">diff<span class="title-diamond">&#9670;</span>log</a></h1>
+          <nav class="about-nav-inline">
+            <span class="about-nav-link about-nav-link-active">about</span>
+            <span class="about-nav-sep">&#9670;</span>
+            <a href="/about/privacy" class="about-nav-link">privacy</a>
+            <span class="about-nav-sep">&#9670;</span>
+            <a href="/about/terms" class="about-nav-link">terms</a>
+          </nav>
+        </div>
+      </div>
+      <div class="header-right">
+        <a href="/profiles" class="profile-badge">
+          <svg class="profile-badge-icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="11" r="4"/><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+          <span x-text="$store.app.profile?.name || 'Profile'"></span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Shared content -->
+    <div class="about-centered">
       <h1 class="splash-title">diff<span class="splash-diamond">&#9670;</span>log</h1>
       <p class="splash-tagline">Your personalized diff of the developer ecosystem.</p>
 
@@ -45,7 +80,8 @@
         </div>
       </div>
 
-      <a href="/setup" class="splash-cta">
+      <!-- No profile: CTA -->
+      <a href="/setup" class="splash-cta" x-show="!$store.app.profile">
         <span class="splash-cta-icon">&#9670;</span>
         Get Started
       </a>
@@ -54,6 +90,6 @@
         Requires your own <a href="https://platform.claude.com/settings/keys/" target="_blank">Anthropic API key</a>
       </p>
     </div>
-  </div>
+  </main>
 </body>
 </html>

@@ -9,14 +9,13 @@
   <script type="module" src="/app.js"></script>
 </head>
 <body>
-  <div class="container" id="content" x-cloak x-data="{
+  <main id="content" x-data="{
     goToDiff(diffId) {
       sessionStorage.setItem('viewDiffId', diffId);
       window.location.href = '/';
     }
   }">
-    <div class="main-container">
-      <header class="header">
+    <header>
         <div class="header-left">
           <div class="logo-mark-header logo-mark-square">&#9632;</div>
           <div>
@@ -60,7 +59,8 @@
           </template>
         </div>
       </template>
-    </div>
-  </div>
+
+    <!-- @include partials/site-footer.html -->
+  </main>
 </body>
 </html>

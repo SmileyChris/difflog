@@ -32,7 +32,9 @@ console.log('✓ Copied styles.css');
 
 const ROUTES: Record<string, string> = {
   '/': 'index.html',
-  '/welcome': 'welcome.html',
+  '/about': 'about/index.html',
+  '/about/privacy': 'about/privacy.html',
+  '/about/terms': 'about/terms.html',
   '/setup': 'setup.html',
   '/profiles': 'profiles.html',
   '/archive': 'archive.html',

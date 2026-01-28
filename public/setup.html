@@ -9,9 +9,8 @@
   <script type="module" src="/app.js"></script>
 </head>
 <body>
-  <div class="container" id="content" x-cloak x-data="setup()">
-    <div class="setup-container">
-      <div class="setup-header">
+  <main id="content" class="narrow" x-data="setup()">
+      <header>
         <div class="logo-mark">&#9670;</div>
         <h1 class="setup-title">diff<span class="setup-diamond">&#9670;</span>log</h1>
         <p class="setup-subtitle" x-text="isEditing ? 'Edit Profile' : 'Configure Your Diff'"></p>
@@ -24,7 +23,7 @@
               }"></div>
           </template>
         </div>
-      </div>
+      </header>
 
       <div class="setup-content">
         <!-- Step 0: Name -->
@@ -237,6 +236,11 @@
           &larr; Back
         </button>
 
+        <!-- About link: first step, no profiles -->
+        <a href="/about" x-show="step === 0 && !hasExistingProfiles && !isEditing" class="btn-secondary">
+          About
+        </a>
+
         <!-- Cancel buttons -->
         <button x-show="step === 0 && hasExistingProfiles && !isEditing" class="btn-secondary" @click="cancelWizard()">
           Cancel
@@ -276,8 +280,7 @@
             </button>
           </div>
         </template>
-      </div>
     </div>
-  </div>
+  </main>
 </body>
 </html>
