@@ -56,9 +56,9 @@ function wrapScorePatterns(html: string): string {
     .replace(/\((\d+)\s+stars[,\s]+([^)]+)\)/gi, '<small class="md-score">($1 stars, $2)</small>')
     .replace(/\((\d+)\s+stars\)/gi, '<small class="md-score">($1 stars)</small>')
     .replace(
-      /\((\d+\s+)?(<a[^>]+>)([^<]*)\s*↗(<\/a>)(\s+pts)?\)/g,
+      /\((\d+\s+)(<a[^>]+>)([^<]*)\s*↗(<\/a>)(\s+pts)?\)/g,
       (_, num, openTag, text, closeTag, pts) =>
-        `<small class="md-score">(${num || ''}${openTag}${text}${closeTag}${pts || ''})</small>`
+        `<small class="md-score">(${num}${openTag}${text}${closeTag}${pts || ''})</small>`
     );
 }
 

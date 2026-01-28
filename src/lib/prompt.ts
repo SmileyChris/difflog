@@ -43,11 +43,13 @@ export function buildPrompt(profile: Profile, feedContext?: string, lastDiffDate
 
 FORMAT:
 - Use real URLs from the feed data or web search — never placeholder or hallucinated links
-- Link to sources inline: [Source Title](url)
-- When citing feed items with a SEPARATE discussion thread, link both the article AND discussion:
-  EXAMPLE: **[Rust 1.80 Released](https://blog.rust-lang.org/...)** (142 [HN](https://news.ycombinator.com/item?id=...) pts) — description
-- When citing self-posts or discussions (article URL IS the discussion), just name the source:
-  EXAMPLE: **[Is Svelte easier than React?](https://reddit.com/r/sveltejs/...)** (42 r/sveltejs pts) — description
+- IMPORTANT: Make the headline itself a link. The bold text should BE the link:
+  CORRECT: **[Django 6.0 Released](https://djangoproject.com/...)** — description
+  WRONG: **Django 6.0 Released** ([link](url)) — description
+- When a discussion thread exists (HN, Reddit), add score after the linked headline:
+  **[Rust 1.80 Released](https://blog.rust-lang.org/...)** (142 [HN](https://news.ycombinator.com/item?id=...) pts) — description
+- For self-posts where the URL IS the discussion, just name the source in the score:
+  **[Is Svelte easier than React?](https://reddit.com/r/sveltejs/...)** (42 r/sveltejs pts) — description
 
 PROFILE:
 - Name: ${profile.name || 'Developer'}
