@@ -203,6 +203,82 @@
           </div>
         </div>
 
+        <!-- Reminders -->
+        <div class="reminders-section" x-data="reminders()" x-show="Object.keys($store.app.profiles).length > 0 || settings.enabled">
+          <div class="reminders-title-row">
+            <div>
+              <h2 class="profiles-section-title">Reminders</h2>
+              <p class="profiles-section-desc">Get notified to check your diff</p>
+            </div>
+            <div class="reminders-title-actions" x-show="permission === 'granted'">
+              <span
+                class="reminders-status-text"
+                :class="{ 'reminders-status-text-dim': !settings.enabled || settings.days.length === 0 }"
+                x-text="!settings.enabled ? 'Paused' : settings.days.length === 0 ? 'No days' : 'Enabled'"
+              ></span>
+              <button
+                class="btn-secondary btn-sm"
+                @click="toggleEnabled()"
+                x-text="settings.enabled ? 'Pause' : 'Resume'"
+              ></button>
+            </div>
+          </div>
+
+          <div class="reminders-card">
+            <!-- Permission not yet requested -->
+            <template x-if="permission === 'default'">
+              <div class="reminders-enable">
+                <button class="btn-primary" @click="requestPermission()">
+                  Enable Notifications
+                </button>
+                <p class="reminders-note">Reminders are stored on this device only</p>
+              </div>
+            </template>
+
+            <!-- Permission denied -->
+            <template x-if="permission === 'denied'">
+              <div class="reminders-denied">
+                <p class="reminders-denied-text">
+                  Notifications are blocked. Enable them in your browser settings to use reminders.
+                </p>
+              </div>
+            </template>
+
+            <!-- Permission granted -->
+            <template x-if="permission === 'granted'">
+              <div class="reminders-config">
+                <div class="reminders-schedule" x-show="settings.enabled">
+                  <div class="reminders-days">
+                    <template x-for="(label, day) in dayLabels" :key="day">
+                      <button
+                        class="reminder-day"
+                        :class="{ 'reminder-day-active': isDayActive(day) }"
+                        :title="dayNames[day]"
+                        @click="toggleDay(day)"
+                        x-text="label"
+                      ></button>
+                    </template>
+                  </div>
+
+                  <div class="reminders-time">
+                    <label class="reminders-time-label">Time</label>
+                    <input
+                      type="time"
+                      class="reminders-time-input"
+                      :value="settings.time"
+                      @change="updateTime($event)"
+                    />
+                  </div>
+                </div>
+
+                <p class="reminders-paused-msg" x-show="!settings.enabled">
+                  Reminders are paused. Click Resume to re-enable.
+                </p>
+              </div>
+            </template>
+          </div>
+        </div>
+
         <!-- Action Cards -->
         <div class="profiles-actions">
           <!-- Create New -->

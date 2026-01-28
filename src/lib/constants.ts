@@ -45,5 +45,6 @@ export const STORAGE_KEYS = {
   BOOKMARKS: 'difflog-bookmarks',
   PENDING_SYNC: 'difflog-pending-sync',
   SYNC_PASSWORD: 'difflog-sync-password',
-  REMEMBERED_PASSWORDS: 'difflog-remembered-passwords'
+  REMEMBERED_PASSWORDS: 'difflog-remembered-passwords',
+  REMINDERS: 'difflog-reminders'
 } as const;

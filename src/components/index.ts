@@ -5,3 +5,4 @@ import './profiles';
 import './share-profile';
 import './dashboard';
 import './sync-dropdown';
+import './reminders';

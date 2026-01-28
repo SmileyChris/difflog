@@ -3609,3 +3609,173 @@ article section strong {
   font-size: 0.5em;
   vertical-align: middle;
 }
+
+/* Reminders */
+.reminders-section {
+  margin-bottom: 1.5rem;
+}
+
+.reminders-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.reminders-title-row .profiles-section-title,
+.reminders-title-row .profiles-section-desc {
+  margin-bottom: 0;
+}
+
+.reminders-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.reminders-status-text {
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+.reminders-status-text-dim {
+  color: var(--text-dim);
+}
+
+.reminders-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+}
+
+.reminders-enable {
+  text-align: center;
+}
+
+.reminders-enable .btn-primary {
+  margin-bottom: 0.75rem;
+}
+
+.reminders-note {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.reminders-denied {
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.reminders-denied-text {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.reminders-config {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.reminders-paused-msg {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 0;
+}
+
+.btn-sm {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.reminders-schedule {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+@media (min-width: 540px) {
+  .reminders-schedule {
+    flex-direction: row;
+    justify-content: space-evenly;
+  }
+}
+
+.reminders-days {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.reminder-day {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: 1px solid var(--border-mid);
+  background: var(--bg-input);
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reminder-day:hover {
+  border-color: var(--accent);
+  color: var(--text-secondary);
+}
+
+.reminder-day-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0a0a0f;
+}
+
+.reminder-day-active:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+  color: #0a0a0f;
+}
+
+.reminders-time {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reminders-time-label {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+.reminders-time-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.reminders-time-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.reminders-time-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
