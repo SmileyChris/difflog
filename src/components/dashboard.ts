@@ -3,6 +3,7 @@ import { SCAN_MESSAGES, DEPTHS } from '../lib/constants';
 import { timeAgo, daysSince, getCurrentDateFormatted } from '../lib/time';
 import { buildPrompt } from '../lib/prompt';
 import { starId } from '../lib/sync';
+import { getUnmappedItems, resolveSourcesForItem, curateGeneralFeeds, searchWebForProfile, formatItemsForPrompt, formatWebSearchForPrompt, type FeedItem } from '../lib/feeds';
 
 Alpine.data('dashboard', () => ({
   generating: false,
@@ -191,11 +192,23 @@ Alpine.data('dashboard', () => ({
             frameworks: profile.frameworks || [],
             tools: profile.tools || [],
             topics: profile.topics || [],
+            resolvedMappings: profile.resolvedMappings || {},
           }),
         });
         if (feedRes.ok) {
           const feedData = await feedRes.json();
-          feedContext = feedData.context || '';
+          const feeds = feedData.feeds || {};
+
+          // For preview, show all items without curation
+          const allItems: FeedItem[] = [
+            ...(feeds.hn || []),
+            ...(feeds.lobsters || []),
+            ...(feeds.reddit || []),
+            ...(feeds.github || []),
+            ...(feeds.devto || []),
+          ];
+
+          feedContext = formatItemsForPrompt(allItems);
         }
       } catch {
         feedContext = '[Feed fetch failed]';
@@ -228,12 +241,36 @@ Alpine.data('dashboard', () => ({
     }, 4400);
 
     try {
-      const profile = (this as any).$store.app.profile;
+      let profile = (this as any).$store.app.profile;
       const lastDiff = (this as any).$store.app.history[0];
+      const apiKey = (this as any).$store.app.apiKey;
 
-      let feedContext = '';
-      try {
-        const feedRes = await fetch('/api/feeds', {
+      // Resolve any unmapped custom items before fetching feeds
+      const unmapped = getUnmappedItems(profile);
+      if (unmapped.length > 0 && apiKey) {
+        console.log(`Resolving ${unmapped.length} custom item(s):`, unmapped.map(u => u.item));
+        const newMappings = { ...profile.resolvedMappings };
+        for (const { item, category } of unmapped) {
+          const mapping = await resolveSourcesForItem(apiKey, item, category);
+          newMappings[item] = mapping;
+          console.log(`Resolved "${item}":`, mapping);
+        }
+        // Save resolved mappings to profile
+        (this as any).$store.app.updateProfile({ resolvedMappings: newMappings });
+        // Refresh profile reference after update
+        profile = (this as any).$store.app.profile;
+      }
+
+      // Calculate window for search
+      const lastDiffDate = this.getLastDiffDate();
+      const windowDays = lastDiffDate
+        ? Math.min(Math.max(Math.ceil((Date.now() - new Date(lastDiffDate).getTime()) / 86400000), 1), 7)
+        : 7;
+
+      // Run web search and feed fetch in parallel
+      const [webSearchResults, feedRes] = await Promise.all([
+        apiKey ? searchWebForProfile(apiKey, profile, windowDays).catch(() => []) : Promise.resolve([]),
+        fetch('/api/feeds', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -241,21 +278,52 @@ Alpine.data('dashboard', () => ({
             frameworks: profile.frameworks || [],
             tools: profile.tools || [],
             topics: profile.topics || [],
+            resolvedMappings: profile.resolvedMappings || {},
           }),
-        });
-        if (feedRes.ok) {
+        }).catch(() => null),
+      ]);
+
+      let feedContext = '';
+      let webContext = '';
+
+      // Process feed results
+      if (feedRes?.ok) {
+        try {
           const feedData = await feedRes.json();
-          feedContext = feedData.context || '';
+          const feeds = feedData.feeds || {};
+
+          // Curate general feeds (HN, Lobsters) for relevance
+          const generalItems: FeedItem[] = [...(feeds.hn || []), ...(feeds.lobsters || [])];
+          let curatedGeneral: FeedItem[] = generalItems;
+          if (generalItems.length > 0 && apiKey) {
+            curatedGeneral = await curateGeneralFeeds(apiKey, generalItems, profile);
+          }
+
+          // Combine curated general feeds with already-targeted feeds
+          const allItems: FeedItem[] = [
+            ...curatedGeneral,
+            ...(feeds.reddit || []),
+            ...(feeds.github || []),
+            ...(feeds.devto || []),
+          ];
+
+          feedContext = formatItemsForPrompt(allItems);
+        } catch {
+          // Feed processing failed, continue without
         }
-      } catch {
-        // Feed fetch is non-critical
+      }
+
+      // Process web search results
+      if (webSearchResults.length > 0) {
+        webContext = formatWebSearchForPrompt(webSearchResults);
       }
 
       const prompt = buildPrompt(
         { ...profile, depth: this.selectedDepth },
         feedContext,
         this.getLastDiffDate(),
-        lastDiff?.content
+        lastDiff?.content,
+        webContext
       );
 
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -270,6 +338,25 @@ Alpine.data('dashboard', () => ({
           model: 'claude-sonnet-4-5-20250929',
           max_tokens: 4096,
           messages: [{ role: 'user', content: prompt }],
+          tools: [{
+            name: 'submit_diff',
+            description: 'Submit the generated developer intelligence diff',
+            input_schema: {
+              type: 'object',
+              properties: {
+                title: {
+                  type: 'string',
+                  description: 'A short, creative title (3-8 words) capturing the main theme of this diff. Plain text, no markdown.'
+                },
+                content: {
+                  type: 'string',
+                  description: 'The full markdown content of the diff, starting with the date line'
+                }
+              },
+              required: ['title', 'content']
+            }
+          }],
+          tool_choice: { type: 'tool', name: 'submit_diff' }
         }),
       });
 
@@ -279,16 +366,14 @@ Alpine.data('dashboard', () => ({
       }
 
       const result = await res.json();
-      const textContent = result.content
-        .filter((b: any) => b.type === 'text')
-        .map((b: any) => b.text)
-        .join('\n\n');
-
-      if (!textContent.trim()) {
+      const toolUse = result.content.find((b: any) => b.type === 'tool_use');
+      if (!toolUse?.input?.content) {
         throw new Error('No content returned from API');
       }
 
-      let cleanedContent = textContent;
+      const { title, content: rawContent } = toolUse.input;
+
+      let cleanedContent = rawContent;
       const dateStart = cleanedContent.indexOf('Intelligence Window');
       const sectionStart = cleanedContent.indexOf('## ');
       let diffStart = -1;
@@ -302,34 +387,9 @@ Alpine.data('dashboard', () => ({
         cleanedContent = cleanedContent.slice(diffStart);
       }
 
-      let title = '';
-      try {
-        const titleRes = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': (this as any).$store.app.apiKey!,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true',
-          },
-          body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 100,
-            messages: [{
-              role: 'user',
-              content: `Generate a short, creative title (3-8 words) for this developer diff. Just the title, nothing else:\n\n${cleanedContent.slice(0, 1500)}`
-            }],
-          }),
-        });
-        if (titleRes.ok) {
-          const titleResult = await titleRes.json();
-          title = titleResult.content[0]?.text?.trim() || '';
-        }
-      } catch { /* title is non-critical */ }
-
       const entry = {
         id: Date.now().toString(),
-        title,
+        title: title || '',
         content: cleanedContent,
         generated_at: new Date().toISOString(),
         duration_seconds: Math.round((Date.now() - startTime) / 1000),

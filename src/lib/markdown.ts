@@ -36,7 +36,30 @@ function parseInline(text: string): string {
     result += escapeHtml(text.slice(lastIndex));
   }
 
+  // Post-process: wrap score patterns like "(100 <a>HN</a> pts)" in <small>
+  result = wrapScorePatterns(result);
+
   return result || escapeHtml(text);
+}
+
+function wrapScorePatterns(html: string): string {
+  // Match various score patterns Claude might output:
+  // - "(100 pts on HN)" or "(100 pts on r/rust)"
+  // - "(100 HN pts)" or "(12 Dev.to pts)" or "(50 r/javascript pts)"
+  // - "(100 pts)"
+  // - "(500 stars on JavaScript GitHub)" or "(1289 stars, Python GitHub)"
+  // - "(100 [HN](url) pts)" -> "(100 <a>HN ↗</a> pts)" after link parsing
+  return html
+    .replace(/\((\d+)\s+pts\s+on\s+([^)]+)\)/gi, '<small class="md-score">($1 pts on $2)</small>')
+    .replace(/\((\d+)\s+([\w.\/]+)\s+pts\)/gi, '<small class="md-score">($1 $2 pts)</small>')
+    .replace(/\((\d+)\s+pts\)/gi, '<small class="md-score">($1 pts)</small>')
+    .replace(/\((\d+)\s+stars[,\s]+([^)]+)\)/gi, '<small class="md-score">($1 stars, $2)</small>')
+    .replace(/\((\d+)\s+stars\)/gi, '<small class="md-score">($1 stars)</small>')
+    .replace(
+      /\((\d+\s+)?(<a[^>]+>)([^<]*)\s*↗(<\/a>)(\s+pts)?\)/g,
+      (_, num, openTag, text, closeTag, pts) =>
+        `<small class="md-score">(${num || ''}${openTag}${text}${closeTag}${pts || ''})</small>`
+    );
 }
 
 interface Block {

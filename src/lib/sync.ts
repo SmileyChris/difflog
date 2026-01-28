@@ -38,6 +38,12 @@ export interface SyncResult {
   status: 'synced' | 'uploaded' | 'downloaded';
 }
 
+export interface ResolvedMapping {
+  subreddits: string[];
+  lobstersTags: string[];
+  devtoTags: string[];
+}
+
 export interface Profile {
   id: string;
   name: string;
@@ -52,6 +58,7 @@ export interface Profile {
   topics?: string[];
   depth?: string;
   customFocus?: string;
+  resolvedMappings?: Record<string, ResolvedMapping>;
   [key: string]: unknown;
 }
 

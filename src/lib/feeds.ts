@@ -1,9 +1,12 @@
+import type { ResolvedMapping } from './sync';
+
 interface Profile {
   languages: string[];
   frameworks: string[];
   tools: string[];
   topics: string[];
   depth: 'quick' | 'standard' | 'deep';
+  resolvedMappings?: Record<string, ResolvedMapping>;
 }
 
 export interface ResolvedSources {
@@ -12,9 +15,10 @@ export interface ResolvedSources {
   devto_tags: string[];
 }
 
-interface FeedItem {
+export interface FeedItem {
   title: string;
   url: string;
+  discussionUrl?: string; // HN comments, Reddit thread, etc.
   score?: number;
   source: string;
   date?: number; // epoch ms
@@ -139,6 +143,11 @@ function getSubreddits(profile: Profile): string[] {
     if (mapped) mapped.forEach(s => subs.add(s));
   }
 
+  // Add resolved custom mappings
+  for (const mapping of Object.values(profile.resolvedMappings || {})) {
+    mapping.subreddits?.forEach(s => subs.add(s));
+  }
+
   if (subs.size === 0) subs.add('programming');
   return [...subs];
 }
@@ -152,6 +161,11 @@ function getDevToTags(profile: Profile): string[] {
   }
   for (const lang of profile.languages) {
     tags.add(lang.toLowerCase());
+  }
+
+  // Add resolved custom mappings
+  for (const mapping of Object.values(profile.resolvedMappings || {})) {
+    mapping.devtoTags?.forEach(t => tags.add(t));
   }
 
   if (tags.size === 0) tags.add('programming');
@@ -336,22 +350,350 @@ function filterByDate(items: FeedItem[], days: number): FeedItem[] {
   return items.filter(item => !item.date || item.date >= cutoff);
 }
 
-export function getUnmatchedItems(profile: Profile): string[] {
-  const allMapped = new Set([
-    ...Object.keys(LANGUAGE_SUBREDDITS),
-    ...Object.keys(FRAMEWORK_SUBREDDITS),
-    ...Object.keys(TOOL_SUBREDDITS),
-    ...Object.keys(TOPIC_SUBREDDITS),
-  ]);
-  const allItems = [...profile.languages, ...profile.frameworks, ...(profile.tools || []), ...profile.topics];
-  return allItems.filter(item => !allMapped.has(item));
+function getLobstersTags(profile: Profile): string[] {
+  const tags = new Set<string>();
+
+  // Add resolved custom mappings
+  for (const mapping of Object.values(profile.resolvedMappings || {})) {
+    mapping.lobstersTags?.forEach(t => tags.add(t));
+  }
+
+  return [...tags];
+}
+
+export interface UnmappedItem {
+  item: string;
+  category: 'language' | 'framework' | 'tool' | 'topic';
+}
+
+export function getUnmappedItems(profile: Profile): UnmappedItem[] {
+  const unmapped: UnmappedItem[] = [];
+
+  for (const lang of profile.languages || []) {
+    if (!LANGUAGE_SUBREDDITS[lang] && !profile.resolvedMappings?.[lang]) {
+      unmapped.push({ item: lang, category: 'language' });
+    }
+  }
+  for (const fw of profile.frameworks || []) {
+    if (!FRAMEWORK_SUBREDDITS[fw] && !profile.resolvedMappings?.[fw]) {
+      unmapped.push({ item: fw, category: 'framework' });
+    }
+  }
+  for (const tool of profile.tools || []) {
+    if (!TOOL_SUBREDDITS[tool] && !profile.resolvedMappings?.[tool]) {
+      unmapped.push({ item: tool, category: 'tool' });
+    }
+  }
+  for (const topic of profile.topics || []) {
+    if (!TOPIC_SUBREDDITS[topic] && !profile.resolvedMappings?.[topic]) {
+      unmapped.push({ item: topic, category: 'topic' });
+    }
+  }
+
+  return unmapped;
+}
+
+export async function resolveSourcesForItem(
+  apiKey: string,
+  item: string,
+  category: 'language' | 'framework' | 'tool' | 'topic'
+): Promise<ResolvedMapping> {
+  const emptyMapping: ResolvedMapping = { subreddits: [], lobstersTags: [], devtoTags: [] };
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-haiku-latest',
+        max_tokens: 1024,
+        messages: [{
+          role: 'user',
+          content: `You're helping configure a developer news feed. Given the ${category} "${item}", suggest relevant sources. Be specific and practical.
+
+Return:
+- subreddits: Reddit communities (without r/ prefix)
+- lobstersTags: Lobste.rs tags
+- devtoTags: Dev.to tags
+
+Only include sources that actually exist and are active. Prefer popular, well-established communities over niche ones.`
+        }],
+        tools: [{
+          name: 'submit_sources',
+          description: 'Submit the discovered sources for the given item',
+          input_schema: {
+            type: 'object',
+            properties: {
+              subreddits: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Reddit subreddit names without the r/ prefix'
+              },
+              lobstersTags: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Lobste.rs tag names'
+              },
+              devtoTags: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Dev.to tag names'
+              }
+            },
+            required: ['subreddits', 'lobstersTags', 'devtoTags']
+          }
+        }],
+        tool_choice: { type: 'tool', name: 'submit_sources' }
+      }),
+    });
+
+    if (!res.ok) {
+      console.warn(`AI source resolution failed for "${item}": ${res.status}`);
+      return emptyMapping;
+    }
+
+    const result = await res.json();
+    const toolUse = result.content?.find((b: any) => b.type === 'tool_use');
+
+    if (!toolUse?.input) {
+      console.warn(`AI returned no tool use for "${item}"`);
+      return emptyMapping;
+    }
+
+    return {
+      subreddits: toolUse.input.subreddits || [],
+      lobstersTags: toolUse.input.lobstersTags || [],
+      devtoTags: toolUse.input.devtoTags || [],
+    };
+  } catch (e) {
+    console.warn(`AI source resolution error for "${item}":`, e);
+    return emptyMapping;
+  }
+}
+
+export interface WebSearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+}
+
+/**
+ * Search the web for recent developer news based on profile.
+ * Uses Sonnet with web_search tool to find and summarize relevant content.
+ */
+export async function searchWebForProfile(
+  apiKey: string,
+  profile: Profile,
+  windowDays: number = 7
+): Promise<WebSearchResult[]> {
+  // Build profile context for search - include everything
+  const technologies = [
+    ...(profile.languages || []),
+    ...(profile.frameworks || []),
+    ...(profile.tools || []),
+  ].join(', ');
+
+  const topics = (profile.topics || []).join(', ');
+
+  if (!technologies && !topics) {
+    return []; // No profile to search for
+  }
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 2048,
+        tools: [{
+          type: 'web_search_20250305',
+          name: 'web_search',
+          max_uses: 5,
+        }],
+        messages: [{
+          role: 'user',
+          content: `Search for recent developer news from the past ${windowDays} days relevant to:
+- Technologies: ${technologies || 'general programming'}
+- Topics: ${topics || 'general tech'}
+
+Find releases, announcements, blog posts, and significant developments. Search for specific technologies and topics.
+
+List each finding as a single line in this exact format:
+ITEM: "Title" | URL | Brief description (1 sentence)
+
+Find 5-10 relevant items. Only include items with real URLs you found.`
+        }],
+      }),
+    });
+
+    if (!res.ok) {
+      console.warn(`Web search failed: ${res.status}`);
+      return [];
+    }
+
+    const result = await res.json();
+    const results: WebSearchResult[] = [];
+
+    // Extract items from Claude's text response
+    for (const block of result.content || []) {
+      if (block.type === 'text') {
+        const lines = block.text.split('\n');
+        for (const line of lines) {
+          const match = line.match(/^ITEM:\s*"([^"]+)"\s*\|\s*(https?:\/\/[^\s|]+)\s*\|\s*(.+)$/i);
+          if (match) {
+            results.push({
+              title: match[1].trim(),
+              url: match[2].trim(),
+              snippet: match[3].trim(),
+            });
+          }
+        }
+      }
+
+      // Also extract from citations if available
+      if (block.type === 'text' && block.citations) {
+        for (const citation of block.citations) {
+          if (citation.type === 'web_search_result_location' && citation.url) {
+            // Avoid duplicates
+            if (!results.some(r => r.url === citation.url)) {
+              results.push({
+                title: citation.title || 'Untitled',
+                url: citation.url,
+                snippet: citation.cited_text || '',
+              });
+            }
+          }
+        }
+      }
+    }
+
+    console.log(`Web search found ${results.length} items`);
+    return results;
+  } catch (e) {
+    console.warn('Web search error:', e);
+    return [];
+  }
+}
+
+/**
+ * Filter general feed items (HN, Lobsters) for relevance to user's profile.
+ * Uses Haiku to quickly determine which items are worth including.
+ */
+export async function curateGeneralFeeds(
+  apiKey: string,
+  items: FeedItem[],
+  profile: Profile
+): Promise<FeedItem[]> {
+  if (items.length === 0) return [];
+
+  // Build profile context
+  const tracking = [
+    ...(profile.languages || []),
+    ...(profile.frameworks || []),
+    ...(profile.tools || []),
+  ].join(', ') || 'general programming';
+  const interests = (profile.topics || []).join(', ') || 'general tech';
+
+  // Format items with indices for reference
+  const itemList = items.map((item, i) =>
+    `[${i}] "${item.title}" (${item.source})`
+  ).join('\n');
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-haiku-latest',
+        max_tokens: 1024,
+        messages: [{
+          role: 'user',
+          content: `You're filtering a developer news feed. Select items relevant to this developer's profile.
+
+PROFILE:
+- Technologies: ${tracking}
+- Interests: ${interests}
+
+RULES:
+- Include items directly related to their technologies or interests
+- Include major tech news, security alerts, or industry shifts they should know about
+- Include interesting technical content even if tangentially related
+- Exclude generic business news, politics, or off-topic content
+- When in doubt, include it — better to have slightly more than miss something important
+
+ITEMS:
+${itemList}
+
+Return the indices of relevant items.`
+        }],
+        tools: [{
+          name: 'select_relevant',
+          description: 'Submit the indices of relevant feed items',
+          input_schema: {
+            type: 'object',
+            properties: {
+              indices: {
+                type: 'array',
+                items: { type: 'number' },
+                description: 'Array of item indices (0-based) that are relevant'
+              }
+            },
+            required: ['indices']
+          }
+        }],
+        tool_choice: { type: 'tool', name: 'select_relevant' }
+      }),
+    });
+
+    if (!res.ok) {
+      console.warn(`Feed curation failed: ${res.status}, returning all items`);
+      return items;
+    }
+
+    const result = await res.json();
+    const toolUse = result.content?.find((b: any) => b.type === 'tool_use');
+
+    if (!toolUse?.input?.indices) {
+      console.warn('Feed curation returned no indices, returning all items');
+      return items;
+    }
+
+    const indices = toolUse.input.indices as number[];
+    const filtered = indices
+      .filter(i => i >= 0 && i < items.length)
+      .map(i => items[i]);
+
+    console.log(`Curated ${items.length} items → ${filtered.length} relevant`);
+    return filtered;
+  } catch (e) {
+    console.warn('Feed curation error, returning all items:', e);
+    return items;
+  }
 }
 
 export async function fetchFeeds(profile: Profile, lastDiffDate?: string, resolvedSources?: ResolvedSources): Promise<FeedResults> {
   const days = getDaysSince(lastDiffDate);
+  // Get extra tags from resolved mappings in profile
+  const lobstersTags = getLobstersTags(profile);
   const [hn, lobsters, reddit, github, devto] = await Promise.allSettled([
     fetchHackerNews(),
-    fetchLobsters(resolvedSources?.lobsters_tags),
+    fetchLobsters([...lobstersTags, ...(resolvedSources?.lobsters_tags || [])]),
     fetchReddit(profile, resolvedSources?.subreddits),
     fetchGitHubTrending(profile, days),
     fetchDevTo(profile, days, resolvedSources?.devto_tags),
@@ -366,13 +708,56 @@ export async function fetchFeeds(profile: Profile, lastDiffDate?: string, resolv
   };
 }
 
-function formatItems(items: FeedItem[]): string {
+export function formatItems(items: FeedItem[]): string {
   return items
     .map(item => {
-      const scoreStr = item.score != null ? ` (${item.score} pts)` : '';
-      return `- [${item.source}] "${item.title}"${scoreStr} ${item.url}`;
+      // GitHub items: (500 stars on JavaScript GH)
+      if (item.source.startsWith('GitHub')) {
+        const lang = item.source.match(/\((\w+)\)/)?.[1] || '';
+        const langStr = lang ? `${lang} ` : '';
+        const scoreStr = item.score != null ? ` (${item.score} stars on ${langStr}GitHub)` : '';
+        return `- "${item.title}"${scoreStr} ${item.url}`;
+      }
+
+      // Other items: (100 [HN](discussion-url) pts)
+      // Only link the source when discussion URL differs from article URL
+      const hasDiscussion = item.discussionUrl && item.discussionUrl !== item.url;
+      const sourceStr = hasDiscussion
+        ? `[${item.source}](${item.discussionUrl})`
+        : item.source;
+      const scoreStr = item.score != null ? ` (${item.score} ${sourceStr} pts)` : ` (${sourceStr})`;
+      return `- "${item.title}"${scoreStr} ${item.url}`;
     })
     .join('\n');
+}
+
+export function formatItemsForPrompt(items: FeedItem[]): string {
+  if (items.length === 0) return '';
+
+  // Separate GitHub items to add context about what they are
+  const githubItems = items.filter(i => i.source.startsWith('GitHub'));
+  const otherItems = items.filter(i => !i.source.startsWith('GitHub'));
+
+  let result = '## REAL-TIME FEED DATA (Use these as sources — link to actual URLs)\n\n';
+
+  if (otherItems.length > 0) {
+    result += formatItems(otherItems) + '\n';
+  }
+
+  if (githubItems.length > 0) {
+    result += '\n### New GitHub repos (created this week, sorted by stars)\n';
+    result += formatItems(githubItems);
+  }
+
+  return result;
+}
+
+export function formatWebSearchForPrompt(results: WebSearchResult[]): string {
+  if (results.length === 0) return '';
+  const formatted = results
+    .map(r => `- "${r.title}" ${r.url}\n  ${r.snippet}`)
+    .join('\n');
+  return `## WEB SEARCH RESULTS (Additional sources from the web)\n\n${formatted}`;
 }
 
 export function getAllFeedItems(feeds: FeedResults): FeedItem[] {

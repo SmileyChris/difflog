@@ -62,6 +62,37 @@ All client data is stored locally with these keys:
 
 ## Data Models
 
+### Profile
+
+A saved configuration that personalizes your diffs.
+
+```typescript
+{
+  id: string;              // UUID
+  name: string;            // Display name
+  apiKey: string;          // Anthropic API key (stored locally)
+  languages: string[];     // Programming languages
+  frameworks: string[];    // Frameworks
+  tools: string[];         // Developer tools
+  topics: string[];        // Topics of interest
+  depth: string;           // Reading preference
+  customFocus?: string;    // Optional custom instructions
+  resolvedMappings?: {     // AI-resolved sources for custom items
+    [item: string]: {
+      subreddits: string[];
+      lobstersTags: string[];
+      devtoTags: string[];
+    }
+  };
+  // Sync-related fields
+  salt?: string;           // Encryption salt (when synced)
+  passwordSalt?: string;   // Password hash salt
+  syncedAt?: string;       // Last sync timestamp
+}
+```
+
+Custom languages/tools/topics not in predefined mappings are resolved via AI (Haiku) on first use. Results are cached in `resolvedMappings` to avoid repeated API calls.
+
 ### Diff
 
 Diffs store markdown only. HTML is rendered client-side on display.

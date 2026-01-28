@@ -163,17 +163,39 @@ CREATE TABLE stars (
 sequenceDiagram
     participant U as User
     participant C as Client
+    participant F as /api/feeds
     participant AI as Claude API
 
     U->>C: Click "Generate"
-    C->>C: Build prompt from profile
-    C->>AI: Claude API call
+    C->>C: Resolve unmapped custom items (Haiku)
+    par Parallel fetch
+        C->>AI: Web search for profile topics (Sonnet)
+        C->>F: Fetch feeds (grouped by source)
+    end
+    AI-->>C: Web search results
+    F-->>C: HN, Lobsters, Reddit, GitHub, Dev.to items
+    C->>AI: Curate HN/Lobsters for relevance (Haiku)
+    AI-->>C: Filtered feed items
+    C->>C: Build prompt with web results + curated feeds
+    C->>AI: Generate diff (Sonnet)
     AI-->>C: Markdown response
     C->>C: Store markdown in history
     C->>C: Render HTML client-side
     C->>C: Track as modified
     Note over C: Auto-sync if password cached
 ```
+
+#### Web Search
+
+The client uses Sonnet with the `web_search` tool to find recent news, blog posts, and announcements based on the user's profile. This runs in parallel with feed fetching. Results are included in the final prompt alongside feed data.
+
+#### Feed Curation
+
+General feeds (HN, Lobsters) return top stories without profile filtering. Before including them in the prompt, the client uses Haiku to filter for relevance to the user's technologies and interests. Reddit, GitHub, and Dev.to feeds are already profile-targeted via subreddits/tags.
+
+#### Custom Source Resolution
+
+When users add custom languages/tools/topics not in predefined mappings, the client uses Haiku to resolve appropriate subreddits and tags. Results are cached in `profile.resolvedMappings` to avoid repeated AI calls.
 
 !!! note "Client-Side Rendering"
     Diffs store only markdown content. HTML is rendered client-side on display using `renderDiff()`. This reduces storage by ~50% and keeps paragraph indices (`data-p` attributes) always in sync with the current renderer.
@@ -219,7 +241,7 @@ stateDiagram-v2
 | `src/lib/constants.ts` | Shared constants — LANGUAGES, FRAMEWORKS, DEPTHS, etc. |
 | `src/lib/crypto.ts` | Encryption utilities — AES-GCM, PBKDF2 |
 | `src/lib/prompt.ts` | Claude prompt construction |
-| `src/lib/feeds.ts` | RSS/API feed fetching |
+| `src/lib/feeds.ts` | Feed fetching, AI source resolution, and curation |
 | `src/lib/markdown.ts` | Client-side markdown rendering with `data-p` indices |
 
 ### Styles

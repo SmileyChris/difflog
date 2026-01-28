@@ -1850,6 +1850,20 @@ button:disabled {
   border-bottom-color: #40404060;
 }
 
+.md-score {
+  font-size: 0.8em;
+  color: #808090;
+}
+
+.md-score .md-link {
+  font-size: inherit;
+  opacity: 0.75;
+}
+
+.md-score .md-link:hover {
+  opacity: 1;
+}
+
 .md-hr {
   border: none;
   height: 1px;

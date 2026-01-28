@@ -4,7 +4,49 @@ icon: lucide/server
 
 # API Endpoints
 
-API endpoints for the [sync system](sync.md). All endpoints are Cloudflare Pages Functions using D1 database. All content fields are [encrypted client-side](encryption.md) before upload.
+API endpoints implemented as Cloudflare Pages Functions. Sync endpoints use D1 database with [client-side encryption](encryption.md).
+
+## `POST /api/feeds`
+
+Fetch developer news feeds from multiple sources. Returns items grouped by source for client-side curation. **No auth required.**
+
+**Request:**
+```json
+{
+  "languages": ["JavaScript", "Rust"],
+  "frameworks": ["React"],
+  "tools": ["Docker"],
+  "topics": ["AI/ML & LLMs"],
+  "resolvedMappings": {
+    "Homelab": {
+      "subreddits": ["selfhosted", "homelab"],
+      "lobstersTags": ["selfhosted"],
+      "devtoTags": ["homelab"]
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "feeds": {
+    "hn": [{ "title": "...", "url": "...", "score": 100, "source": "HN" }],
+    "lobsters": [{ "title": "...", "url": "...", "score": 50, "source": "Lobsters" }],
+    "reddit": [{ "title": "...", "url": "...", "score": 200, "source": "r/rust" }],
+    "github": [{ "title": "...", "url": "...", "score": 1000, "source": "GitHub (Rust)" }],
+    "devto": [{ "title": "...", "url": "...", "score": 30, "source": "Dev.to" }]
+  }
+}
+```
+
+The client curates HN/Lobsters items via Haiku before including in the prompt. Reddit, GitHub, and Dev.to are already profile-targeted.
+
+---
+
+## Sync Endpoints
+
+The following endpoints support the [sync system](sync.md).
 
 ## `POST /api/profile/create`
 

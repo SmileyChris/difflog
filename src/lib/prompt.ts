@@ -14,7 +14,7 @@ const DEPTH_INSTRUCTIONS: Record<string, string> = {
   deep: 'Provide comprehensive analysis. Include background context, implications, and detailed analysis for each item.'
 };
 
-export function buildPrompt(profile: Profile, feedContext?: string, lastDiffDate?: string, previousDiff?: string): string {
+export function buildPrompt(profile: Profile, feedContext?: string, lastDiffDate?: string, previousDiff?: string, webContext?: string): string {
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
   });
@@ -23,8 +23,16 @@ export function buildPrompt(profile: Profile, feedContext?: string, lastDiffDate
     : 7;
   const windowText = windowDays === 1 ? 'Past 24 hours' : `Past ${windowDays} days`;
 
+  const webSection = webContext
+    ? `\n\n${webContext}`
+    : '';
+
   const feedSection = feedContext
-    ? `\n\n${feedContext}\n\nIMPORTANT: Use the real URLs from the feed data above as sources. Do NOT use placeholder URLs like example.com. Link to the actual articles, repos, and discussions provided.`
+    ? `\n\n${feedContext}`
+    : '';
+
+  const sourcesNote = (feedContext || webContext)
+    ? `\n\nIMPORTANT: Use the real URLs from the sources above. Do NOT use placeholder URLs like example.com. Link to the actual articles, repos, and discussions provided. Synthesize information from BOTH web search results and feed data to create a comprehensive diff.`
     : '';
 
   const previousDiffSection = previousDiff
@@ -36,6 +44,10 @@ export function buildPrompt(profile: Profile, feedContext?: string, lastDiffDate
 FORMAT:
 - Use real URLs from the feed data or web search — never placeholder or hallucinated links
 - Link to sources inline: [Source Title](url)
+- When citing feed items with a SEPARATE discussion thread, link both the article AND discussion:
+  EXAMPLE: **[Rust 1.80 Released](https://blog.rust-lang.org/...)** (142 [HN](https://news.ycombinator.com/item?id=...) pts) — description
+- When citing self-posts or discussions (article URL IS the discussion), just name the source:
+  EXAMPLE: **[Is Svelte easier than React?](https://reddit.com/r/sveltejs/...)** (42 r/sveltejs pts) — description
 
 PROFILE:
 - Name: ${profile.name || 'Developer'}
@@ -44,7 +56,7 @@ PROFILE:
 ${profile.customFocus ? `- Custom focus: ${profile.customFocus}` : ''}
 
 DEPTH: ${DEPTH_INSTRUCTIONS[profile.depth] || DEPTH_INSTRUCTIONS.standard}
-${feedSection}${previousDiffSection}
+${webSection}${feedSection}${sourcesNote}${previousDiffSection}
 
 SECTION GUIDANCE:
 - Start with the date line, then organize into whatever ## sections make sense for this week's findings
