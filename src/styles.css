@@ -2387,6 +2387,7 @@ kbd {
 }
 
 .splash-feature span {
+  display: block;
   font-size: 0.8rem;
   color: var(--text-dim);
   line-height: 1.35;
