@@ -236,6 +236,13 @@ Alpine.data('dashboard', () => ({
     this.scanMessages = [...SCAN_MESSAGES].sort(() => Math.random() - 0.5);
     const startTime = Date.now();
 
+    // Prevent navigation while generating
+    window.onbeforeunload = (e) => {
+      e.preventDefault();
+      e.returnValue = ''; // Standard for Chrome/Firefox
+      return ''; // Standard for generic
+    };
+
     this.scanInterval = setInterval(() => {
       this.scanIndex = (this.scanIndex + 1) % this.scanMessages.length;
     }, 4400);
@@ -424,6 +431,7 @@ Alpine.data('dashboard', () => ({
         clearInterval(this.scanInterval);
         this.scanInterval = null;
       }
+      window.onbeforeunload = null;
     }
   },
 
