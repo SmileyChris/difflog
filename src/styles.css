@@ -473,6 +473,10 @@ header {
   font-size: 0.8rem;
 }
 
+.sync-paused {
+  color: var(--warning);
+}
+
 .sync-dropdown-form .sync-dropdown-info {
   margin-bottom: 0.25rem;
 }

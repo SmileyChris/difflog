@@ -17,7 +17,7 @@
       <span x-text="result?.uploaded || result?.downloaded ? ((result?.uploaded ? '↑' + result.uploaded : '') + (result?.downloaded ? ' ↓' + result.downloaded : '') + ' synced') : 'In sync'"></span>
     </div>
     <div class="sync-dropdown-form" x-show="needsPassword && !syncing && !result">
-      <div class="sync-dropdown-info" x-show="lastSyncedAgo">Synced <span x-text="lastSyncedAgo"></span></div>
+      <div class="sync-dropdown-info" x-show="lastSyncedAgo"><span class="sync-paused">Paused</span> (synced <span x-text="lastSyncedAgo"></span>)</div>
       <div class="sync-dropdown-input-row">
         <input type="password" class="sync-dropdown-input" placeholder="Password" x-model="password" @keydown.enter="sync()" />
         <button class="sync-dropdown-btn-icon" @click="sync()" :disabled="!password" title="Sync now">&#8635;</button>
