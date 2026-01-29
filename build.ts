@@ -79,8 +79,8 @@ async function copyPublicFiles() {
         const content = await readFile(srcPath, 'utf-8');
         const processed = await processIncludes(content);
         await writeFile(destPath, processed);
-      } else if (entry.name.endsWith('.svg') || entry.name.endsWith('.png') || entry.name.endsWith('.ico') || entry.name.endsWith('.js')) {
-        // Copy other static assets directly
+      } else if (entry.name.endsWith('.svg') || entry.name.endsWith('.png') || entry.name.endsWith('.ico') || entry.name.endsWith('.js') || entry.name.startsWith('_')) {
+        // Copy other static assets and Cloudflare Pages config files (_redirects, _headers)
         await cp(srcPath, destPath);
       }
     }

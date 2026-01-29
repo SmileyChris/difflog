@@ -5,4 +5,6 @@ import './profiles';
 import './share-profile';
 import './dashboard';
 import './sync-dropdown';
+import './share-dropdown';
 import './reminders';
+import './public-diff';

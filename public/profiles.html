@@ -182,14 +182,14 @@
                     ></span>
                   </div>
                   <div class="profile-detail-row profile-detail-counts">
-                    <span class="profile-count"
+                    <a href="/archive" class="profile-count profile-count-link" @click.stop="if ($store.app.activeProfileId !== id) { $store.app.switchProfile(id) }"
                       ><span class="profile-count-icon">&#9632;</span>
                       <span
                         x-text="(($store.app.histories[id] || []).length) + ' ' + (($store.app.histories[id] || []).length === 1 ? 'diff' : 'diffs')"
                       ></span
-                    ></span>
+                    ></a>
                     <span
-                      class="profile-count"
+                      class="profile-count profile-count-stars"
                       x-show="($store.app.bookmarks[id] || []).length > 0"
                       ><span class="profile-count-icon">★</span>
                       <span

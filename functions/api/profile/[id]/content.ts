@@ -40,7 +40,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     // Reset failed attempts on success
     await resetFailedAttempts(DB, profileId);
 
-    // Fetch all encrypted diffs and stars
+    // Fetch all diffs and stars (public diffs detected by checking if data starts with '{')
     const diffsResult = await DB.prepare(
       'SELECT id, encrypted_data FROM diffs WHERE profile_id = ?'
     ).bind(profileId).all<{ id: string; encrypted_data: string }>();

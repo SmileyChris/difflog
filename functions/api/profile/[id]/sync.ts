@@ -41,6 +41,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     // Build batch statements
     const statements: D1PreparedStatement[] = [];
 
+    // Track diffs for cache purging (public diffs start with '{')
+    const publicDiffIds: string[] = [];
+
     // Insert/update diffs
     if (body.diffs && body.diffs.length > 0) {
       for (const diff of body.diffs) {
@@ -50,6 +53,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
             VALUES (?, ?, ?)
           `).bind(diff.id, profileId, diff.encrypted_data)
         );
+        // Track public diffs for cache purging (plaintext JSON starts with '{')
+        if (diff.encrypted_data.startsWith('{')) {
+          publicDiffIds.push(diff.id);
+        }
       }
     }
 
@@ -65,12 +72,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }
     }
 
-    // Delete removed diffs
+    // Delete removed diffs (and track for cache purging)
     if (body.deleted_diff_ids && body.deleted_diff_ids.length > 0) {
       for (const diffId of body.deleted_diff_ids) {
         statements.push(
           DB.prepare('DELETE FROM diffs WHERE id = ? AND profile_id = ?').bind(diffId, profileId)
         );
+        // Add to purge list in case it was public
+        publicDiffIds.push(diffId);
       }
     }
 
@@ -161,6 +170,28 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     await DB.prepare(
       `UPDATE profiles SET ${updateClauses.join(', ')} WHERE id = ?`
     ).bind(...updateValues).run();
+
+    // Purge cache for public diffs that were modified/deleted
+    // Note: This requires CF_ZONE_ID and CF_API_TOKEN secrets to be configured
+    const cfZoneId = (context.env as any).CF_ZONE_ID;
+    const cfApiToken = (context.env as any).CF_API_TOKEN;
+    if (cfZoneId && cfApiToken && publicDiffIds.length > 0) {
+      try {
+        await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${cfApiToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            tags: publicDiffIds.map(id => `diff-${id}`)
+          })
+        });
+      } catch (e) {
+        console.error('Cache purge failed:', e);
+        // Non-fatal - continue with response
+      }
+    }
 
     return new Response(JSON.stringify({
       success: true,

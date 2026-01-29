@@ -1753,6 +1753,18 @@ button:disabled {
   color: var(--text-dimmest);
 }
 
+.diff-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem 0;
+  gap: 1rem;
+}
+
+.diff-title-row .diff-title {
+  padding: 0;
+}
+
 .diff-title {
   padding: 1.5rem 2rem 0;
   margin: 0;
@@ -1927,8 +1939,8 @@ button:disabled {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 8px;
-  overflow: hidden;
   transition: all 0.2s;
+  position: relative;
 }
 
 .archive-card:hover {
@@ -2780,6 +2792,30 @@ kbd {
   font-size: 0.65rem;
   color: var(--text-dimmest);
   letter-spacing: 0.1em;
+}
+
+.profile-count-link {
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.profile-count-link:hover {
+  color: var(--accent);
+}
+
+.profile-count-link span:not(.profile-count-icon) {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.profile-count-stars {
+  color: var(--text-dim);
+}
+
+.profile-count-stars .profile-count-icon {
+  color: var(--warning);
 }
 
 .profile-count-icon {
@@ -3778,4 +3814,243 @@ article section strong {
 .reminders-time-input::-webkit-calendar-picker-indicator {
   filter: invert(1);
   cursor: pointer;
+}
+
+/* Share Status & Dropdown */
+.archive-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-right: 0.5rem;
+}
+
+.share-dropdown-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.share-status {
+  background: none;
+  border: none;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.share-status:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.share-status-icon {
+  display: flex;
+  color: var(--text-dimmer);
+  transition: color 0.15s;
+}
+
+.share-status:hover .share-status-icon {
+  color: var(--text-dim);
+}
+
+.share-status-icon.share-status-public {
+  color: var(--accent);
+}
+
+.share-status:hover .share-status-icon.share-status-public {
+  color: var(--accent);
+}
+
+.share-status-label {
+  font-size: 0.7rem;
+  color: var(--text-dimmest);
+  text-transform: lowercase;
+}
+
+.share-status:hover .share-status-label {
+  color: var(--text-dim);
+}
+
+.share-status-icon.share-status-public + .share-status-label {
+  color: var(--accent-dim);
+}
+
+.share-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 0.75rem;
+  min-width: 220px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.share-dropdown-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.share-dropdown-desc {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.share-dropdown-paused {
+  color: var(--warning);
+  font-size: 0.8rem;
+}
+
+.share-dropdown-label {
+  font-size: 0.75rem;
+  color: var(--text-dimmest);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.share-dropdown-link-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.share-link {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.share-link::after {
+  content: ' \2197';
+  font-size: 0.7em;
+}
+
+.share-link:hover {
+  text-decoration: underline;
+}
+
+.share-dropdown-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 0.5rem 0.625rem;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-family: 'JetBrains Mono', monospace;
+  width: 100%;
+}
+
+.share-dropdown-input:focus {
+  outline: none;
+  border-color: var(--accent-border);
+}
+
+.share-dropdown-btn-icon {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  color: var(--text-dim);
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.share-dropdown-btn-icon:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+}
+
+.btn-link-danger {
+  background: none;
+  border: none;
+  color: var(--text-dimmest);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  margin-top: 0.25rem;
+}
+
+.btn-link-danger:hover {
+  color: var(--danger);
+}
+
+.share-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
+  border: none;
+  border-radius: 6px;
+  color: #000;
+  cursor: pointer;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.share-action-btn:hover {
+  filter: brightness(1.1);
+}
+
+.share-action-btn-danger {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--text-dim);
+}
+
+.share-action-btn-danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  filter: none;
+}
+
+/* Public Diff Page */
+.public-diff-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.public-diff-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  gap: 1rem;
+  color: var(--text-dim);
+}
+
+.public-diff-meta {
+  margin-bottom: 1rem;
+}
+
+.public-diff-date {
+  font-size: 0.9rem;
+  color: var(--text-dim);
 }

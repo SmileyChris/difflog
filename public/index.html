@@ -177,10 +177,15 @@
           </div>
         </div>
         <div class="diff-container">
-          <h1 class="diff-title" x-show="diff?.title">
-            <span class="diff-title-icon">&#9632;</span>
-            <span x-text="diff?.title"></span>
-          </h1>
+          <div class="diff-title-row" x-show="diff?.title">
+            <h1 class="diff-title">
+              <span class="diff-title-icon">&#9632;</span>
+              <span x-text="diff?.title"></span>
+            </h1>
+            <div x-data="{ get diffRef() { return diff; } }">
+              <!-- @include partials/share-dropdown.html -->
+            </div>
+          </div>
           <div
             class="diff-content"
             x-html="diff ? $store.app.renderDiff(diff) : ''"

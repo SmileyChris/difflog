@@ -479,6 +479,41 @@ Alpine.store('app', {
     };
   },
 
+  // === Public Diff Sharing ===
+
+  shareDiff(diffId: string): boolean {
+    if (!this.profile?.syncedAt) {
+      // Profile must be synced to share diffs
+      return false;
+    }
+    const diff = this.history.find((d: Diff) => d.id === diffId);
+    if (!diff) return false;
+
+    diff.isPublic = true;
+    this.history = [...this.history];
+    this._trackModifiedDiff(diffId);
+    return true;
+  },
+
+  unshareDiff(diffId: string): boolean {
+    const diff = this.history.find((d: Diff) => d.id === diffId);
+    if (!diff) return false;
+
+    diff.isPublic = false;
+    this.history = [...this.history];
+    this._trackModifiedDiff(diffId);
+    return true;
+  },
+
+  isDiffPublic(diffId: string): boolean {
+    const diff = this.history.find((d: Diff) => d.id === diffId);
+    return diff?.isPublic === true;
+  },
+
+  getPublicDiffUrl(diffId: string): string {
+    return `${window.location.origin}/d?${diffId}`;
+  },
+
   // === Sync Change Tracking ===
 
   _getPendingSync(): PendingChanges | null {

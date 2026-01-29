@@ -6,6 +6,16 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+function isSafeUrl(url: string): boolean {
+  const trimmed = url.trim().toLowerCase();
+  // Only allow http, https, and relative URLs
+  return trimmed.startsWith('http://') ||
+         trimmed.startsWith('https://') ||
+         trimmed.startsWith('/') ||
+         trimmed.startsWith('#') ||
+         (!trimmed.includes(':') && !trimmed.startsWith('//'));
+}
+
 function parseInline(text: string): string {
   // Process bold, links, and inline code
   let result = '';
@@ -22,8 +32,14 @@ function parseInline(text: string): string {
       // Bold - recursive parse
       result += `<strong class="md-bold">${parseInline(match[2])}</strong>`;
     } else if (match[3]) {
-      // Link - recursive parse for text, but keeping URL escaped
-      result += `<a class="md-link" href="${escapeHtml(match[4])}" target="_blank" rel="noopener noreferrer">${parseInline(match[3])} \u2197</a>`;
+      // Link - recursive parse for text, validate URL to prevent javascript: XSS
+      const url = match[4];
+      if (isSafeUrl(url)) {
+        result += `<a class="md-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${parseInline(match[3])} \u2197</a>`;
+      } else {
+        // Render as plain text if URL is suspicious
+        result += `${parseInline(match[3])}`;
+      }
     } else if (match[5]) {
       // Inline code
       result += `<code class="md-code">${escapeHtml(match[5])}</code>`;
@@ -254,7 +270,11 @@ export function renderMarkdown(text: string, citations?: Citation[]): string {
     html += `  <h3 class="md-h3">Sources</h3>\n`;
     html += `  <ol class="md-sources-list">\n`;
     for (const citation of unique) {
-      html += `    <li class="md-source-item"><a class="md-link" href="${escapeHtml(citation.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(citation.title || citation.url)}</a></li>\n`;
+      if (isSafeUrl(citation.url)) {
+        html += `    <li class="md-source-item"><a class="md-link" href="${escapeHtml(citation.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(citation.title || citation.url)}</a></li>\n`;
+      } else {
+        html += `    <li class="md-source-item">${escapeHtml(citation.title || citation.url)}</li>\n`;
+      }
     }
     html += `  </ol>\n`;
     html += `</div>\n`;

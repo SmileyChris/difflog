@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>diff·log</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <main id="content" class="public-diff-page" x-data="publicDiff()">
+    <header>
+      <div class="header-left">
+        <div class="logo-mark-header" :class="{ 'logo-mark-spinning': loading }">&#9670;</div>
+        <div>
+          <h1 class="main-title"><a href="/" class="main-title-link">diff<span class="title-diamond">&#9670;</span>log</a></h1>
+          <p class="header-date" x-show="diff" x-text="profileName ? 'shared by ' + profileName : 'Shared Diff'"></p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Loading -->
+    <div class="public-diff-loading" x-show="loading">
+      <div class="logo-mark-header logo-mark-spinning">&#9670;</div>
+      <p>Loading diff...</p>
+    </div>
+
+    <!-- Error -->
+    <div class="error-box" x-show="error && !loading">
+      <div class="error-icon">&#9888;&#65039;</div>
+      <p class="error-text" x-text="error"></p>
+      <a href="/" class="btn-primary" style="margin-top: 1rem;">Go to Home</a>
+    </div>
+
+    <!-- Diff Content -->
+    <div x-show="diff && !loading && !error">
+      <div class="public-diff-meta">
+        <span class="public-diff-date" x-text="diff ? new Date(diff.generated_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''"></span>
+      </div>
+      <div class="diff-container">
+        <h1 class="diff-title" x-show="diff?.title">
+          <span class="diff-title-icon">&#9632;</span>
+          <span x-text="diff?.title"></span>
+        </h1>
+        <div class="diff-content" x-html="renderedContent"></div>
+      </div>
+    </div>
+
+    <!-- @include partials/site-footer.html -->
+  </main>
+</body>
+</html>

@@ -33,7 +33,7 @@ export interface ProfileRow {
 export interface EncryptedDiffRow {
   id: string;
   profile_id: string;
-  encrypted_data: string;  // AES-GCM encrypted JSON blob
+  encrypted_data: string;  // AES-GCM encrypted JSON blob, or plaintext JSON if public
   created_at: string;
 }
 
@@ -80,7 +80,7 @@ export interface ProfileResponse {
 
 export interface SyncRequest {
   password_hash: string;
-  // All data is pre-encrypted by client
+  // Diffs: encrypted base64 blob, or plaintext JSON if public (detected by checking if starts with '{')
   diffs?: { id: string; encrypted_data: string }[];
   stars?: { id: string; encrypted_data: string }[];
   deleted_diff_ids?: string[];
@@ -89,6 +89,15 @@ export interface SyncRequest {
   diffs_hash?: string;
   stars_hash?: string;
   resolved_sources?: any;
+  profile?: {
+    name?: string;
+    languages?: string[];
+    frameworks?: string[];
+    tools?: string[];
+    topics?: string[];
+    depth?: string;
+    custom_focus?: string;
+  };
 }
 
 export interface ContentRequest {

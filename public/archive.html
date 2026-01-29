@@ -52,9 +52,12 @@
                 </div>
                 <div class="archive-preview" x-text="b.title || (b.content.slice(0, 120).replace(/[#*\[\]]/g, '') + '...')"></div>
               </div>
-              <button class="btn-delete" @click.stop="if (confirm('Delete this diff?')) $store.app.deleteDiff(b.id)">
-                &times;
-              </button>
+              <div class="archive-card-actions" x-data="{ diffRef: b }">
+                <!-- @include partials/share-dropdown.html -->
+                <button class="btn-delete" @click.stop="if (confirm('Delete this diff?')) $store.app.deleteDiff(b.id)">
+                  &times;
+                </button>
+              </div>
             </div>
           </template>
         </div>

@@ -68,6 +68,7 @@ export interface Diff {
   generated_at: string;
   title?: string;
   duration_seconds?: number;
+  isPublic?: boolean;
   [key: string]: unknown;
 }
 
@@ -348,10 +349,21 @@ export async function uploadContent(
   const passwordHash = await hashPasswordForTransport(password, passwordSalt);
 
   // Upload ALL local diffs (server does INSERT OR REPLACE)
+  // Public diffs are stored as plaintext JSON (starts with '{'), private as encrypted base64
   const diffsToUpload: { id: string; encrypted_data: string }[] = [];
   for (const diff of history) {
-    const encrypted = await encryptData(diff, password, salt);
-    diffsToUpload.push({ id: diff.id, encrypted_data: encrypted });
+    if (diff.isPublic) {
+      // Public diffs are stored as plaintext JSON
+      const { isPublic, ...diffData } = diff;
+      diffsToUpload.push({
+        id: diff.id,
+        encrypted_data: JSON.stringify(diffData)
+      });
+    } else {
+      // Private diffs are encrypted
+      const encrypted = await encryptData(diff, password, salt);
+      diffsToUpload.push({ id: diff.id, encrypted_data: encrypted });
+    }
   }
 
   // Upload ALL local stars
@@ -465,7 +477,15 @@ export async function downloadContent(
 
   for (const encryptedDiff of data.diffs) {
     try {
-      const diff = await decryptData(encryptedDiff.encrypted_data, password, salt) as Diff;
+      let diff: Diff;
+      // Public diffs are plaintext JSON (starts with '{'), private are encrypted base64
+      if (encryptedDiff.encrypted_data.startsWith('{')) {
+        diff = JSON.parse(encryptedDiff.encrypted_data) as Diff;
+        diff.isPublic = true;
+      } else {
+        diff = await decryptData(encryptedDiff.encrypted_data, password, salt) as Diff;
+        diff.isPublic = false;
+      }
       serverDiffIds.add(encryptedDiff.id);
 
       const existingIdx = mergedHistory.findIndex(d => d.id === encryptedDiff.id);
@@ -516,13 +536,11 @@ export async function downloadContent(
   const diffsHash = await computeContentHash(filteredHistory);
   const starsHash = await computeContentHash(filteredStars);
 
-  // Preserve pending changes for items that still need to be uploaded
-  const remainingModifiedDiffs = pending.modifiedDiffs.filter(id => !serverDiffIds.has(id));
-  const remainingModifiedStars = pending.modifiedStars.filter(id => !serverStarIds.has(id));
-
+  // Keep all pending modifications - they still need to be uploaded even if server has the item
+  // (e.g., local changes like isPublic flag need to be pushed to server)
   const remainingPending: PendingChanges = {
-    modifiedDiffs: remainingModifiedDiffs,
-    modifiedStars: remainingModifiedStars,
+    modifiedDiffs: [...pending.modifiedDiffs],
+    modifiedStars: [...pending.modifiedStars],
     deletedDiffs: pending.deletedDiffs,
     deletedStars: pending.deletedStars,
     profileModified: hasLocalProfileChanges
