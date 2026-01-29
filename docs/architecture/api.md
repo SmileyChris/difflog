@@ -138,7 +138,7 @@ Upload content and deletions. Requires password.
 ```json
 {
   "password_hash": "salt:hash",
-  "diffs": [{ "id": "uuid", "encrypted_data": "base64..." }],
+  "diffs": [{ "id": "uuid", "encrypted_data": "base64 or JSON" }],
   "stars": [{ "id": "uuid", "encrypted_data": "base64..." }],
   "deleted_diff_ids": ["uuid"],
   "deleted_star_ids": ["uuid"],
@@ -147,6 +147,29 @@ Upload content and deletions. Requires password.
   "profile": { "name": "...", "languages": [], ... }
 }
 ```
+
+!!! note "Public Diffs"
+    For [public diffs](public-diff-sharing.md), `encrypted_data` contains plaintext JSON (starts with `{`) instead of an encrypted base64 blob. The server detects this format and serves public diffs via `/api/diff/{id}/public`.
+```
+
+## `GET /api/diff/{id}/public`
+
+Retrieve a publicly shared diff. Returns 404 if the diff doesn't exist or is private. See [Public Diff Sharing](public-diff-sharing.md) for details. **No auth required.**
+
+**Response:**
+```json
+{
+  "id": "abc123",
+  "content": "# Your Dev Digest\n\n...",
+  "title": "Weekly Update",
+  "generated_at": "2026-01-28T10:00:00Z",
+  "profile_name": "Chris"
+}
+```
+
+**Cache Headers:** `Cache-Control: public, max-age=86400`
+
+---
 
 ## `GET /api/share/{id}`
 
