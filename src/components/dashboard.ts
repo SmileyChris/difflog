@@ -167,12 +167,19 @@ Alpine.data('dashboard', () => ({
   estimatedTime() {
     const history = (this as any).$store.app.history;
     const durations = history.map((h: any) => h.duration_seconds).filter((d: any) => d > 0);
-    if (durations.length === 0) return 'This usually takes 30\u201360 seconds...';
-    const avg = Math.round(durations.reduce((a: number, b: number) => a + b, 0) / durations.length);
-    if (avg < 60) return `Usually takes about ${avg} seconds...`;
-    const mins = Math.floor(avg / 60);
-    const secs = avg % 60;
-    const timeStr = secs > 0 ? `Usually takes about ${mins}m ${secs}s...` : `Usually takes about ${mins} minute${mins > 1 ? 's' : ''}...`;
+    let timeStr: string;
+    if (durations.length === 0) {
+      timeStr = 'This usually takes 30–60 seconds...';
+    } else {
+      const avg = Math.round(durations.reduce((a: number, b: number) => a + b, 0) / durations.length);
+      if (avg < 60) {
+        timeStr = `Usually takes about ${avg} seconds...`;
+      } else {
+        const mins = Math.floor(avg / 60);
+        const secs = avg % 60;
+        timeStr = secs > 0 ? `Usually takes about ${mins}m ${secs}s...` : `Usually takes about ${mins} minute${mins > 1 ? 's' : ''}...`;
+      }
+    }
     return this.waitTip ? `${timeStr} ${this.waitTip}` : timeStr;
   },
 
