@@ -381,6 +381,12 @@ Alpine.data('dashboard', () => ({
         throw new Error('No content returned from API');
       }
 
+      // Calculate cost from usage (Claude Sonnet 4.5: $3/1M input, $15/1M output)
+      const usage = result.usage;
+      const cost = usage
+        ? (usage.input_tokens * 3 + usage.output_tokens * 15) / 1_000_000
+        : undefined;
+
       const { title, content: rawContent } = toolUse.input;
 
       let cleanedContent = rawContent;
@@ -403,6 +409,7 @@ Alpine.data('dashboard', () => ({
         content: cleanedContent,
         generated_at: new Date().toISOString(),
         duration_seconds: Math.round((Date.now() - startTime) / 1000),
+        cost,
       };
 
       this.diff = entry;
