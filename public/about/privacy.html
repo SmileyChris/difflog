@@ -53,7 +53,7 @@
         <ul class="about-tldr-list">
           <li>Your data stays in your browser — we can't see it</li>
           <li>Sync is optional and encrypted; sharing is opt-in</li>
-          <li>No tracking, no analytics, no data collection</li>
+          <li>Minimal analytics (Cloudflare Web Analytics — no cookies, no personal data)</li>
         </ul>
       </div>
 
@@ -78,8 +78,9 @@
       </section>
 
       <section>
-        <h3>No Tracking</h3>
-        <p>diff·log does not use any analytics services, tracking pixels, or third-party scripts. We don't collect usage data, behavioral information, or personal identifiers. There are no cookies except what's strictly necessary for the application to function.</p>
+        <h3>Minimal Analytics</h3>
+        <p>diff·log uses Cloudflare Web Analytics, a privacy-first analytics service. It collects only aggregate page view metrics — no cookies, no personal identifiers, no cross-site tracking. We use this to understand basic usage patterns (which pages are visited) without collecting any information about individual users.</p>
+        <p>We don't use tracking pixels or other third-party scripts. There are no cookies except what's strictly necessary for the application to function.</p>
       </section>
 
       <section>
@@ -88,7 +89,7 @@
         <ul>
           <li><strong>Anthropic API</strong> — For generating diffs. Your browser communicates directly with Anthropic; we don't proxy these requests.</li>
           <li><strong>Feed aggregator</strong> — Our server fetches public RSS/API data from sources like HN, Reddit, and GitHub to provide context for diff generation. No personal data is sent.</li>
-          <li><strong>Cloudflare</strong> — For hosting and optional sync storage. Encrypted data only.</li>
+          <li><strong>Cloudflare</strong> — For hosting, optional sync storage (encrypted data only), and privacy-first web analytics.</li>
         </ul>
       </section>
 
