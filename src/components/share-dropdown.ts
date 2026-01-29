@@ -5,7 +5,7 @@ Alpine.data('shareDropdown', () => ({
   copied: false,
 
   get diff() {
-    return (this as any).diffRef;
+    return (this as any).$data.diffRef;
   },
 
   get canShare(): boolean {
@@ -23,7 +23,9 @@ Alpine.data('shareDropdown', () => ({
   },
 
   toggle() {
+    console.log('toggle called, diff:', this.diff, 'isOpen before:', this.isOpen);
     this.isOpen = !this.isOpen;
+    console.log('isOpen after:', this.isOpen);
     this.copied = false;
   },
 
