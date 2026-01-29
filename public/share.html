@@ -21,7 +21,7 @@
       </header>
 
       <!-- Loading -->
-      <div class="share-loading" x-show="loading">
+      <div class="prof-loading" x-show="loading">
         <div class="logo-mark-header logo-mark-spinning">&#9670;</div>
         <p>Loading profile...</p>
       </div>
@@ -34,44 +34,44 @@
       </div>
 
       <!-- Profile Found -->
-      <div class="share-content" x-show="profile && !loading">
-        <div class="share-profile-card">
-          <div class="share-profile-icon">&#9670;</div>
-          <h2 class="share-profile-name" x-text="profile?.name || 'Profile'"></h2>
+      <div class="prof-content" x-show="profile && !loading">
+        <div class="prof-profile-card">
+          <div class="prof-profile-icon">&#9670;</div>
+          <h2 class="prof-profile-name" x-text="profile?.name || 'Profile'"></h2>
 
-          <div class="share-profile-details">
-            <div class="share-detail" x-show="profile?.languages?.length">
-              <span class="share-detail-label">Languages</span>
-              <span class="share-detail-value" x-text="profile?.languages?.join(', ')"></span>
+          <div class="prof-profile-details">
+            <div class="prof-detail" x-show="profile?.languages?.length">
+              <span class="prof-detail-label">Languages</span>
+              <span class="prof-detail-value" x-text="profile?.languages?.join(', ')"></span>
             </div>
-            <div class="share-detail" x-show="profile?.frameworks?.length">
-              <span class="share-detail-label">Frameworks</span>
-              <span class="share-detail-value" x-text="profile?.frameworks?.join(', ')"></span>
+            <div class="prof-detail" x-show="profile?.frameworks?.length">
+              <span class="prof-detail-label">Frameworks</span>
+              <span class="prof-detail-value" x-text="profile?.frameworks?.join(', ')"></span>
             </div>
-            <div class="share-detail" x-show="profile?.tools?.length">
-              <span class="share-detail-label">Tools</span>
-              <span class="share-detail-value" x-text="profile?.tools?.join(', ')"></span>
+            <div class="prof-detail" x-show="profile?.tools?.length">
+              <span class="prof-detail-label">Tools</span>
+              <span class="prof-detail-value" x-text="profile?.tools?.join(', ')"></span>
             </div>
-            <div class="share-detail" x-show="profile?.topics?.length">
-              <span class="share-detail-label">Topics</span>
-              <span class="share-detail-value" x-text="profile?.topics?.join(', ')"></span>
+            <div class="prof-detail" x-show="profile?.topics?.length">
+              <span class="prof-detail-label">Topics</span>
+              <span class="prof-detail-value" x-text="profile?.topics?.join(', ')"></span>
             </div>
           </div>
 
-          <div class="share-actions">
+          <div class="prof-actions">
             <button class="btn-primary" @click="cloneProfile()">
               <span class="btn-icon">&#9670;</span>
               Clone This Profile
             </button>
-            <p class="share-note">Creates a copy with your own password and API key</p>
+            <p class="prof-note">Creates a copy with your own password and API key</p>
           </div>
         </div>
 
         <!-- QR Code for sharing -->
-        <div class="share-qr-section" x-show="showQR">
+        <div class="prof-qr-section" x-show="showQR">
           <h3>Share This Profile</h3>
-          <div class="share-qr-code" x-ref="qrcode"></div>
-          <div class="share-url">
+          <div class="prof-qr-code" x-ref="qrcode"></div>
+          <div class="prof-url">
             <input type="text" class="text-input" readonly :value="shareUrl" x-ref="shareUrlInput" />
             <button class="btn-secondary" @click="copyShareUrl()">
               <span x-text="copied ? 'Copied!' : 'Copy'"></span>
