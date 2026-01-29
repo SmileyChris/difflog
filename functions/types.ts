@@ -102,11 +102,17 @@ export interface SyncRequest {
 
 export interface ContentRequest {
   password_hash: string;
+  // Optional: skip fetching collections where local hash matches server
+  diffs_hash?: string;
+  stars_hash?: string;
 }
 
 export interface ContentResponse {
   diffs: { id: string; encrypted_data: string }[];
   stars: { id: string; encrypted_data: string }[];
+  // Indicates which collections were skipped (hash matched)
+  diffs_skipped?: boolean;
+  stars_skipped?: boolean;
   content_hash: string | null;
   salt: string;
   // Profile metadata for sync

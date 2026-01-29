@@ -40,18 +40,33 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     // Reset failed attempts on success
     await resetFailedAttempts(DB, profileId);
 
-    // Fetch all diffs and stars (public diffs detected by checking if data starts with '{')
-    const diffsResult = await DB.prepare(
-      'SELECT id, encrypted_data FROM diffs WHERE profile_id = ?'
-    ).bind(profileId).all<{ id: string; encrypted_data: string }>();
+    // Check if client already has current content (skip fetching if hashes match)
+    const skipDiffs = body.diffs_hash && body.diffs_hash === profile.diffs_hash;
+    const skipStars = body.stars_hash && body.stars_hash === profile.stars_hash;
 
-    const starsResult = await DB.prepare(
-      'SELECT id, encrypted_data FROM stars WHERE profile_id = ?'
-    ).bind(profileId).all<{ id: string; encrypted_data: string }>();
+    // Fetch diffs and stars only if needed
+    let diffs: { id: string; encrypted_data: string }[] = [];
+    let stars: { id: string; encrypted_data: string }[] = [];
+
+    if (!skipDiffs) {
+      const diffsResult = await DB.prepare(
+        'SELECT id, encrypted_data FROM diffs WHERE profile_id = ?'
+      ).bind(profileId).all<{ id: string; encrypted_data: string }>();
+      diffs = diffsResult.results || [];
+    }
+
+    if (!skipStars) {
+      const starsResult = await DB.prepare(
+        'SELECT id, encrypted_data FROM stars WHERE profile_id = ?'
+      ).bind(profileId).all<{ id: string; encrypted_data: string }>();
+      stars = starsResult.results || [];
+    }
 
     const response: ContentResponse = {
-      diffs: diffsResult.results || [],
-      stars: starsResult.results || [],
+      diffs,
+      stars,
+      diffs_skipped: skipDiffs || undefined,
+      stars_skipped: skipStars || undefined,
       content_hash: profile.content_hash,
       salt: profile.salt,
       // Include profile metadata for sync

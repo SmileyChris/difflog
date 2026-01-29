@@ -329,6 +329,7 @@ export async function importProfile(
 
 /**
  * Upload local content to server
+ * Uses selective upload when server state matches our last-synced state
  */
 export async function uploadContent(
   profileId: string,
@@ -348,10 +349,35 @@ export async function uploadContent(
 
   const passwordHash = await hashPasswordForTransport(password, passwordSalt);
 
-  // Upload ALL local diffs (server does INSERT OR REPLACE)
-  // Public diffs are stored as plaintext JSON (starts with '{'), private as encrypted base64
+  // Check if we can do selective upload (server unchanged since our last sync)
+  // Fetch current server status to compare hashes
+  let useSelectiveUpload = false;
+  try {
+    const statusRes = await fetch(`/api/profile/${profileId}/status`);
+    if (statusRes.ok) {
+      const status = await statusRes.json();
+      // If server hashes match our stored hashes, server hasn't changed
+      // We can safely upload only modified items
+      const serverDiffsMatch = status.diffs_hash === profile.diffsHash;
+      const serverStarsMatch = status.stars_hash === profile.starsHash;
+      useSelectiveUpload = serverDiffsMatch && serverStarsMatch;
+    }
+  } catch {
+    // On error, fall back to full upload
+  }
+
+  // Determine which items to upload
+  const modifiedDiffIds = new Set(pending.modifiedDiffs);
+  const modifiedStarIds = new Set(pending.modifiedStars);
+
+  // Upload diffs: selective (only modified) or full (all)
   const diffsToUpload: { id: string; encrypted_data: string }[] = [];
   for (const diff of history) {
+    // Skip unmodified diffs if using selective upload
+    if (useSelectiveUpload && !modifiedDiffIds.has(diff.id)) {
+      continue;
+    }
+
     if (diff.isPublic) {
       // Public diffs are stored as plaintext JSON
       const { isPublic, ...diffData } = diff;
@@ -366,11 +392,17 @@ export async function uploadContent(
     }
   }
 
-  // Upload ALL local stars
+  // Upload stars: selective (only modified) or full (all)
   const starsToUpload: { id: string; encrypted_data: string }[] = [];
   for (const star of stars) {
+    const id = starId(star);
+    // Skip unmodified stars if using selective upload
+    if (useSelectiveUpload && !modifiedStarIds.has(id)) {
+      continue;
+    }
+
     const encrypted = await encryptData(star, password, salt);
-    starsToUpload.push({ id: starId(star), encrypted_data: encrypted });
+    starsToUpload.push({ id, encrypted_data: encrypted });
   }
 
   // Compute hashes over plaintext content for deterministic comparison
@@ -407,6 +439,7 @@ export async function uploadContent(
 
 /**
  * Download content from server and return merged data
+ * Pass local hashes to skip fetching collections that haven't changed
  */
 export async function downloadContent(
   profileId: string,
@@ -414,7 +447,9 @@ export async function downloadContent(
   localHistory: Diff[],
   localStars: Star[],
   pending: PendingChanges,
-  password: string
+  password: string,
+  localDiffsHash?: string,
+  localStarsHash?: string
 ): Promise<{
   downloaded: number;
   diffs: Diff[];
@@ -435,6 +470,8 @@ export async function downloadContent(
     salt?: string;
     diffs: { id: string; encrypted_data: string }[];
     stars: { id: string; encrypted_data: string }[];
+    diffs_skipped?: boolean;
+    stars_skipped?: boolean;
     profile?: {
       name: string;
       languages: string[];
@@ -444,7 +481,11 @@ export async function downloadContent(
       depth: string;
       custom_focus: string;
     };
-  }>(`/api/profile/${profileId}/content`, { password_hash: passwordHash });
+  }>(`/api/profile/${profileId}/content`, {
+    password_hash: passwordHash,
+    diffs_hash: localDiffsHash,
+    stars_hash: localStarsHash
+  });
 
   const salt = data.salt || profile.salt!;
   let downloaded = 0;
@@ -471,61 +512,69 @@ export async function downloadContent(
   const pendingModifiedDiffs = new Set(pending.modifiedDiffs);
   const pendingModifiedStars = new Set(pending.modifiedStars);
 
-  // Decrypt and merge diffs
+  // Decrypt and merge diffs (skip if server indicated no changes)
   const serverDiffIds = new Set<string>();
-  const mergedHistory = [...localHistory];
+  let mergedHistory = [...localHistory];
 
-  for (const encryptedDiff of data.diffs) {
-    try {
-      let diff: Diff;
-      // Public diffs are plaintext JSON (starts with '{'), private are encrypted base64
-      if (encryptedDiff.encrypted_data.startsWith('{')) {
-        diff = JSON.parse(encryptedDiff.encrypted_data) as Diff;
-        diff.isPublic = true;
-      } else {
-        diff = await decryptData(encryptedDiff.encrypted_data, password, salt) as Diff;
-        diff.isPublic = false;
-      }
-      serverDiffIds.add(encryptedDiff.id);
+  if (!data.diffs_skipped) {
+    for (const encryptedDiff of data.diffs) {
+      try {
+        let diff: Diff;
+        // Public diffs are plaintext JSON (starts with '{'), private are encrypted base64
+        if (encryptedDiff.encrypted_data.startsWith('{')) {
+          diff = JSON.parse(encryptedDiff.encrypted_data) as Diff;
+          diff.isPublic = true;
+        } else {
+          diff = await decryptData(encryptedDiff.encrypted_data, password, salt) as Diff;
+          diff.isPublic = false;
+        }
+        serverDiffIds.add(encryptedDiff.id);
 
-      const existingIdx = mergedHistory.findIndex(d => d.id === encryptedDiff.id);
-      if (existingIdx === -1 && !pendingDeletedDiffs.has(encryptedDiff.id)) {
-        mergedHistory.push(diff);
-        downloaded++;
+        const existingIdx = mergedHistory.findIndex(d => d.id === encryptedDiff.id);
+        if (existingIdx === -1 && !pendingDeletedDiffs.has(encryptedDiff.id)) {
+          mergedHistory.push(diff);
+          downloaded++;
+        }
+      } catch (e) {
+        console.error('Failed to decrypt diff:', e);
       }
-    } catch (e) {
-      console.error('Failed to decrypt diff:', e);
     }
+
+    // Remove diffs deleted on server (only when we fetched server state)
+    mergedHistory = mergedHistory.filter(d =>
+      serverDiffIds.has(d.id) || pendingDeletedDiffs.has(d.id) || pendingModifiedDiffs.has(d.id)
+    );
   }
 
-  // Decrypt and merge stars
+  // Decrypt and merge stars (skip if server indicated no changes)
   const serverStarIds = new Set<string>();
-  const mergedStars = [...localStars];
+  let mergedStars = [...localStars];
 
-  for (const encryptedStar of data.stars) {
-    try {
-      const star = await decryptData(encryptedStar.encrypted_data, password, salt) as Star;
-      serverStarIds.add(encryptedStar.id);
+  if (!data.stars_skipped) {
+    for (const encryptedStar of data.stars) {
+      try {
+        const star = await decryptData(encryptedStar.encrypted_data, password, salt) as Star;
+        serverStarIds.add(encryptedStar.id);
 
-      const existingIdx = mergedStars.findIndex(s => starId(s) === encryptedStar.id);
-      if (existingIdx === -1 && !pendingDeletedStars.has(encryptedStar.id)) {
-        mergedStars.push(star);
-        downloaded++;
+        const existingIdx = mergedStars.findIndex(s => starId(s) === encryptedStar.id);
+        if (existingIdx === -1 && !pendingDeletedStars.has(encryptedStar.id)) {
+          mergedStars.push(star);
+          downloaded++;
+        }
+      } catch (e) {
+        console.error('Failed to decrypt star:', e);
       }
-    } catch (e) {
-      console.error('Failed to decrypt star:', e);
     }
+
+    // Remove stars deleted on server (only when we fetched server state)
+    mergedStars = mergedStars.filter(s => {
+      const id = starId(s);
+      return serverStarIds.has(id) || pendingDeletedStars.has(id) || pendingModifiedStars.has(id);
+    });
   }
 
-  // Remove items deleted on server (not in server's list)
-  // Keep: items on server, pending local deletion, pending local modification
-  const filteredHistory = mergedHistory.filter(d =>
-    serverDiffIds.has(d.id) || pendingDeletedDiffs.has(d.id) || pendingModifiedDiffs.has(d.id)
-  );
-  const filteredStars = mergedStars.filter(s => {
-    const id = starId(s);
-    return serverStarIds.has(id) || pendingDeletedStars.has(id) || pendingModifiedStars.has(id);
-  });
+  const filteredHistory = mergedHistory;
+  const filteredStars = mergedStars;
 
   // Sort history by date (newest first)
   filteredHistory.sort((a, b) =>

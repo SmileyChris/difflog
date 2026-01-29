@@ -726,7 +726,9 @@ Alpine.store('app', {
         this.history,
         this.stars,
         pending,
-        password
+        password,
+        this.profile.diffsHash,
+        this.profile.starsHash
       );
 
       // Apply downloaded data

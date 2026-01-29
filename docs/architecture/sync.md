@@ -183,17 +183,28 @@ if (!this.hasPendingChanges()) {
 }
 ```
 
-When uploading, the client sends **ALL local content** to ensure nothing is missed:
+### Selective Upload
+
+Before uploading, the client checks if the server state matches our last-synced state:
 
 ```typescript
-// Upload ALL local diffs (server does INSERT OR REPLACE)
-for (const diff of this.history) {
-  const encrypted = await encryptData(diff, password, salt);
-  diffsToUpload.push({ id: diff.id, encrypted_data: encrypted });
-}
+// Fetch current server status to compare hashes
+const status = await fetch(`/api/profile/${profileId}/status`);
+const serverDiffsMatch = status.diffs_hash === profile.diffsHash;
+const serverStarsMatch = status.stars_hash === profile.starsHash;
+useSelectiveUpload = serverDiffsMatch && serverStarsMatch;
 ```
 
-This is intentionally not optimized - reliability over efficiency. The server uses `INSERT OR REPLACE` so duplicates are idempotent.
+**If hashes match** (server unchanged since our last sync):
+
+- Only upload items in `modifiedDiffs` and `modifiedStars`
+- Deletions are always sent (just IDs, not content)
+- Significantly reduces bandwidth when making small changes
+
+**If hashes don't match** (another device synced):
+
+- Fall back to full upload to ensure consistency
+- Server uses `INSERT OR REPLACE` so duplicates are idempotent
 
 ### Deletions
 
@@ -213,7 +224,23 @@ body: JSON.stringify({
 
 ## Download Logic
 
-The download phase merges server content into local:
+### Selective Download
+
+The client passes local content hashes to the server to skip unchanged collections:
+
+```typescript
+const data = await postJson(`/api/profile/${profileId}/content`, {
+  password_hash: passwordHash,
+  diffs_hash: localDiffsHash,  // Server skips diffs if hash matches
+  stars_hash: localStarsHash   // Server skips stars if hash matches
+});
+```
+
+The server compares hashes and returns `diffs_skipped: true` or `stars_skipped: true` when collections are unchanged, avoiding unnecessary data transfer.
+
+### Merge Logic
+
+When content is fetched, it's merged into local state:
 
 ```typescript
 // Add items from server that don't exist locally
@@ -232,6 +259,9 @@ this.history = this.history.filter(d =>
   serverDiffIds.has(d.id) || pendingDeletedDiffs.has(d.id) || pendingModifiedDiffs.has(d.id)
 );
 ```
+
+!!! note "Skipped Collections"
+    When a collection is skipped (hash matched), the merge and filter logic is also skipped for that collection. This prevents an empty server response from being interpreted as "delete all local items."
 
 ### Profile Metadata Sync
 
@@ -268,15 +298,24 @@ When Client A deletes an item:
 
 ## Hash Comparison
 
-Content hashes enable efficient sync status checks:
+Content hashes enable efficient sync by avoiding unnecessary data transfer:
 
 ```typescript
-// Compute hash over all encrypted content
-const allDiffsEncrypted = await Promise.all(
-  this.history.map(d => encryptData(d, password, salt))
-);
-const diffsHash = await computeHash(allDiffsEncrypted);
+// Compute deterministic hash over plaintext content
+const sorted = [...items].sort((a, b) => a.id.localeCompare(b.id));
+const serialized = sorted.map(item => JSON.stringify(item, Object.keys(item).sort()));
+const diffsHash = await sha256(serialized.join('|'));
 ```
+
+Hashes are computed over **plaintext** (not encrypted data) for deterministic comparison, since encryption produces different ciphertext each time.
+
+### Hash Usage
+
+| Optimization | How Hashes Are Used |
+|--------------|---------------------|
+| **Skip sync entirely** | Compare local hashes to server hashes - if both match, no sync needed |
+| **Selective download** | Pass local hashes to server - skip fetching collections where hash matches |
+| **Selective upload** | Compare server hash to profile's stored hash - if unchanged, only upload modified items |
 
 The hash is computed over encrypted data, so it can be stored on the server without revealing content.
 
