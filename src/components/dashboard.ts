@@ -1,5 +1,5 @@
 import Alpine from 'alpinejs';
-import { SCAN_MESSAGES, DEPTHS } from '../lib/constants';
+import { SCAN_MESSAGES, DEPTHS, WAIT_TIPS } from '../lib/constants';
 import { timeAgo, daysSince, getCurrentDateFormatted } from '../lib/time';
 import { buildPrompt } from '../lib/prompt';
 import { starId } from '../lib/sync';
@@ -12,6 +12,7 @@ Alpine.data('dashboard', () => ({
   promptText: '',
   ctrlHeld: false,
   error: null as string | null,
+  waitTip: '',
   diff: null as any,
   scanIndex: 0,
   selectedDepth: 'standard',
@@ -171,7 +172,8 @@ Alpine.data('dashboard', () => ({
     if (avg < 60) return `Usually takes about ${avg} seconds...`;
     const mins = Math.floor(avg / 60);
     const secs = avg % 60;
-    return secs > 0 ? `Usually takes about ${mins}m ${secs}s...` : `Usually takes about ${mins} minute${mins > 1 ? 's' : ''}...`;
+    const timeStr = secs > 0 ? `Usually takes about ${mins}m ${secs}s...` : `Usually takes about ${mins} minute${mins > 1 ? 's' : ''}...`;
+    return this.waitTip ? `${timeStr} ${this.waitTip}` : timeStr;
   },
 
   async previewPrompt() {
@@ -234,6 +236,7 @@ Alpine.data('dashboard', () => ({
     this.diff = null;
     this.scanIndex = 0;
     this.scanMessages = [...SCAN_MESSAGES].sort(() => Math.random() - 0.5);
+    this.waitTip = WAIT_TIPS[Math.floor(Math.random() * WAIT_TIPS.length)];
     const startTime = Date.now();
 
     // Prevent navigation while generating

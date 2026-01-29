@@ -29,6 +29,17 @@ export const SCAN_MESSAGES = [
   { text: "Almost done, just adding one more mass extinction event...", icon: "\u231B" },
 ];
 
+export const WAIT_TIPS = [
+  "Stand up and stretch!",
+  "Grab a coffee \u2615",
+  "Check your posture",
+  "Take a deep breath",
+  "Look away from the screen for 20s",
+  "Hydrate! \uD83D\uDCA7",
+  "Roll your shoulders",
+  "Blink explicitly"
+];
+
 // Field options lookup for setup wizard
 export const FIELD_OPTIONS: Record<string, string[]> = {
   languages: LANGUAGES,
