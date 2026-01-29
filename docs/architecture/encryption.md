@@ -4,7 +4,7 @@ icon: lucide/lock
 
 # Encryption
 
-Difflog uses client-side encryption to protect sensitive data. The server only stores encrypted blobs.
+diff·log uses client-side encryption to protect sensitive data. The server only stores encrypted blobs.
 
 ## What's Encrypted
 

@@ -2,20 +2,22 @@
 icon: lucide/rocket
 ---
 
-# Difflog Developer Documentation
+# diff·log
 
-Difflog is a personalized developer intelligence app that generates customized diffs showing what's changed in the dev ecosystem since you last checked in.
+diff·log is an open source app that uses Claude to summarize dev news based on your tech stack. These docs are for technical users interested in the underlying technology.
 
-## Key Features
+[difflog.dev](https://difflog.dev) (the site) | [GitHub](https://github.com/SmileyChris/difflog) (the code)
 
-- **Multi-profile support** - Create multiple profiles with different tech stacks
-- **End-to-end encryption** - Your API keys and content are encrypted client-side
-- **Cross-device sync** - Sync profiles, diffs, and stars across devices
-- **Offline-first** - Works locally, sync is optional
+## Overview
+
+- **Local-first** — All data stored in browser localStorage; [sync](architecture/sync.md) is optional
+- **End-to-end encrypted** — Sync data is [encrypted](architecture/encryption.md) client-side before upload
+- **Multi-profile** — Track different tech stacks separately
+- **BYOK** — Bring your own Anthropic API key for [AI generation](ai.md)
 
 ## Technology Stack
 
-**Client:** [Alpine.js](https://alpinejs.dev/) with [@alpinejs/persist](https://alpinejs.dev/plugins/persist) for localStorage and [Alpine AJAX](https://alpine-ajax.js.org/) for SPA-like page transitions.
+**Client:** [Alpine.js](https://alpinejs.dev/) with [@alpinejs/persist](https://alpinejs.dev/plugins/persist) for localStorage. CSS View Transitions for smooth page navigation.
 
 **Server:** [Bun](https://bun.sh/) for local dev, [Cloudflare Pages](https://pages.cloudflare.com/) for production hosting, [Cloudflare D1](https://developers.cloudflare.com/d1/) for sync storage.
 

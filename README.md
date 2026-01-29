@@ -1,6 +1,8 @@
-# difflog
+# diff·log
 
-**difflog** is a multi-page web application that generates personalized "diffs" for the developer ecosystem. It scans for updates in languages, frameworks, and tools you care about, using the Anthropic Claude API to summarize what's changed since you last checked in.
+[difflog.dev](https://difflog.dev) | [Developer Docs](https://smileychris.github.io/difflog/)
+
+**diff·log** is a multi-page web application that generates personalized "diffs" for the developer ecosystem. It scans for updates in languages, frameworks, and tools you care about, using the Anthropic Claude API to summarize what's changed since you last checked in.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
@@ -15,7 +17,7 @@
 ## Tech Stack
 
 - **Runtime**: [Bun](https://bun.sh)
-- **Frontend**: [Alpine.js](https://alpinejs.dev), [Alpine AJAX](https://alpine-ajax.js.org)
+- **Frontend**: [Alpine.js](https://alpinejs.dev)
 - **Styling**: Vanilla CSS (Dark Theme)
 - **Backend (Sync)**: Cloudflare Pages + D1
 

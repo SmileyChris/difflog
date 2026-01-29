@@ -345,7 +345,7 @@ Alpine.data('dashboard', () => ({
           'anthropic-dangerous-direct-browser-access': 'true',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-5-20250929',
+          model: 'claude-sonnet-4-5',
           max_tokens: 4096,
           messages: [{ role: 'user', content: prompt }],
           tools: [{

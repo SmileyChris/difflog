@@ -4,7 +4,7 @@ icon: lucide/book-open
 
 # Concepts
 
-Terminology, conventions, and technology choices used throughout Difflog.
+Terminology, conventions, and technology choices used throughout diff·log.
 
 ## Terminology
 
@@ -13,32 +13,27 @@ Terminology, conventions, and technology choices used throughout Difflog.
 | **Diff** | A generated intelligence report — what's changed since you last checked in |
 | **Profile** | A saved configuration (tech stack, interests, API key) that personalizes your diffs |
 | **Star** | A reference to a bookmarked paragraph in a diff (not a copy) |
-| **Depth** | Reading preference — how detailed your diffs should be |
+| **Depth** | Reading preference — how detailed your diffs should be (see [AI Pipeline](../ai.md#depth-levels)) |
 | **Sync** | Optional cross-device sharing via encrypted cloud storage |
-
-### Depth Levels
-
-| Level | Icon | Description |
-|-------|------|-------------|
-| Quick Scan | ⚡ | 2-3 min read, headlines only |
-| Standard Brief | 📋 | 5 min read, key details |
-| Deep Dive | 🔬 | 10+ min, full analysis |
 
 ## Pages and Partials
 
-**Pages** are full HTML documents that work standalone on direct load. Alpine AJAX swaps the `#content` area on navigation for SPA-like transitions.
+**Pages** are full HTML documents that work standalone on direct load. CSS View Transitions provide smooth cross-document navigation.
 
 | Route | File | Purpose |
 |-------|------|---------|
-| `/welcome` | `welcome.html` | Landing page for new users |
+| `/` | `index.html` | Main dashboard — generate and view diffs |
+| `/about` | `about/index.html` | Landing page for new users |
+| `/about/privacy` | `about/privacy.html` | Privacy policy |
+| `/about/terms` | `about/terms.html` | Terms of service |
 | `/setup` | `setup.html` | Profile creation wizard |
-| `/` | `index.html` | Main app — generate and view diffs |
 | `/archive` | `archive.html` | Past diffs list |
 | `/stars` | `stars.html` | Bookmarked paragraphs |
 | `/profiles` | `profiles.html` | Manage multiple profiles |
 | `/share` | `share.html` | Import a shared profile |
+| `/d/:id` | `d.html` | Public diff view |
 
-**Partials** are HTML fragments loaded via Alpine AJAX into existing pages. They don't include `<html>` or `<head>` — just the content to be swapped in.
+**Partials** are HTML fragments in `partials/`. They're inlined at build time via `<!-- @include partials/filename.html -->` for repeated sections (footer, dropdowns) or loaded dynamically by Alpine components (setup wizard steps).
 
 | File | Purpose |
 |------|---------|
@@ -47,6 +42,9 @@ Terminology, conventions, and technology choices used throughout Difflog.
 | `step-tools.html` | Setup wizard — tools |
 | `step-topics.html` | Setup wizard — topics of interest |
 | `step-depth.html` | Setup wizard — reading depth preference |
+| `sync-dropdown.html` | Sync status and controls |
+| `share-dropdown.html` | Public sharing controls |
+| `site-footer.html` | Common footer links |
 
 ## localStorage Keys
 
@@ -150,13 +148,20 @@ The app uses HTML entities rather than an icon library:
 
 | Icon | Entity | Usage |
 |------|--------|-------|
-| ◆ | `&#9670;` | Logo, generate button, branding |
-| ■ | `&#9632;` | Diff indicator |
+| ◆ | `&#9670;` | Logo, generate button, branding, separators |
+| ■ | `&#9632;` | Diff indicator, archive |
 | ★ | `&#9733;` | Star/bookmark |
 | ✎ | `&#9998;` | Edit |
+| × | `&times;` | Close/delete/remove |
 | ✓ | `&#10003;` | Confirmed/valid |
 | ✗ | `&#10007;` | Invalid |
 | ↻ | `&#8635;` | Sync |
-| 🗑️ | `&#128465;` | Delete |
+| ☁ | `&#9729;` | Cloud (sync status) |
+| ⚠️ | `&#9888;` | Warning/error |
+| 🔒 | `&#128274;` | Lock/private |
+| 🔑 | `&#128273;` | Key |
+| 📋 | `&#128203;` | Clipboard/copy |
+| ↗ | `&#8599;` | External link/upload |
+| ↓ | `&#8595;` | Import |
 
 This keeps the bundle small and works universally without icon fonts.

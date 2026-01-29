@@ -4,18 +4,18 @@ icon: lucide/layers
 
 # Architecture Overview
 
-Difflog is built as a multi-page app with optional cloud sync capabilities.
+diff·log is built as a multi-page app with optional cloud sync capabilities.
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | Alpine.js + Alpine AJAX |
+| **Frontend** | Alpine.js |
 | **Styling** | Custom CSS with CSS variables |
 | **Bundling** | Bun HTML imports |
 | **Backend** | Cloudflare Pages Functions |
 | **Database** | Cloudflare D1 (SQLite) |
-| **AI** | Anthropic Claude API |
+| **AI** | Anthropic Claude API (see [AI Pipeline](../ai.md)) |
 
 ## Client Architecture
 
@@ -87,7 +87,7 @@ pages/
 └── profiles.html    # Profile management (/profiles)
 ```
 
-Alpine AJAX swaps the `#content` area on navigation for SPA-like transitions.
+CSS View Transitions provide smooth cross-document navigation.
 
 ## Server Architecture
 
@@ -185,17 +185,7 @@ sequenceDiagram
     Note over C: Auto-sync if password cached
 ```
 
-#### Web Search
-
-The client uses Sonnet with the `web_search` tool to find recent news, blog posts, and announcements based on the user's profile. This runs in parallel with feed fetching. Results are included in the final prompt alongside feed data.
-
-#### Feed Curation
-
-General feeds (HN, Lobsters) return top stories without profile filtering. Before including them in the prompt, the client uses Haiku to filter for relevance to the user's technologies and interests. Reddit, GitHub, and Dev.to feeds are already profile-targeted via subreddits/tags.
-
-#### Custom Source Resolution
-
-When users add custom languages/tools/topics not in predefined mappings, the client uses Haiku to resolve appropriate subreddits and tags. Results are cached in `profile.resolvedMappings` to avoid repeated AI calls.
+See [AI Pipeline](../ai.md) for details on web search, feed curation, and source resolution.
 
 !!! note "Client-Side Rendering"
     Diffs store only markdown content. HTML is rendered client-side on display using `renderDiff()`. This reduces storage by ~50% and keeps paragraph indices (`data-p` attributes) always in sync with the current renderer.

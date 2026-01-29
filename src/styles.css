@@ -3675,6 +3675,36 @@ article section strong {
   vertical-align: middle;
 }
 
+.about-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding: 1.5rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  text-transform: lowercase;
+}
+
+.about-footer-link {
+  color: var(--text-dimmest);
+  text-decoration: none;
+  padding: 0.25rem 0.5rem;
+  transition: color 0.15s;
+}
+
+.about-footer-link:hover {
+  color: var(--accent);
+}
+
+.about-footer-sep {
+  color: var(--accent);
+  opacity: 0.5;
+  font-size: 0.5em;
+  vertical-align: middle;
+}
+
 /* Reminders */
 .reminders-section {
   margin-bottom: 1.5rem;

@@ -4,11 +4,11 @@ icon: lucide/server
 
 # Operations
 
-This section covers deployment and maintenance tasks for Difflog.
+This section covers deployment and maintenance tasks for diff·log.
 
 ## Deployment
 
-Difflog is deployed to Cloudflare Pages with a D1 database for sync storage.
+diff·log is deployed to Cloudflare Pages with a D1 database for sync storage.
 
 ### Deploy to Production
 

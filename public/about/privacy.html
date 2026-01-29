@@ -107,11 +107,13 @@
         </a>
       </div>
 
-      <!-- Has profile: back link -->
-      <div class="about-back" x-cloak x-show="$store.app.profile">
-        <a href="/" class="about-back-link">&larr; back home</a>
-      </div>
     </article>
+
+    <footer class="about-footer">
+      <a href="/" class="about-footer-link" x-cloak x-show="$store.app.profile">&larr; back home</a>
+      <span class="about-footer-sep" x-cloak x-show="$store.app.profile">&#9670;</span>
+      <a href="https://smileychris.github.io/difflog/" class="about-footer-link" target="_blank" rel="noopener">&hearts; opensource</a>
+    </footer>
   </main>
 </body>
 </html>

@@ -185,7 +185,7 @@ describe('resolveSourcesForItem', () => {
     expect(capturedRequest.options.headers['x-api-key']).toBe('test-api-key');
 
     const body = JSON.parse(capturedRequest.options.body);
-    expect(body.model).toBe('claude-3-5-haiku-latest');
+    expect(body.model).toBe('claude-haiku-4-5');
     expect(body.tools[0].name).toBe('submit_sources');
     expect(body.tool_choice).toEqual({ type: 'tool', name: 'submit_sources' });
     expect(body.messages[0].content).toContain('language');
@@ -385,7 +385,7 @@ describe('curateGeneralFeeds', () => {
     expect(capturedRequest.options.headers['x-api-key']).toBe('test-api-key');
 
     const body = JSON.parse(capturedRequest.options.body);
-    expect(body.model).toBe('claude-3-5-haiku-latest');
+    expect(body.model).toBe('claude-haiku-4-5');
     expect(body.tools[0].name).toBe('select_relevant');
     expect(body.tool_choice).toEqual({ type: 'tool', name: 'select_relevant' });
     // Check that items are included with indices

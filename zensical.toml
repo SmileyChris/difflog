@@ -1,15 +1,18 @@
 [project]
-site_name = "Difflog Developer Docs"
-site_description = "Developer documentation for Difflog - a personalized developer intelligence app"
+site_name = "diff·log Developer Docs"
+site_description = "Developer documentation for diff·log"
 site_author = "Chris"
+repo_url = "https://github.com/SmileyChris/difflog"
+repo_name = "SmileyChris/difflog"
 
 copyright = """
-Copyright &copy; 2026 Difflog
+Copyright &copy; 2026 diff·log
 """
 
 nav = [
   { "Home" = "index.md" },
   { "Concepts" = "concepts/index.md" },
+  { "AI Pipeline" = "ai.md" },
   { "Architecture" = [
     { "Overview" = "architecture/overview.md" },
     { "Sync System" = "architecture/sync.md" },
