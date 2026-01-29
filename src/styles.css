@@ -3515,6 +3515,13 @@ article {
   margin: 0 0 0.75rem 0;
 }
 
+.about-tldr-aside {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-muted);
+}
+
 .about-tldr-list {
   margin: 0;
   padding-left: 1.25rem;
@@ -3540,6 +3547,20 @@ article section h3 {
   margin: 0 0 0.5rem 0;
 }
 
+article section h3::before {
+  content: '◆';
+  color: var(--accent);
+  margin-right: 0.5rem;
+  font-size: 0.7em;
+}
+
+article section h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  margin: 1.25rem 0 0.5rem 0;
+}
+
 article section p {
   font-size: 0.9rem;
   color: var(--text-secondary);
@@ -3554,7 +3575,7 @@ article section p:last-child {
 article section ul {
   margin: 0.5rem 0;
   padding-left: 1.25rem;
-  list-style: disc;
+  list-style: none;
 }
 
 article section li {
@@ -3562,6 +3583,14 @@ article section li {
   color: var(--text-secondary);
   line-height: 1.5;
   margin: 0.35rem 0;
+  position: relative;
+}
+
+article section li::before {
+  content: '–';
+  color: var(--text-dimmest);
+  position: absolute;
+  left: -1rem;
 }
 
 article section strong {

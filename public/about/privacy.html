@@ -51,11 +51,9 @@
       <div class="about-tldr">
         <h3 class="about-tldr-title">TL;DR</h3>
         <ul class="about-tldr-list">
-          <li>Your data lives in your browser's localStorage — we don't have access to it</li>
-          <li>Cloud sync is optional and end-to-end encrypted with your password</li>
-          <li>Your API key never leaves your device (calls go directly to Anthropic)</li>
-          <li>No tracking, no analytics, no cookies</li>
-          <li>We don't sell data — we don't even collect it</li>
+          <li>Your data stays in your browser — we can't see it</li>
+          <li>Sync is optional and encrypted; sharing is opt-in</li>
+          <li>No tracking, no analytics, no data collection</li>
         </ul>
       </div>
 
@@ -73,6 +71,10 @@
         <h3>Optional Cloud Sync</h3>
         <p>If you enable cloud sync, your data is encrypted client-side using AES-256-GCM before being uploaded. The encryption key is derived from your password using PBKDF2 with 100,000 iterations. We store only encrypted blobs — we cannot read your data, and neither can anyone who might access our servers.</p>
         <p>Sync is entirely optional. diff·log works fully offline with local-only storage.</p>
+
+        <h4><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -0.1em; margin-right: 0.3rem;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Public Diff Sharing</h4>
+        <p>With cloud sync enabled, you can optionally share individual diffs publicly. When you share a diff, it is stored unencrypted so anyone with the link can view it. Public diffs display your profile name alongside the content.</p>
+        <p>You retain full control: unsharing a diff re-encrypts it and immediately makes the public link inaccessible. Only the specific diffs you choose to share are public — all other data remains encrypted.</p>
       </section>
 
       <section>
@@ -92,7 +94,8 @@
 
       <section>
         <h3>Data Deletion</h3>
-        <p>To delete your local data, clear your browser's localStorage for this site. If you've enabled cloud sync, you can delete your synced profile from the Profiles page — this permanently removes all encrypted data from our servers.</p>
+        <p>To delete your local data, clear your browser's localStorage for this site.</p>
+        <p>If you've enabled cloud sync: individual diffs can be deleted from the Archive page, which permanently removes them from our servers. To fully delete your account, first delete all diffs while synced — this ensures other devices won't re-upload them. Then delete your profile from the Profiles page to remove all remaining data from our servers.</p>
       </section>
 
       <!-- No profile: CTA -->
