@@ -534,6 +534,9 @@ export async function downloadContent(
         if (existingIdx === -1 && !pendingDeletedDiffs.has(encryptedDiff.id)) {
           mergedHistory.push(diff);
           downloaded++;
+        } else if (existingIdx !== -1 && !pendingModifiedDiffs.has(encryptedDiff.id)) {
+          // Update isPublic from server if not locally modified
+          mergedHistory[existingIdx].isPublic = diff.isPublic;
         }
       } catch (e) {
         console.error('Failed to decrypt diff:', e);
