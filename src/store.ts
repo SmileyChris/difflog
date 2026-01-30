@@ -23,12 +23,16 @@ import {
   type SyncStatus,
   type Profile,
   type Diff,
-  type Star
+  type Star,
+  type User
 } from './lib/sync';
 
 // Alpine Store - Local-first architecture
 // All data stored locally, server only used for optional sharing/sync
 Alpine.store('app', {
+  // User account (shared across all profiles using creds)
+  user: Alpine.$persist(null as User | null).as('difflog-user'),
+
   // All profile data persisted locally
   profiles: Alpine.$persist({} as Record<string, Profile>).as('difflog-profiles'),
   activeProfileId: Alpine.$persist(null as string | null).as('difflog-active-profile'),
@@ -113,7 +117,26 @@ Alpine.store('app', {
     return this.profile?.apiKey || null;
   },
   get isUnlocked(): boolean {
-    return this.profile !== null && this.apiKey !== null;
+    // Profile is unlocked if it has an API key (BYOK) or is using creds mode
+    return this.profile !== null && (this.apiKey !== null || this.profile.apiSource === 'creds');
+  },
+  get usingCredits(): boolean {
+    return this.profile?.apiSource === 'creds';
+  },
+  get creds(): number {
+    return this.user?.creds ?? 0;
+  },
+  get hasCredits(): boolean {
+    return this.creds > 0;
+  },
+  get isLoggedIn(): boolean {
+    return this.user !== null && !!this.user.email && !!this.user.code;
+  },
+  get hasEverUsedCreds(): boolean {
+    return Object.values(this.profiles).some((p: Profile) => p.hasUsedCreds);
+  },
+  get userEmail(): string | null {
+    return this.user?.email ?? null;
   },
   get history(): Diff[] {
     return this.activeProfileId ? this.histories[this.activeProfileId] || [] : [];
@@ -361,12 +384,13 @@ Alpine.store('app', {
   },
 
   // Create a new local profile
-  createProfile(data: { name: string; apiKey: string; languages: string[]; frameworks: string[]; tools: string[]; topics: string[]; depth: string; customFocus: string }): string {
+  createProfile(data: { name: string; apiKey?: string; apiSource: 'byok' | 'creds'; languages: string[]; frameworks: string[]; tools: string[]; topics: string[]; depth: string; customFocus: string }): string {
     const id = crypto.randomUUID();
     const profile: Profile = {
       id,
       name: data.name,
       apiKey: data.apiKey,
+      apiSource: data.apiSource,
       languages: data.languages,
       frameworks: data.frameworks,
       tools: data.tools,
@@ -407,6 +431,11 @@ Alpine.store('app', {
     if (hasSyncableChange) {
       this._trackProfileModified();
     }
+
+    // Clear user state if switched away from creds
+    if (updates.apiSource === 'byok') {
+      this._clearUserStateIfUnused();
+    }
   },
 
   // Delete a profile
@@ -425,6 +454,8 @@ Alpine.store('app', {
       const remaining = Object.keys(this.profiles);
       this.activeProfileId = remaining.length > 0 ? remaining[0] : null;
     }
+
+    this._clearUserStateIfUnused();
   },
 
   addDiff(entry: Diff) {
@@ -454,6 +485,44 @@ Alpine.store('app', {
 
   isStarred(diffId: string, pIndex: number): boolean {
     return this.stars.some((s: Star) => s.diff_id === diffId && s.p_index === pIndex);
+  },
+
+  // User account management
+  // email + code is the credential, stored for future API auth
+  loginUser(email: string, code: string, creds: number = 5) {
+    this.user = { email, code, creds };
+  },
+
+  addCredits(amount: number) {
+    if (!this.user) return;
+    this.user = { ...this.user, creds: this.user.creds + amount };
+  },
+
+  useCredit(): boolean {
+    if (!this.user || this.user.creds <= 0) return false;
+    this.user = { ...this.user, creds: this.user.creds - 1 };
+    return true;
+  },
+
+  _clearUserStateIfUnused() {
+    const hasCredsProfiles = Object.values(this.profiles).some((p: Profile) => p.apiSource === 'creds');
+    if (!hasCredsProfiles) {
+      this.user = null;
+    }
+  },
+
+  // Profile API source switching
+  switchToByok(apiKey: string) {
+    this.updateProfile({ apiSource: 'byok', apiKey });
+    this._clearUserStateIfUnused();
+  },
+
+  switchToCredits() {
+    if (!this.isLoggedIn) {
+      console.warn('Cannot switch to creds without logged in user');
+      return;
+    }
+    this.updateProfile({ apiSource: 'creds', apiKey: undefined });
   },
 
   renderDiff(diff: Diff): string {
