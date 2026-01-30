@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>diff·log - Get Creds</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://js.stripe.com/v3/"></script>
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <div data-stripe-pk="__STRIPE_PK__" hidden></div>
+
+    <main id="content">
+      <header>
+        <div class="header-left">
+          <div class="logo-mark-header logo-mark-creds">
+            <span class="creds-coin">◉</span>
+          </div>
+          <div>
+            <h1 class="main-title">
+              <a href="/" class="main-title-link"
+                >diff<span class="title-diamond">&#9670;</span>log</a
+              >
+              creds
+            </h1>
+            <p class="header-date">Buy generation credits</p>
+          </div>
+        </div>
+        <div class="header-right" x-data>
+          <div class="header-profile-group">
+            <a href="/profiles" class="profile-badge">
+              <svg
+                class="profile-badge-icon"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <circle cx="12" cy="11" r="4" />
+                <path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+              </svg>
+              <span x-text="$store.app.profile?.name || 'Profile'"></span>
+            </a>
+            <span class="creds-nav-link" :class="{ 'creds-empty': $store.app.creds <= 1 }" x-show="$store.app.isLoggedIn && $store.app.usingCredits"><span class="creds-coin">◉</span><span x-text="$store.app.creds"></span></span>
+          </div>
+        </div>
+      </header>
+
+      <div class="creds-page-content" x-data="credsCheckout">
+        <!-- Current balance -->
+        <div class="creds-current" x-show="$store.app.isLoggedIn">
+          <div class="creds-current-label">Your balance</div>
+          <div class="creds-current-balance" :class="{ 'creds-empty': $store.app.creds <= 1 }">
+            <span class="creds-coin">◉</span>
+            <span class="creds-current-count" x-text="$store.app.creds"></span>
+          </div>
+          <div class="creds-current-email" x-text="$store.app.userEmail"></div>
+          <div class="creds-byok-link" x-show="$store.app.creds <= 1">
+            <span>Have your own API key?</span>
+            <a href="/setup?edit=1">Use your own Claude key</a>
+          </div>
+        </div>
+
+        <!-- Packs -->
+        <p class="creds-intro">Each cred powers one diff generation.</p>
+        <div class="creds-packs-page">
+          <div class="creds-pack">
+            <div class="creds-pack-badge">STARTER</div>
+            <div class="creds-pack-price">$2 <span class="creds-pack-for">for <span class="creds-coin">◉</span>10</span></div>
+            <button class="btn-creds-buy" @click="startCheckout('starter')" :disabled="loading">Buy</button>
+            <div class="creds-pack-perunit">$0.20/cred</div>
+          </div>
+          <div class="creds-pack creds-pack-popular">
+            <div class="creds-pack-badge">BEST VALUE</div>
+            <div class="creds-pack-price">$7 <span class="creds-pack-for">for <span class="creds-coin">◉</span>50</span></div>
+            <button class="btn-creds-buy" @click="startCheckout('value')" :disabled="loading">Buy</button>
+            <div class="creds-pack-perunit">$0.14/cred</div>
+          </div>
+        </div>
+
+        <!-- Not logged in -->
+        <div class="creds-login-prompt" x-show="!$store.app.isLoggedIn">
+          <p>Get 5 free creds when you sign up</p>
+          <a href="/setup" class="btn-primary">Get Started</a>
+        </div>
+
+        <!-- Payment Modal -->
+        <div class="modal-overlay" x-show="showModal" x-cloak>
+          <div class="modal-content creds-checkout-modal">
+            <button class="modal-close" @click="closeModal">&times;</button>
+            <h2 class="modal-title" x-text="packLabel"></h2>
+
+            <!-- Email input (if not logged in) -->
+            <div class="creds-email-input" x-show="!$store.app.isLoggedIn">
+              <label for="checkout-email">Email</label>
+              <input
+                type="email"
+                id="checkout-email"
+                x-model="email"
+                placeholder="you@example.com"
+                class="input"
+              />
+            </div>
+
+            <!-- Payment Element container -->
+            <div id="payment-element" class="creds-payment-element"></div>
+
+            <!-- Error message -->
+            <div class="creds-error" x-show="error" x-text="error"></div>
+
+            <!-- Submit button -->
+            <button
+              class="btn-primary creds-pay-btn"
+              @click="submitPayment"
+              :disabled="loading || !ready"
+            >
+              <span x-show="!loading" x-text="'Pay ' + packPrice"></span>
+              <span x-show="loading">Processing...</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Success message (inline) -->
+        <div class="creds-success-inline" x-show="successMessage" x-cloak>
+          <span class="creds-success-check">✓</span>
+          <span x-text="successMessage"></span>
+        </div>
+
+        <!-- Transaction history -->
+        <div class="creds-history" x-show="$store.app.isLoggedIn">
+          <div class="creds-history-tabs">
+            <button
+              class="creds-history-tab"
+              :class="{ active: historyFilter === 'topups' }"
+              @click="setFilter('topups')"
+            >Top-ups</button>
+            <button
+              class="creds-history-tab"
+              :class="{ active: historyFilter === 'usage' }"
+              @click="setFilter('usage')"
+            >Usage</button>
+          </div>
+          <div class="creds-history-loading" x-show="loadingHistory">Loading...</div>
+          <div class="creds-history-empty" x-show="!loadingHistory && transactions.length === 0">
+            <span x-text="historyFilter === 'topups' ? 'No top-ups yet' : 'No usage yet'"></span>
+          </div>
+          <div class="creds-history-list" x-show="!loadingHistory && transactions.length > 0">
+            <template x-for="tx in transactions" :key="tx.id">
+              <div class="creds-history-item">
+                <span class="creds-history-amount" :class="{ 'creds-usage': tx.amount < 0 }" x-text="(tx.amount > 0 ? '+' : '') + tx.amount"></span>
+                <span class="creds-history-desc" x-text="tx.description"></span>
+                <span class="creds-history-date" x-text="formatDate(tx.created_at)"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- @include partials/site-footer.html -->
+    </main>
+  </body>
+</html>
