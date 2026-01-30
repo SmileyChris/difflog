@@ -9,8 +9,8 @@
 ## Features
 
 - **Personalized Intelligence**: Generates a custom textual "diff" of the dev world based on your profile (languages, tools, interests).
-- **Local-First**: All profile data and API keys are stored in your browser's local storage.
-- **Client-Side Generation**: Connects directly to Anthropic's API from your browser.
+- **Local-First**: All profile data stored in your browser's local storage.
+- **Two API Modes**: Bring your own Anthropic API key (BYOK) for client-side generation, or use creds with an email-based account for server-side generation.
 - **Sync (Optional)**: Optional Cloudflare D1 backend to sync profiles across devices.
 - **SPA Feel**: Built with Alpine.js and Alpine AJAX for smooth transitions between server-rendered HTML pages.
 
