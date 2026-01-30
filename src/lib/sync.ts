@@ -59,7 +59,19 @@ export interface Profile {
   depth?: string;
   customFocus?: string;
   resolvedMappings?: Record<string, ResolvedMapping>;
+  // API source: 'byok' (bring your own key) or 'credits' (no key required)
+  apiSource?: 'byok' | 'creds';
+  // Track if this profile has ever used creds (for free creds messaging)
+  hasUsedCreds?: boolean;
   [key: string]: unknown;
+}
+
+// User account (separate from profiles, tied to email)
+// email + code is the credential - no sessions needed
+export interface User {
+  email: string;
+  code: string;  // Verification code acts as credential
+  creds: number;
 }
 
 export interface Diff {
