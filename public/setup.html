@@ -40,80 +40,154 @@
           </div>
         </div>
 
-        <!-- Step 1: API Key -->
+        <!-- Step 1: API Source Selection -->
         <div x-show="step === 1" x-transition.opacity>
-          <h2 class="step-title">Connect Your API Key</h2>
-          <p class="step-desc">difflog uses Claude to generate your personalized diffs. Your key is stored locally in your browser.</p>
+          <h2 class="step-title">How should we power your diffs?</h2>
+          <p class="step-desc">Choose how you want to generate your personalized diffs.</p>
 
-          <!-- Show choice when creating new profile and existing profiles have API keys -->
-          <div x-show="showKeyChoice" class="api-key-choice">
-            <button class="api-key-option" @click="selectUseExistingKey()">
-              <span class="api-key-option-icon">&#10003;</span>
-              <span class="api-key-option-text">
-                <strong>Use same API key</strong>
-                <span>From your existing profile</span>
-              </span>
+          <!-- API Source Choice (always show, including when editing) -->
+          <div class="api-source-choice">
+            <button class="api-source-option" :class="{ 'api-source-option-selected': data.apiSource === 'creds' }" @click="selectApiSource('creds')">
+              <span class="api-source-option-icon creds-coin">◉</span>
+              <span class="api-source-option-label">Use diff·log creds</span>
             </button>
-            <button class="api-key-option" @click="selectEnterNewKey()">
-              <span class="api-key-option-icon">&#9998;</span>
-              <span class="api-key-option-text">
-                <strong>Enter a different key</strong>
-                <span>Use a new or separate API key</span>
-              </span>
+            <button class="api-source-option" :class="{ 'api-source-option-selected': data.apiSource === 'byok' }" @click="selectApiSource('byok')">
+              <svg class="api-source-option-icon api-source-option-icon-claude" viewBox="0 0 50 48" fill="#D97757"><path d="M23.1516 45.525L23.8096 42.611L24.5616 38.851L25.1726 35.843L25.7366 32.13L26.0656 30.908L26.0186 30.814L25.7836 30.861L22.9636 34.715L18.6866 40.496L15.3026 44.068L14.5036 44.397L13.0936 43.692L13.2346 42.376L14.0336 41.248L18.6866 35.279L21.5066 31.566L23.3396 29.451L23.2926 29.169H23.1986L10.7906 37.253L8.58158 37.535L7.59458 36.642L7.73558 35.185L8.20558 34.715L11.9186 32.13L21.1776 26.96L21.3186 26.49L21.1776 26.255H20.7076L19.1566 26.161L13.8926 26.02L9.33358 25.832L4.86858 25.597L3.74058 25.362L2.70658 23.952L2.80058 23.247L3.74058 22.636L5.10358 22.73L8.06458 22.965L12.5296 23.247L15.7726 23.435L20.5666 23.952H21.3186L21.4126 23.623L21.1776 23.435L20.9896 23.247L16.3366 20.145L11.3546 16.855L8.72258 14.928L7.31258 13.941L6.60758 13.048L6.32558 11.074L7.59458 9.664L9.33358 9.805L9.75658 9.899L11.4956 11.262L15.2086 14.129L20.0966 17.748L20.8016 18.312L21.1306 18.124V17.983L20.8016 17.466L18.1696 12.672L15.3496 7.784L14.0806 5.763L13.7516 4.541C13.6263 4.118 13.5636 3.648 13.5636 3.131L15.0206 1.157L15.8196 0.874997L17.7936 1.157L18.5926 1.862L19.8146 4.635L21.7416 9.006L24.7966 14.928L25.6896 16.714L26.1596 18.312L26.3476 18.829H26.6766V18.547L26.9116 15.163L27.3816 11.074L27.8516 5.81L27.9926 4.306L28.7446 2.52L30.2016 1.58L31.3296 2.097L32.2696 3.46L32.1286 4.306L31.6116 7.925L30.4836 13.612L29.7786 17.466H30.2016L30.6716 16.949L32.5986 14.411L35.8416 10.369L37.2516 8.771L38.9436 6.985L40.0246 6.139H42.0456L43.5026 8.348L42.8446 10.651L40.7766 13.283L39.0376 15.492L36.5466 18.829L35.0426 21.508L35.1836 21.696H35.5126L41.1056 20.474L44.1606 19.957L47.7326 19.346L49.3776 20.098L49.5656 20.85L48.9076 22.448L45.0536 23.388L40.5416 24.281L33.8206 25.879L33.7266 25.926L33.8206 26.067L36.8286 26.349L38.1446 26.443H41.3406L47.2626 26.866L48.8136 27.9L49.7066 29.122L49.5656 30.109L47.1686 31.284L43.9726 30.532L36.4526 28.746L33.9146 28.135H33.5386V28.323L35.7006 30.438L39.6016 33.963L44.5366 38.522L44.7716 39.65L44.1606 40.59L43.5026 40.496L39.1786 37.206L37.4866 35.749L33.7266 32.6H33.4916V32.929L34.3376 34.198L38.9436 41.107L39.1786 43.222L38.8496 43.88L37.6276 44.303L36.3586 44.068L33.6326 40.308L30.8596 36.031L28.6036 32.224L28.3686 32.412L27.0056 46.606L26.3946 47.311L24.9846 47.875L23.8096 46.982L23.1516 45.525Z"/></svg>
+              <span class="api-source-option-label">Your Claude key</span>
             </button>
           </div>
 
-          <!-- Show confirmed existing key -->
-          <div x-show="!isEditing && useExistingKey" class="input-group">
-            <label class="input-label">API Key</label>
-            <div class="api-key-confirmed">
-              <span class="api-key-confirmed-icon">&#10003;</span>
-              <span>Using API key from existing profile</span>
-            </div>
-            <button class="btn-link" @click="selectEnterNewKey()" style="margin-top: 0.5rem;">
-              Use a different key instead
-            </button>
-          </div>
-
-          <!-- Show validated key confirmation -->
-          <div x-show="showKeyInput && apiKeyValid === true" class="input-group">
-            <label class="input-label">API Key</label>
-            <div class="api-key-confirmed">
-              <span class="api-key-confirmed-icon">&#10003;</span>
-              <span>API key validated</span>
-            </div>
-            <button class="btn-link" @click="apiKeyValid = null; apiKey = ''" style="margin-top: 0.5rem;">
-              Use a different key
-            </button>
-          </div>
-
-          <!-- Show input for new key -->
-          <div class="input-group" x-show="showKeyInput && apiKeyValid !== true">
-            <label class="input-label">Anthropic API Key</label>
-            <div class="input-with-status">
-              <input type="password" class="text-input" placeholder="sk-ant-..."
-                x-model="apiKey" @input="apiKeyValid = null"
-                autocomplete="off" data-1p-ignore data-lpignore="true" />
-              <span class="input-status input-status-invalid" x-show="apiKeyValid === false">&#10007;</span>
-            </div>
-            <span class="input-hint">Get one at <a href="https://platform.claude.com/settings/keys/" target="_blank">platform.claude.com/settings/keys</a></span>
-          </div>
-
-          <!-- When editing but not changing key -->
-          <template x-if="isEditing && !changeApiKey">
-            <div>
+          <!-- Credits mode: Email verification or logged in state -->
+          <div x-show="data.apiSource === 'creds'" class="creds-setup">
+            <!-- Already logged in or verified in this session -->
+            <template x-if="$store.app.isLoggedIn || accountStep === 'done'">
               <div class="input-group">
-                <label class="input-label">API Key</label>
-                <div class="api-key-confirmed">
-                  <span class="api-key-confirmed-icon">&#10003;</span>
-                  <span>API key configured</span>
+                <p class="creds-setup-title creds-setup-title-inline">
+                  <span>Your Account</span>
+                  <span class="creds-setup-subtitle">Verified</span>
+                </p>
+                <div class="input-with-action">
+                  <input type="text" class="text-input text-input-configured" :value="$store.app.isLoggedIn ? $store.app.userEmail : accountEmail" disabled />
+                  <span class="creds-balance"><span class="creds-coin">◉</span> <span x-text="$store.app.isLoggedIn ? $store.app.creds : accountCreds"></span></span>
                 </div>
               </div>
-              <button class="btn-secondary" @click="changeApiKey = true" style="margin-top: 1rem;">
-                Change API Key
+            </template>
+
+            <!-- Not logged in: Email verification flow -->
+            <div x-show="!$store.app.isLoggedIn && accountStep !== 'done'">
+              <!-- Step: Enter email -->
+              <div x-show="accountStep === 'email'" class="creds-email-form">
+                <p class="creds-setup-title creds-setup-title-inline"><span>Email</span> <span class="creds-setup-subtitle" x-show="!$store.app.isLoggedIn && !$store.app.hasEverUsedCreds">5 free creds for new users</span></p>
+                <div class="input-group input-with-action">
+                  <input type="email" class="text-input" placeholder="you@awesome.com"
+                    x-model="accountEmail" @keydown.enter.prevent="requestAccountCode()" />
+                  <button class="btn-primary" @click="requestAccountCode()" :disabled="accountSending || !accountEmail.trim()">
+                    <span x-show="!accountSending">Send code</span>
+                    <span x-show="accountSending">Sending...</span>
+                  </button>
+                </div>
+                <p class="creds-setup-note">We might send very infrequent updates. Unsubscribe any time.</p>
+              </div>
+
+              <!-- Step: Enter code -->
+              <div x-show="accountStep === 'code'" class="creds-code-form">
+                <p class="creds-setup-title creds-setup-title-inline">
+                  <span>Check your email</span>
+                  <span class="creds-setup-subtitle">✓ Code sent to <strong x-text="accountEmail"></strong> <button class="btn-link-inline" @click="accountStep = 'email'; accountCode = ''" title="Use a different email">(change)</button></span>
+                </p>
+                <div class="input-group input-with-action">
+                  <input type="text" class="text-input text-input-code" placeholder="000000" maxlength="6"
+                    x-model="accountCode"
+                    @input="accountError = ''; if(accountCode.length === 6) verifyAccountCode()"
+                    @keydown.enter.prevent="verifyAccountCode()" />
+                  <button class="btn-primary" @click="verifyAccountCode()" :disabled="accountVerifying || accountCode.length !== 6">
+                    <span x-show="!accountVerifying">Verify</span>
+                    <span x-show="accountVerifying">...</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="setup-error" x-show="accountError" x-text="accountError"></div>
+            </div>
+          </div>
+
+          <!-- BYOK mode: API Key input -->
+          <div x-show="data.apiSource === 'byok'" class="byok-setup">
+            <!-- Show choice when creating new profile and existing profiles have API keys -->
+            <div x-show="showKeyChoice" class="api-key-choice">
+              <button class="api-key-option" @click="selectUseExistingKey()">
+                <span class="api-key-option-icon">&#10003;</span>
+                <span class="api-key-option-text">
+                  <strong>Use same API key</strong>
+                  <span>From your existing profile</span>
+                </span>
+              </button>
+              <button class="api-key-option" @click="selectEnterNewKey()">
+                <span class="api-key-option-icon">&#9998;</span>
+                <span class="api-key-option-text">
+                  <strong>Enter a different key</strong>
+                  <span>Use a new or separate API key</span>
+                </span>
               </button>
             </div>
-          </template>
+
+            <!-- Show confirmed existing key -->
+            <div x-show="!isEditing && useExistingKey" class="input-group">
+              <label class="input-label">API Key</label>
+              <div class="api-key-confirmed">
+                <span class="api-key-confirmed-icon">&#10003;</span>
+                <span>Using API key from existing profile</span>
+              </div>
+              <button class="btn-link" @click="selectEnterNewKey()" style="margin-top: 0.5rem;">
+                Use a different key instead
+              </button>
+            </div>
+
+            <!-- Show validated key confirmation -->
+            <div x-show="showKeyInput && apiKeyValid === true" class="input-group">
+              <label class="input-label">API Key</label>
+              <div class="api-key-confirmed">
+                <span class="api-key-confirmed-icon">&#10003;</span>
+                <span>API key validated</span>
+              </div>
+              <button class="btn-link" @click="apiKeyValid = null; apiKey = ''" style="margin-top: 0.5rem;">
+                Use a different key
+              </button>
+            </div>
+
+            <!-- Show input for new key -->
+            <div class="input-group" x-show="showKeyInput && apiKeyValid !== true">
+              <p class="creds-setup-title creds-setup-title-inline">
+                <span>Your API Key</span>
+                <span class="creds-setup-subtitle">Get one at <a href="https://platform.claude.com/settings/keys/" target="_blank">platform.claude.com</a></span>
+              </p>
+              <div class="input-with-action">
+                <input type="password" class="text-input text-input-center" placeholder="sk-ant-..."
+                  x-model="apiKey" @input="apiKeyValid = null"
+                  autocomplete="off" data-1p-ignore data-lpignore="true" />
+                <button class="btn-secondary" x-show="isEditing && originalApiKey" @click="changeApiKey = false; apiKey = originalApiKey; apiKeyValid = null">
+                  Cancel
+                </button>
+              </div>
+              <span class="input-status input-status-invalid" x-show="apiKeyValid === false">&#10007;</span>
+            </div>
+
+            <!-- When editing but not changing key -->
+            <template x-if="isEditing && !changeApiKey && data.apiSource === 'byok'">
+              <div class="input-group">
+                <p class="creds-setup-title creds-setup-title-inline">
+                  <span>Your API Key</span>
+                  <span class="creds-setup-subtitle">Configured</span>
+                </p>
+                <div class="input-with-action">
+                  <input type="text" class="text-input text-input-configured" value="✓ API key configured" disabled />
+                  <button class="btn-primary" @click="changeApiKey = true; apiKey = ''; apiKeyValid = null">
+                    Change key
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
 
           <div class="setup-error" x-show="setupError" x-text="setupError"></div>
         </div>
@@ -254,14 +328,14 @@
         <!-- Edit mode: Save + < > navigation -->
         <template x-if="isEditing">
           <div class="edit-footer-actions">
-            <button class="btn-primary" @click="saveProfile()" :disabled="saving || validatingKey">
+            <button class="btn-primary" @click="saveProfile()" :disabled="saving || validatingKey || !data.name.trim() || (data.apiSource === 'byok' && !apiKey.trim()) || (data.apiSource === 'creds' && !$store.app.isLoggedIn && accountStep !== 'done')">
               <span x-show="!saving && !validatingKey">Save</span>
               <span x-show="validatingKey">Validating...</span>
               <span x-show="saving">Saving...</span>
             </button>
             <div class="step-nav-btns">
               <button class="btn-step-nav" @click="prevStep()" :disabled="step === 0">&lt;</button>
-              <button class="btn-step-nav" @click="step < 6 ? (step === 1 ? nextStep() : step++) : null" :disabled="step === 6">&gt;</button>
+              <button class="btn-step-nav" @click="step < 6 ? step++ : null" :disabled="step === 6 || (step === 1 && (!data.name.trim() || (data.apiSource === 'byok' && !apiKey.trim()) || (data.apiSource === 'creds' && !$store.app.isLoggedIn && accountStep !== 'done')))">&gt;</button>
             </div>
           </div>
         </template>
@@ -269,8 +343,8 @@
         <!-- Create mode: Continue / Start buttons -->
         <template x-if="!isEditing">
           <div class="create-footer-actions">
-            <button x-show="step < 6" class="btn-primary" @click="step === 1 ? nextStep() : step++"
-              :disabled="(step === 0 && !data.name.trim()) || (step === 1 && (!apiKey.trim() || validatingKey))">
+            <button x-show="step < 6" class="btn-primary" @click="step++"
+              :disabled="(step === 0 && !data.name.trim()) || (step === 1 && ((data.apiSource === 'byok' && !apiKey.trim()) || (data.apiSource === 'creds' && !$store.app.isLoggedIn && accountStep !== 'done')))">
               <span x-show="!validatingKey">Continue &rarr;</span>
               <span x-show="validatingKey">Validating...</span>
             </button>

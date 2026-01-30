@@ -11,6 +11,7 @@ import { validateApiKey } from '../lib/api';
 
 interface SetupData {
   name: string;
+  apiSource: 'byok' | 'creds';
   languages: string[];
   frameworks: string[];
   tools: string[];
@@ -32,8 +33,17 @@ Alpine.data('setup', () => ({
   validatingKey: false,
   apiKeyValid: null as boolean | null,
   originalApiKey: '',
+  // Account/creds state
+  accountEmail: '',
+  accountCode: '',
+  accountCreds: 5,
+  accountStep: 'email' as 'email' | 'code' | 'done',
+  accountSending: false,
+  accountVerifying: false,
+  accountError: '',
   data: {
     name: '',
+    apiSource: 'creds' as 'byok' | 'creds',
     languages: [] as string[],
     frameworks: [] as string[],
     tools: [] as string[],
@@ -62,6 +72,13 @@ Alpine.data('setup', () => ({
     const editStep = params.get('edit');
     this.hasExistingProfiles = Object.keys((this as any).$store.app.profiles).length > 0;
 
+    // Check if user already has an account (for creds mode)
+    const user = (this as any).$store.app.user;
+    if (user?.emailVerified) {
+      this.accountEmail = user.email;
+      this.accountStep = 'done';
+    }
+
     if (editStep && (this as any).$store.app.profile) {
       this.isEditing = true;
       this.step = parseInt(editStep);
@@ -70,6 +87,7 @@ Alpine.data('setup', () => ({
       this.originalApiKey = p.apiKey || '';
       this.data = {
         name: p.name,
+        apiSource: p.apiSource || 'byok',
         languages: [...(p.languages || [])],
         frameworks: [...(p.frameworks || [])],
         tools: [...(p.tools || [])],
@@ -77,6 +95,76 @@ Alpine.data('setup', () => ({
         depth: p.depth || 'standard',
         customFocus: p.customFocus || ''
       };
+    }
+  },
+
+  selectApiSource(source: 'byok' | 'creds') {
+    this.data.apiSource = source;
+  },
+
+  async requestAccountCode() {
+    if (!this.accountEmail.trim()) {
+      this.accountError = 'Email is required';
+      return;
+    }
+    // Basic email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.accountEmail)) {
+      this.accountError = 'Please enter a valid email';
+      return;
+    }
+
+    this.accountSending = true;
+    this.accountError = '';
+
+    try {
+      const res = await fetch('/api/creds/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: this.accountEmail }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to send verification code');
+      }
+
+      this.accountStep = 'code';
+    } catch (e: unknown) {
+      this.accountError = e instanceof Error ? e.message : 'Failed to send verification code';
+    } finally {
+      this.accountSending = false;
+    }
+  },
+
+  async verifyAccountCode() {
+    if (!this.accountCode.trim()) {
+      this.accountError = 'Verification code is required';
+      return;
+    }
+
+    this.accountVerifying = true;
+    this.accountError = '';
+
+    try {
+      const res = await fetch('/api/creds/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: this.accountEmail, code: this.accountCode }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Invalid verification code');
+      }
+
+      // Store creds temporarily - will login on save
+      this.accountCreds = data.creds || 5;
+      this.accountStep = 'done';
+    } catch (e: unknown) {
+      this.accountError = e instanceof Error ? e.message : 'Invalid verification code';
+    } finally {
+      this.accountVerifying = false;
     }
   },
 
@@ -118,11 +206,8 @@ Alpine.data('setup', () => ({
     }
   },
 
-  async nextStep() {
-    if (this.step === 1 && this.apiKeyValid !== true && !this.apiKeyUnchanged) {
-      const valid = await this.validateApiKey();
-      if (!valid) return;
-    }
+  nextStep() {
+    this.setupError = '';
     this.step++;
   },
 
@@ -174,9 +259,27 @@ Alpine.data('setup', () => ({
   async saveProfile() {
     this.setupError = '';
 
-    if (!this.apiKey) {
-      this.setupError = 'API key is required';
-      return;
+    // Validate based on API source
+    if (this.data.apiSource === 'byok') {
+      if (!this.apiKey) {
+        this.setupError = 'API key is required';
+        return;
+      }
+      // Only validate if API key changed
+      if (!this.apiKeyUnchanged && this.apiKeyValid !== true) {
+        const valid = await this.validateApiKey();
+        if (!valid) return;
+      }
+    } else {
+      // Credits mode: user must be logged in or have verified in this session
+      if (!(this as any).$store.app.isLoggedIn && this.accountStep !== 'done') {
+        this.setupError = 'Please complete email verification first';
+        return;
+      }
+      // Login now if verified in this session but not yet saved
+      if (!(this as any).$store.app.isLoggedIn && this.accountStep === 'done') {
+        (this as any).$store.app.loginUser(this.accountEmail, this.accountCode, this.accountCreds);
+      }
     }
 
     if (!this.data.name.trim()) {
@@ -184,23 +287,20 @@ Alpine.data('setup', () => ({
       return;
     }
 
-    // Only validate if API key changed
-    if (!this.apiKeyUnchanged && this.apiKeyValid !== true) {
-      const valid = await this.validateApiKey();
-      if (!valid) return;
-    }
-
     this.saving = true;
     try {
+      const credsFields = this.data.apiSource === 'creds' ? { hasUsedCreds: true } : {};
       if (this.isEditing) {
         (this as any).$store.app.updateProfile({
           ...this.data,
-          apiKey: this.apiKey,
+          ...(this.data.apiSource === 'byok' ? { apiKey: this.apiKey } : {}),
+          ...credsFields,
         });
       } else {
         (this as any).$store.app.createProfile({
           ...this.data,
-          apiKey: this.apiKey,
+          ...(this.data.apiSource === 'byok' ? { apiKey: this.apiKey } : {}),
+          ...credsFields,
         });
       }
       window.location.href = '/';
