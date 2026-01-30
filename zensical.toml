@@ -17,6 +17,7 @@ nav = [
     { "Overview" = "architecture/overview.md" },
     { "Sync System" = "architecture/sync.md" },
     { "Encryption" = "architecture/encryption.md" },
+    { "Creds" = "architecture/creds.md" },
     { "Public Diff Sharing" = "architecture/public-diff-sharing.md" },
     { "API Endpoints" = "architecture/api.md" },
   ]},

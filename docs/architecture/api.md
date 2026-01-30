@@ -188,3 +188,119 @@ Get public profile info for import flow. **No auth required.**
   "password_salt": "base64..."
 }
 ```
+
+---
+
+## Creds Endpoints
+
+The following endpoints support the [creds system](creds.md).
+
+## `POST /api/creds/request`
+
+Request email verification code. **No auth required.**
+
+**Request:**
+```json
+{ "email": "user@example.com" }
+```
+
+**Response:**
+```json
+{ "success": true }
+```
+
+## `POST /api/creds/verify`
+
+Verify code and login/create account. New users get 5 free creds. **No auth required.**
+
+**Request:**
+```json
+{ "email": "user@example.com", "code": "123456" }
+```
+
+**Response:**
+```json
+{ "success": true, "creds": 5 }
+```
+
+## `GET /api/creds/history`
+
+Get transaction history. Requires email+code auth.
+
+**Request:**
+```
+GET /api/creds/history?email=...&code=...&filter=topups
+```
+
+Filter: `topups` (purchases/bonuses) or `usage` (diff generation).
+
+**Response:**
+```json
+{
+  "transactions": [
+    { "id": "uuid", "type": "purchase", "amount": 10, "description": "Starter Pack", "created_at": "..." }
+  ],
+  "creds": 42
+}
+```
+
+## `POST /api/creds/pending`
+
+Claim pending diffs (marks them as received by client). Requires email+code auth.
+
+**Request:**
+```json
+{ "email": "...", "code": "...", "diff_ids": ["uuid1", "uuid2"] }
+```
+
+**Response:**
+```json
+{ "success": true }
+```
+
+## `POST /api/generate`
+
+Generate diff using 1 cred. Requires email+code auth.
+
+**Request:**
+```json
+{ "email": "...", "code": "...", "prompt": "..." }
+```
+
+**Response (success):**
+```json
+{
+  "id": "uuid",
+  "title": "Your Diff Title",
+  "content": "# Markdown content...",
+  "usage": { "input_tokens": 2000, "output_tokens": 2500 },
+  "creds": 4
+}
+```
+
+**Response (402 - insufficient creds):**
+```json
+{ "error": "Insufficient creds" }
+```
+
+## `POST /api/purchase/create`
+
+Create Stripe payment intent. **No auth required** (email passed in body).
+
+**Request:**
+```json
+{ "pack": "starter", "email": "user@example.com" }
+```
+
+Packs: `starter` (10 creds, $2), `value` (50 creds, $7).
+
+**Response:**
+```json
+{ "clientSecret": "pi_..." }
+```
+
+## `POST /api/purchase/webhook`
+
+Stripe webhook for payment confirmation. **Called by Stripe**, verifies signature.
+
+Adds creds to user account and creates transaction record on successful payment.

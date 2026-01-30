@@ -88,3 +88,44 @@ Summary: 2 profiles, 24 diffs, 8 stars
 Dry run - no changes made.
 To delete these profiles, run with --confirm flag.
 ```
+
+## Local Development
+
+### `bun run dev`
+
+The full development server with D1 database and Stripe webhooks. Runs `dev.ts` which:
+
+1. **Builds** — Bundles TypeScript and processes HTML includes
+2. **Migrates** — Applies D1 migrations to local database
+3. **Stripe** — Starts `stripe listen` to forward webhooks to localhost (if Stripe CLI installed)
+4. **Watcher** — Watches `src/` and `public/` for changes, rebuilds on save
+5. **Wrangler** — Starts Cloudflare Pages dev server on port 8788
+
+```
+📦 Building...
+🗄️  Running migrations...
+🔗 Getting Stripe webhook secret...
+✓ Webhook secret: whsec_1234...
+🔗 Starting Stripe webhook forwarding...
+👀 Starting file watcher...
+🚀 Starting wrangler on port 8788...
+```
+
+Stripe CLI is optional. If not installed, webhooks won't work but everything else runs.
+
+### `bun run dev:static`
+
+Quick static server without D1 or Stripe. Good for UI work when you don't need:
+
+- Database (sync, creds)
+- Stripe webhooks (purchases)
+
+Just runs the Bun dev server directly on the built files.
+
+### Verification Codes
+
+In dev mode, email verification codes are deterministic (derived from email + secret). Check the wrangler terminal for logged codes:
+
+```
+📧 [Mock Email] Verification code for user@example.com: 123456
+```

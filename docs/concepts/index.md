@@ -15,6 +15,8 @@ Terminology, conventions, and technology choices used throughout diff·log.
 | **Star** | A reference to a bookmarked paragraph in a diff (not a copy) |
 | **Depth** | Reading preference — how detailed your diffs should be (see [AI Pipeline](../ai.md#depth-levels)) |
 | **Sync** | Optional cross-device sharing via encrypted cloud storage |
+| **Account** | Email-based identity for purchasing and tracking creds |
+| **Creds** | Credits for generating diffs via shared API (alternative to BYOK) |
 
 ## Pages and Partials
 
@@ -32,6 +34,7 @@ Terminology, conventions, and technology choices used throughout diff·log.
 | `/profiles` | `profiles.html` | Manage multiple profiles |
 | `/share` | `share.html` | Import a shared profile |
 | `/d/:id` | `d.html` | Public diff view |
+| `/creds` | `creds.html` | Creds management, purchase history |
 
 **Partials** are HTML fragments in `partials/`. They're inlined at build time via `<!-- @include partials/filename.html -->` for repeated sections (footer, dropdowns) or loaded dynamically by Alpine components (setup wizard steps).
 
@@ -57,6 +60,7 @@ All client data is stored locally with these keys:
 | `difflog-histories` | Generated diffs per profile |
 | `difflog-bookmarks` | Starred paragraphs per profile |
 | `difflog-pending-sync` | Changes waiting to sync |
+| `difflog-user` | Account info (email, code, creds balance) |
 
 ## Data Models
 
@@ -68,7 +72,8 @@ A saved configuration that personalizes your diffs.
 {
   id: string;              // UUID
   name: string;            // Display name
-  apiKey: string;          // Anthropic API key (stored locally)
+  apiKey?: string;         // Anthropic API key (BYOK mode only)
+  apiSource: 'byok' | 'creds';  // API mode
   languages: string[];     // Programming languages
   frameworks: string[];    // Frameworks
   tools: string[];         // Developer tools
@@ -102,6 +107,7 @@ Diffs store markdown only. HTML is rendered client-side on display.
   content: string;      // Markdown content
   generated_at: string; // ISO timestamp
   duration_seconds: number;
+  cost?: number;        // -1 = creds, positive = BYOK cost in $
 }
 ```
 
@@ -126,6 +132,20 @@ Content is reconstructed on display via `getStarContent(star)`, which:
 4. Returns the element's HTML and metadata
 
 If the parent diff is deleted, the star becomes orphaned and displays a "Diff deleted" message with a remove button.
+
+### User
+
+Stored in `difflog-user` localStorage. Represents the logged-in creds account.
+
+```typescript
+{
+  email: string;    // Verified email address
+  code: string;     // Verification code (reused as credential)
+  creds: number;    // Current credits balance
+}
+```
+
+For server-side models (Account, Transaction), see [Creds Database Schema](../architecture/creds.md#database-schema).
 
 ### Paragraph Indexing
 
