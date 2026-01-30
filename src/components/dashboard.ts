@@ -21,6 +21,8 @@ Alpine.data('dashboard', () => ({
   currentDate: getCurrentDateFormatted(),
   // Sync banner state
   syncBannerDismissed: false,
+  // Out of creds modal state
+  showOutOfCreds: false,
 
   init() {
     if (!(this as any).$store.app.isUnlocked) {
@@ -52,9 +54,74 @@ Alpine.data('dashboard', () => ({
       }
     }
 
+    // Check for pending diffs from server (creds mode only)
+    this.checkPendingDiffs();
+
     // Only load latest if we don't already have a diff set (prevents double-init overwrite)
     if (!this.diff) {
       this.loadLatestDiff();
+    }
+  },
+
+  async checkPendingDiffs() {
+    const store = (this as any).$store.app;
+    if (!store.usingCredits || !store.isLoggedIn) return;
+
+    try {
+      const res = await fetch('/api/creds/pending', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: store.user.email,
+          code: store.user.code
+        }),
+      });
+
+      if (!res.ok) return;
+      const data = await res.json();
+      const pending = data.diffs || [];
+
+      if (pending.length === 0) return;
+
+      // Import pending diffs and claim them
+      const claimIds: string[] = [];
+      for (const diff of pending) {
+        // Check if we already have this diff
+        if (store.history.some((d: any) => d.id === diff.id)) {
+          claimIds.push(diff.id);
+          continue;
+        }
+
+        // Add to history
+        const entry = {
+          id: diff.id,
+          title: diff.title,
+          content: diff.content,
+          generated_at: diff.created_at,
+        };
+        store.addDiff(entry);
+        claimIds.push(diff.id);
+
+        // Show the recovered diff
+        if (!this.diff) {
+          this.diff = entry;
+        }
+      }
+
+      // Claim all processed diffs
+      if (claimIds.length > 0) {
+        fetch('/api/creds/pending', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: store.user.email,
+            code: store.user.code,
+            claim: claimIds
+          }),
+        }).catch(() => {});
+      }
+    } catch {
+      // Ignore errors - this is a recovery mechanism
     }
   },
 
@@ -237,6 +304,12 @@ Alpine.data('dashboard', () => ({
   },
 
   async generate() {
+    // Check if using creds mode and has enough creds
+    if ((this as any).$store.app.usingCreds && !(this as any).$store.app.hasCreds) {
+      this.showOutOfCreds = true;
+      return;
+    }
+
     const forceNew = this.ctrlHeld;
     this.generating = true;
     this.error = null;
@@ -258,24 +331,26 @@ Alpine.data('dashboard', () => ({
     }, 4400);
 
     try {
-      let profile = (this as any).$store.app.profile;
-      const lastDiff = (this as any).$store.app.history[0];
-      const apiKey = (this as any).$store.app.apiKey;
+      const store = (this as any).$store.app;
+      let profile = store.profile;
+      const lastDiff = store.history[0];
+      const apiKey = store.apiKey;
+      const usingCreds = store.usingCredits;
 
-      // Resolve any unmapped custom items before fetching feeds
-      const unmapped = getUnmappedItems(profile);
-      if (unmapped.length > 0 && apiKey) {
-        console.log(`Resolving ${unmapped.length} custom item(s):`, unmapped.map(u => u.item));
-        const newMappings = { ...profile.resolvedMappings };
-        for (const { item, category } of unmapped) {
-          const mapping = await resolveSourcesForItem(apiKey, item, category);
-          newMappings[item] = mapping;
-          console.log(`Resolved "${item}":`, mapping);
+      // BYOK-only features: custom item resolution and web search
+      if (!usingCreds && apiKey) {
+        const unmapped = getUnmappedItems(profile);
+        if (unmapped.length > 0) {
+          console.log(`Resolving ${unmapped.length} custom item(s):`, unmapped.map(u => u.item));
+          const newMappings = { ...profile.resolvedMappings };
+          for (const { item, category } of unmapped) {
+            const mapping = await resolveSourcesForItem(apiKey, item, category);
+            newMappings[item] = mapping;
+            console.log(`Resolved "${item}":`, mapping);
+          }
+          store.updateProfile({ resolvedMappings: newMappings });
+          profile = store.profile;
         }
-        // Save resolved mappings to profile
-        (this as any).$store.app.updateProfile({ resolvedMappings: newMappings });
-        // Refresh profile reference after update
-        profile = (this as any).$store.app.profile;
       }
 
       // Calculate window for search
@@ -284,9 +359,9 @@ Alpine.data('dashboard', () => ({
         ? Math.min(Math.max(Math.ceil((Date.now() - new Date(lastDiffDate).getTime()) / 86400000), 1), 7)
         : 7;
 
-      // Run web search and feed fetch in parallel
+      // Run web search (BYOK only) and feed fetch in parallel
       const [webSearchResults, feedRes] = await Promise.all([
-        apiKey ? searchWebForProfile(apiKey, profile, windowDays).catch(() => []) : Promise.resolve([]),
+        !usingCreds && apiKey ? searchWebForProfile(apiKey, profile, windowDays).catch(() => []) : Promise.resolve([]),
         fetch('/api/feeds', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -309,10 +384,10 @@ Alpine.data('dashboard', () => ({
           const feedData = await feedRes.json();
           const feeds = feedData.feeds || {};
 
-          // Curate general feeds (HN, Lobsters) for relevance
+          // Curate general feeds (HN, Lobsters) for relevance - BYOK only
           const generalItems: FeedItem[] = [...(feeds.hn || []), ...(feeds.lobsters || [])];
           let curatedGeneral: FeedItem[] = generalItems;
-          if (generalItems.length > 0 && apiKey) {
+          if (generalItems.length > 0 && !usingCreds && apiKey) {
             curatedGeneral = await curateGeneralFeeds(apiKey, generalItems, profile);
           }
 
@@ -330,7 +405,7 @@ Alpine.data('dashboard', () => ({
         }
       }
 
-      // Process web search results
+      // Process web search results (BYOK only)
       if (webSearchResults.length > 0) {
         webContext = formatWebSearchForPrompt(webSearchResults);
       }
@@ -343,58 +418,98 @@ Alpine.data('dashboard', () => ({
         webContext
       );
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': (this as any).$store.app.apiKey!,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 4096,
-          messages: [{ role: 'user', content: prompt }],
-          tools: [{
-            name: 'submit_diff',
-            description: 'Submit the generated developer intelligence diff',
-            input_schema: {
-              type: 'object',
-              properties: {
-                title: {
-                  type: 'string',
-                  description: 'A short, creative title (3-8 words) capturing the main theme of this diff. Plain text, no markdown.'
+      let title: string;
+      let rawContent: string;
+      let cost: number | undefined;
+      let serverDiffId: string | undefined;
+
+      if (usingCreds) {
+        // Creds mode: call server-side API
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: store.user.email,
+            code: store.user.code,
+            prompt
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          if (res.status === 402) {
+            this.showOutOfCreds = true;
+            return;
+          }
+          throw new Error(err.error || `API error: ${res.status}`);
+        }
+
+        const result = await res.json();
+        serverDiffId = result.id;
+        title = result.title;
+        rawContent = result.content;
+        // Update local creds balance
+        if (typeof result.creds === 'number') {
+          store.user = { ...store.user, creds: result.creds };
+        }
+        // Mark as creds-generated (vs BYOK which has actual cost)
+        cost = -1;
+      } else {
+        // BYOK mode: call Anthropic directly
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey!,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true',
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-5',
+            max_tokens: 4096,
+            messages: [{ role: 'user', content: prompt }],
+            tools: [{
+              name: 'submit_diff',
+              description: 'Submit the generated developer intelligence diff',
+              input_schema: {
+                type: 'object',
+                properties: {
+                  title: {
+                    type: 'string',
+                    description: 'A short, creative title (3-8 words) capturing the main theme of this diff. Plain text, no markdown.'
+                  },
+                  content: {
+                    type: 'string',
+                    description: 'The full markdown content of the diff, starting with the date line'
+                  }
                 },
-                content: {
-                  type: 'string',
-                  description: 'The full markdown content of the diff, starting with the date line'
-                }
-              },
-              required: ['title', 'content']
-            }
-          }],
-          tool_choice: { type: 'tool', name: 'submit_diff' }
-        }),
-      });
+                required: ['title', 'content']
+              }
+            }],
+            tool_choice: { type: 'tool', name: 'submit_diff' }
+          }),
+        });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message || `API error: ${res.status}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error?.message || `API error: ${res.status}`);
+        }
+
+        const result = await res.json();
+        const toolUse = result.content.find((b: any) => b.type === 'tool_use');
+        if (!toolUse?.input?.content) {
+          throw new Error('No content returned from API');
+        }
+
+        title = toolUse.input.title || '';
+        rawContent = toolUse.input.content;
+
+        // Calculate cost from usage (Claude Sonnet 4.5: $3/1M input, $15/1M output)
+        const usage = result.usage;
+        cost = usage
+          ? (usage.input_tokens * 3 + usage.output_tokens * 15) / 1_000_000
+          : undefined;
       }
-
-      const result = await res.json();
-      const toolUse = result.content.find((b: any) => b.type === 'tool_use');
-      if (!toolUse?.input?.content) {
-        throw new Error('No content returned from API');
-      }
-
-      // Calculate cost from usage (Claude Sonnet 4.5: $3/1M input, $15/1M output)
-      const usage = result.usage;
-      const cost = usage
-        ? (usage.input_tokens * 3 + usage.output_tokens * 15) / 1_000_000
-        : undefined;
-
-      const { title, content: rawContent } = toolUse.input;
 
       let cleanedContent = rawContent;
       const dateStart = cleanedContent.indexOf('Intelligence Window');
@@ -411,7 +526,7 @@ Alpine.data('dashboard', () => ({
       }
 
       const entry = {
-        id: Date.now().toString(),
+        id: serverDiffId || Date.now().toString(),
         title: title || '',
         content: cleanedContent,
         generated_at: new Date().toISOString(),
@@ -422,24 +537,37 @@ Alpine.data('dashboard', () => ({
       this.diff = entry;
 
       const today = new Date().toDateString();
-      const history = (this as any).$store.app.history;
+      const history = store.history;
       if (!forceNew && history.length > 0 && new Date(history[0].generated_at).toDateString() === today) {
         const oldDiffId = history[0].id;
-        const starsToRemove = (this as any).$store.app.stars.filter((s: any) => s.diff_id === oldDiffId);
+        const starsToRemove = store.stars.filter((s: any) => s.diff_id === oldDiffId);
         for (const star of starsToRemove) {
-          (this as any).$store.app._trackDeletedStar(starId(star.diff_id, star.p_index));
+          store._trackDeletedStar(starId(star.diff_id, star.p_index));
         }
-        (this as any).$store.app.stars = (this as any).$store.app.stars.filter((s: any) => s.diff_id !== oldDiffId);
-        (this as any).$store.app._trackDeletedDiff(oldDiffId);
+        store.stars = store.stars.filter((s: any) => s.diff_id !== oldDiffId);
+        store._trackDeletedDiff(oldDiffId);
 
         history[0] = entry;
-        (this as any).$store.app.history = [...history];
-        (this as any).$store.app._trackModifiedDiff(entry.id);
+        store.history = [...history];
+        store._trackModifiedDiff(entry.id);
       } else {
-        (this as any).$store.app.addDiff(entry);
+        store.addDiff(entry);
       }
 
-      (this as any).$store.app.autoSync();
+      // Claim the diff from server (non-blocking)
+      if (serverDiffId && usingCreds) {
+        fetch('/api/creds/pending', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: store.user.email,
+            code: store.user.code,
+            claim: [serverDiffId]
+          }),
+        }).catch(() => {}); // Ignore errors - diff is already saved locally
+      }
+
+      store.autoSync();
     } catch (e: unknown) {
       this.error = `Failed to generate diff: ${e instanceof Error ? e.message : 'Unknown error'}`;
     } finally {

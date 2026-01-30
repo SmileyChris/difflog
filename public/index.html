@@ -49,6 +49,7 @@
               </svg>
               <span x-text="$store.app.profile?.name || 'Profile'"></span>
             </a>
+            <a href="/creds" class="creds-nav-link" :class="{ 'creds-empty': $store.app.creds <= 1 }" x-show="$store.app.isLoggedIn && $store.app.usingCredits"><span class="creds-coin">◉</span><span x-text="$store.app.creds"></span></a>
           </div>
           <!-- @include partials/sync-dropdown.html -->
         </div>
@@ -320,6 +321,24 @@
             </button>
           </div>
           <pre class="prompt-text" x-text="promptText"></pre>
+        </div>
+      </div>
+
+      <!-- Out of Creds Modal -->
+      <div
+        class="creds-modal"
+        x-show="showOutOfCreds"
+        x-transition.opacity
+        @click.self="showOutOfCreds = false"
+      >
+        <div class="creds-modal-content creds-modal-compact">
+          <div class="creds-empty-icon">&#9670;</div>
+          <h2 class="creds-empty-title">You're out of creds</h2>
+          <p class="creds-empty-desc">Purchase more creds to continue generating diffs.</p>
+          <div class="creds-empty-actions">
+            <a href="/creds" class="btn-primary">Buy More Creds</a>
+            <a href="/setup?edit=1" class="btn-secondary">Switch to BYOK</a>
+          </div>
         </div>
       </div>
 
