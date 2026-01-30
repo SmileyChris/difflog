@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 bun install          # Install dependencies
-bun run dev          # Full dev with wrangler (D1 database, functions)
+bun run dev          # Full dev with wrangler (D1 database, functions, Stripe webhooks)
 bun run dev:static   # Quick dev server (no D1)
 bun test             # Run tests
 bun run build        # Build to dist/ (also verifies TypeScript compiles)
@@ -20,6 +20,8 @@ bun run docs         # Serve architecture documentation locally
 ```
 
 **Note:** This project has no tsconfig.json. Use `bun run build` to verify TypeScript compiles correctly. Do not use `npx tsc`.
+
+**Stripe webhooks:** `bun run dev` automatically starts `stripe listen` to forward webhooks locally. Requires [Stripe CLI](https://stripe.com/docs/stripe-cli) to be installed and logged in (`stripe login`).
 
 ## Architecture
 

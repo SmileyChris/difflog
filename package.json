@@ -4,7 +4,7 @@
   "version": "2.0.0",
   "type": "module",
   "scripts": {
-    "dev": "bun run build && bun run dev:migrate && (trap 'kill -INT 0' EXIT; bun run watch.ts & wrangler pages dev dist --persist-to=.wrangler/state --live-reload)",
+    "dev": "bun run dev.ts",
     "dev:static": "bun --hot server.ts",
     "build": "bun run build.ts",
     "deploy": "bun run build && wrangler pages deploy dist",

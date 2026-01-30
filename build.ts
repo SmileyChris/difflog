@@ -8,6 +8,29 @@ import { mkdir, rm, cp, readdir, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 
 const ROOT = import.meta.dir;
+
+// Load .dev.vars for local development (same file wrangler uses)
+async function loadDevVars() {
+  try {
+    const content = await readFile(join(ROOT, '.dev.vars'), 'utf-8');
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIndex = trimmed.indexOf('=');
+      if (eqIndex > 0) {
+        const key = trimmed.slice(0, eqIndex);
+        const value = trimmed.slice(eqIndex + 1);
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    }
+  } catch {
+    // .dev.vars doesn't exist, that's fine
+  }
+}
+
+await loadDevVars();
 const DIST = join(ROOT, 'dist');
 const PUBLIC = join(ROOT, 'public');
 const SRC = join(ROOT, 'src');
@@ -15,6 +38,11 @@ const PARTIALS = join(ROOT, 'partials');
 
 // Cache for partial contents
 const partialsCache = new Map<string, string>();
+
+// Client-side env vars (safe to expose - these are public keys)
+const CLIENT_ENV_VARS: Record<string, string> = {
+  STRIPE_PK: process.env.STRIPE_PK || 'pk_test_xxx',
+};
 
 async function processIncludes(html: string): Promise<string> {
   const includeRegex = /<!-- @include (\S+) -->/g;
@@ -33,6 +61,14 @@ async function processIncludes(html: string): Promise<string> {
     result = result.replace(fullMatch, partialsCache.get(partialPath)!);
   }
 
+  return result;
+}
+
+function injectEnvVars(html: string): string {
+  let result = html;
+  for (const [key, value] of Object.entries(CLIENT_ENV_VARS)) {
+    result = result.replace(new RegExp(`__${key}__`, 'g'), value);
+  }
   return result;
 }
 
@@ -75,9 +111,10 @@ async function copyPublicFiles() {
         // Recursively process subdirectories
         await processDir(srcPath, destPath);
       } else if (entry.name.endsWith('.html')) {
-        // Process HTML files for includes
+        // Process HTML files for includes and env vars
         const content = await readFile(srcPath, 'utf-8');
-        const processed = await processIncludes(content);
+        const withIncludes = await processIncludes(content);
+        const processed = injectEnvVars(withIncludes);
         await writeFile(destPath, processed);
       } else if (entry.name.endsWith('.svg') || entry.name.endsWith('.png') || entry.name.endsWith('.ico') || entry.name.endsWith('.js') || entry.name.startsWith('_')) {
         // Copy other static assets and Cloudflare Pages config files (_redirects, _headers)
