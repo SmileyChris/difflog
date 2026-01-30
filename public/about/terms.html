@@ -51,7 +51,7 @@
       <div class="about-tldr">
         <h3 class="about-tldr-title">TL;DR <span class="about-tldr-aside">(because you're probably not going to read them carefully)</span></h3>
         <ul class="about-tldr-list">
-          <li>You handle your own Anthropic API usage and costs</li>
+          <li>BYOK: you handle your own API costs. Creds: prepaid, non-refundable after use</li>
           <li>Your content is yours</li>
           <li>As-is, no warranties, no liability for damages</li>
         </ul>
@@ -63,14 +63,28 @@
       </section>
 
       <section>
-        <h3>API Key &amp; Costs</h3>
-        <p>diff·log requires you to provide your own Anthropic API key. You are solely responsible for:</p>
+        <h3>API Usage &amp; Costs</h3>
+        <p>diff·log offers two ways to generate diffs:</p>
+
+        <h4>Bring Your Own Key (BYOK)</h4>
+        <p>You provide your own Anthropic API key. You are solely responsible for:</p>
         <ul>
           <li>Keeping your API key secure</li>
           <li>All charges incurred through your API key usage</li>
           <li>Compliance with Anthropic's terms of service</li>
         </ul>
         <p>diff·log does not have access to your API key — it's stored only in your browser and calls are made directly to Anthropic.</p>
+
+        <h4>Creds (Prepaid Credits)</h4>
+        <p>Alternatively, you can purchase creds to generate diffs without your own API key. By purchasing creds:</p>
+        <ul>
+          <li>You receive the number of credits indicated at time of purchase</li>
+          <li>Each diff generation consumes 1 cred</li>
+          <li>Creds are non-refundable once used</li>
+          <li>Unused creds do not expire</li>
+          <li>Creds are tied to your email address and cannot be transferred</li>
+        </ul>
+        <p>Payments are processed securely via Stripe. We do not store your payment details.</p>
       </section>
 
       <section>
@@ -132,7 +146,7 @@
         <p>These terms may be updated from time to time. Continued use of the service after changes constitutes acceptance of the new terms.</p>
       </section>
 
-      <p class="about-updated">Last updated: January 2025</p>
+      <p class="about-updated">Last updated: January 2026</p>
 
       <!-- No profile: CTA -->
       <div class="about-cta" x-show="!$store.app.profile">

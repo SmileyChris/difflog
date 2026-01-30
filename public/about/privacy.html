@@ -53,6 +53,7 @@
         <ul class="about-tldr-list">
           <li>Your data stays in your browser — we can't see it</li>
           <li>Sync is optional and encrypted; sharing is opt-in</li>
+          <li>Creds accounts store only your email and balance</li>
           <li>Minimal analytics (Cloudflare Web Analytics — no cookies, no personal data)</li>
         </ul>
       </div>
@@ -63,8 +64,19 @@
       </section>
 
       <section>
-        <h3>API Key Storage</h3>
-        <p>Your Anthropic API key is stored only in your browser's localStorage. When you generate a diff, your browser makes a direct request to Anthropic's API — our servers never see your key. This means you have full control over your API usage and costs.</p>
+        <h3>API Key Storage (BYOK Mode)</h3>
+        <p>If you use your own API key, it is stored only in your browser's localStorage. When you generate a diff, your browser makes a direct request to Anthropic's API — our servers never see your key. This means you have full control over your API usage and costs.</p>
+      </section>
+
+      <section>
+        <h3>Creds Accounts</h3>
+        <p>If you use creds (prepaid credits) instead of your own API key, we store:</p>
+        <ul>
+          <li><strong>Email address</strong> — Used to identify your account and send verification codes</li>
+          <li><strong>Credit balance</strong> — Your current creds and transaction history</li>
+        </ul>
+        <p>When you generate a diff using creds, our server calls the Anthropic API on your behalf. The generated content is temporarily stored server-side until your browser confirms receipt, then deleted.</p>
+        <p>Payment processing is handled by Stripe. We do not store your card details — only Stripe's customer ID to link purchases to your account.</p>
       </section>
 
       <section>
@@ -87,16 +99,18 @@
         <h3>Third-Party Services</h3>
         <p>diff·log interacts with the following external services:</p>
         <ul>
-          <li><strong>Anthropic API</strong> — For generating diffs. Your browser communicates directly with Anthropic; we don't proxy these requests.</li>
+          <li><strong>Anthropic API</strong> — For generating diffs. In BYOK mode, your browser communicates directly with Anthropic. In creds mode, our server makes the request on your behalf.</li>
           <li><strong>Feed aggregator</strong> — Our server fetches public RSS/API data from sources like HN, Reddit, and GitHub to provide context for diff generation. No personal data is sent.</li>
           <li><strong>Cloudflare</strong> — For hosting, optional sync storage (encrypted data only), and privacy-first web analytics.</li>
+          <li><strong>Stripe</strong> — For processing creds purchases. Stripe handles all payment details; we only receive confirmation of successful payments. See <a href="https://stripe.com/privacy" target="_blank" rel="noopener">Stripe's privacy policy</a>.</li>
         </ul>
       </section>
 
       <section>
         <h3>Data Deletion</h3>
         <p>To delete your local data, clear your browser's localStorage for this site.</p>
-        <p>If you've enabled cloud sync: individual diffs can be deleted from the Archive page, which permanently removes them from our servers. To fully delete your account, first delete all diffs while synced — this ensures other devices won't re-upload them. Then delete your profile from the Profiles page to remove all remaining data from our servers.</p>
+        <p>If you've enabled cloud sync: individual diffs can be deleted from the Archive page, which permanently removes them from our servers. To fully delete your synced profile, first delete all diffs while synced — this ensures other devices won't re-upload them. Then delete your profile from the Profiles page to remove all remaining data from our servers.</p>
+        <p>For creds accounts: contact us to request deletion of your email and transaction history. Note that we may retain records as required for tax and legal purposes.</p>
       </section>
 
       <!-- No profile: CTA -->
