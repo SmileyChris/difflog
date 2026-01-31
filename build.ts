@@ -6,6 +6,9 @@
 
 import { mkdir, rm, cp, readdir, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
+import pkg from './package.json';
+
+const APP_VERSION = pkg.version;
 
 const ROOT = import.meta.dir;
 const DIST = join(ROOT, 'dist');
@@ -32,6 +35,9 @@ async function processIncludes(html: string): Promise<string> {
 
     result = result.replace(fullMatch, partialsCache.get(partialPath)!);
   }
+
+  // Inject app version
+  result = result.replace(/\{\{APP_VERSION\}\}/g, APP_VERSION);
 
   return result;
 }
@@ -79,7 +85,7 @@ async function copyPublicFiles() {
         const content = await readFile(srcPath, 'utf-8');
         const processed = await processIncludes(content);
         await writeFile(destPath, processed);
-      } else if (entry.name.endsWith('.svg') || entry.name.endsWith('.png') || entry.name.endsWith('.ico') || entry.name.endsWith('.js') || entry.name.startsWith('_')) {
+      } else if (entry.name.endsWith('.svg') || entry.name.endsWith('.png') || entry.name.endsWith('.ico') || entry.name.endsWith('.js') || entry.name.endsWith('.json') || entry.name.startsWith('_')) {
         // Copy other static assets and Cloudflare Pages config files (_redirects, _headers)
         await cp(srcPath, destPath);
       }

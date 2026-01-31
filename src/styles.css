@@ -50,14 +50,17 @@ body {
   min-height: 100vh;
   color: var(--text-primary);
   font-family: 'Inter', -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Layout */
 main {
+  width: 100%;
   max-width: 800px;
   margin: 0 auto;
   padding: 1rem;
-  min-height: 100vh;
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -3516,8 +3519,7 @@ button.profile-card-action-alt:hover:not(:disabled) {
 
 /* About Content - also applies to article in main */
 article {
-  max-width: 640px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 /* Brand inline */
@@ -3716,6 +3718,197 @@ article section strong {
   opacity: 0.5;
   font-size: 0.5em;
   vertical-align: middle;
+}
+
+.heart-red {
+  transition: color 0.15s;
+}
+
+.site-footer-link:hover .heart-red {
+  color: #e25555;
+}
+
+/* Changelog */
+.changelog-wrapper {
+  text-align: right;
+  padding: 0 1rem 0.5rem;
+  margin-top: -1rem;
+}
+
+.changelog-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-dimmest);
+  padding: 0.25rem 0.5rem;
+  transition: color 0.15s;
+}
+
+.changelog-btn:hover {
+  color: var(--accent);
+}
+
+.changelog-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.changelog-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.changelog-modal-content {
+  width: 500px;
+  max-width: 100%;
+  max-height: 80vh;
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-transform: none;
+}
+
+.changelog-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.changelog-modal-title {
+  font-size: 1rem;
+  color: var(--text-heading);
+  margin: 0;
+}
+
+.changelog-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.changelog-modal-close:hover {
+  color: var(--text-heading);
+}
+
+.changelog-modal-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+}
+
+.changelog-loading,
+.changelog-error {
+  text-align: center;
+  color: var(--text-dim);
+  padding: 2rem;
+}
+
+.changelog-error {
+  color: var(--error);
+}
+
+.changelog-versions {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.changelog-version {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.changelog-version:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.changelog-version-date {
+  font-size: 0.8rem;
+  color: var(--text-dimmest);
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.changelog-version-summary {
+  font-size: 0.95rem;
+  color: var(--text-heading);
+  margin: 0 0 0.25rem 0;
+  font-weight: 500;
+  text-align: left;
+}
+
+.changelog-version-num {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent);
+  font-weight: 600;
+  margin-right: 0.75rem;
+}
+
+.changelog-version-desc {
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.changelog-changes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: left;
+}
+
+.changelog-change {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.changelog-change.is-new {
+  color: var(--accent);
+}
+
+.changelog-change-icon {
+  font-size: 0.8rem;
+  opacity: 0.5;
+}
+
+.changelog-change-type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-dimmest);
+  text-transform: uppercase;
 }
 
 .about-footer {

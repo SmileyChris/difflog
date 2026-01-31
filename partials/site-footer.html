@@ -6,6 +6,49 @@
     <span class="site-footer-sep">&#9670;</span>
     <a href="/about/terms" class="site-footer-link">Terms</a>
     <span class="site-footer-sep">&#9670;</span>
-    <a href="https://smileychris.github.io/difflog/" class="site-footer-link" target="_blank" rel="noopener">&hearts; opensource</a>
+    <a href="https://smileychris.github.io/difflog/" class="site-footer-link" target="_blank" rel="noopener"><span class="heart-red">&hearts;</span> opensource</a>
   </nav>
 </footer>
+<div x-data="changelog" data-version="{{APP_VERSION}}" class="changelog-wrapper">
+  <button class="changelog-btn" @click="show()">
+    v{{APP_VERSION}}
+    <span class="changelog-dot" x-show="hasUnseen" x-cloak></span>
+  </button>
+  <!-- Changelog Modal -->
+  <div class="changelog-modal" x-show="open" x-transition.opacity @click.self="hide()" x-cloak>
+    <div class="changelog-modal-content" @keydown.escape.window="hide()">
+      <div class="changelog-modal-header">
+        <h2 class="changelog-modal-title">What's New</h2>
+        <button class="changelog-modal-close" @click="hide()">&times;</button>
+      </div>
+      <div class="changelog-modal-body">
+        <template x-if="loading">
+          <p class="changelog-loading">Loading...</p>
+        </template>
+        <template x-if="error">
+          <p class="changelog-error" x-text="error"></p>
+        </template>
+        <template x-if="data && !loading">
+          <div class="changelog-versions">
+            <template x-for="version in data.versions" :key="version.version">
+              <div class="changelog-version">
+                <div class="changelog-version-date" x-text="formatDate(version.date)"></div>
+                <p class="changelog-version-summary"><span class="changelog-version-num" x-text="'v' + version.version"></span> <span x-text="version.summary"></span></p>
+                <p class="changelog-version-desc" x-show="version.description" x-text="version.description"></p>
+                <ul class="changelog-changes">
+                  <template x-for="change in version.changes" :key="change.text">
+                    <li class="changelog-change" :class="{ 'is-new': isNewChange(change) }">
+                      <span class="changelog-change-icon" x-show="getChangeIcon(change.type)" x-text="getChangeIcon(change.type)"></span>
+                      <span class="changelog-change-type" x-show="getChangeFallback(change.type)" x-text="getChangeFallback(change.type)"></span>
+                      <span x-text="change.text"></span>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</div>
