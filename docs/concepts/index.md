@@ -14,6 +14,7 @@ Terminology, conventions, and technology choices used throughout diff·log.
 | **Profile** | A saved configuration (tech stack, interests, API key) that personalizes your diffs |
 | **Star** | A reference to a bookmarked paragraph in a diff (not a copy) |
 | **Depth** | Reading preference — how detailed your diffs should be (see [AI Pipeline](../ai.md#depth-levels)) |
+| **Streak** | Count of consecutive diffs generated with an 8-day tolerance between each |
 | **Sync** | Optional cross-device sharing via encrypted cloud storage |
 
 ## Pages and Partials
@@ -142,6 +143,36 @@ The markdown renderer assigns sequential `data-p` indices to bookmarkable elemen
 
 Headers and horizontal rules are not indexed (not bookmarkable).
 
+### Streak
+
+Streaks track user engagement by counting consecutive diffs with an 8-day tolerance. The streak badge appears when a user has generated 2 or more diffs within the tolerance window.
+
+```typescript
+{
+  streak: number;          // Total diffs in current streak
+  expiresInDays: number;   // Days remaining before streak breaks
+  startDate: string | null; // ISO timestamp of first diff in streak
+  activeDates: string[];   // Array of ISO date strings (YYYY-MM-DD)
+}
+```
+
+**Calculation rules:**
+
+- Counts total diffs (not unique days) within the active streak period
+- Multiple diffs on the same day all count toward the streak
+- Maximum 8 days can pass between diffs before the streak breaks
+- Streaks expire if more than 8 days have passed since the last diff
+- The calendar shows the current week with activity dots (◆) for days with diffs
+
+**Display:**
+
+- Badge shows 🔥 emoji with streak count (size scales with streak length)
+- Dropdown displays current week calendar with:
+  - Active days marked with ◆
+  - Today highlighted with accent border
+  - Gap days shown with middot (·)
+  - Expiration warning when ≤3 days remain
+
 ## Iconography
 
 The app uses HTML entities rather than an icon library:
@@ -163,5 +194,6 @@ The app uses HTML entities rather than an icon library:
 | 📋 | `&#128203;` | Clipboard/copy |
 | ↗ | `&#8599;` | External link/upload |
 | ↓ | `&#8595;` | Import |
+| 🔥 | `&#128293;` | Streak/fire |
 
 This keeps the bundle small and works universally without icon fonts.

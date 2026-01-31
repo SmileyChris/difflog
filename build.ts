@@ -90,9 +90,24 @@ async function copyPublicFiles() {
   console.log('✓ Processed HTML files and assets → dist/');
 }
 
-async function copyStyles() {
-  await cp(join(SRC, 'styles.css'), join(DIST, 'styles.css'));
-  console.log('✓ Copied styles.css → dist/');
+async function bundleStyles() {
+  const isDev = process.env.NODE_ENV !== 'production';
+  const result = await Bun.build({
+    entrypoints: [join(SRC, 'styles.css')],
+    outdir: DIST,
+    minify: !isDev,
+    naming: 'styles.css',
+  });
+
+  if (!result.success) {
+    console.error('CSS build failed:');
+    for (const log of result.logs) {
+      console.error(log);
+    }
+    process.exit(1);
+  }
+
+  console.log(`✓ Bundled styles.css → dist/ ${isDev ? '(dev mode, not minified)' : '(minified)'}`);
 }
 
 async function copyPartials() {
@@ -124,7 +139,7 @@ async function build() {
   await clean();
   await bundleClientJS();
   await copyPublicFiles();
-  await copyStyles();
+  await bundleStyles();
   await copyPartials();
   // Functions are handled by wrangler directly, no need to copy
 

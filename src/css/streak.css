@@ -1,0 +1,159 @@
+/* Streak Dropdown Styles */
+.streak-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  z-index: 10;
+}
+
+.streak-badge-btn {
+  transition: opacity 0.2s;
+}
+
+.streak-badge-btn:hover {
+  opacity: 0.8;
+}
+
+.streak-dropdown {
+  /* ... existing layout props ... */
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  margin-top: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 1rem;
+  min-width: 280px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  cursor: default;
+
+  /* Hidden state */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-0.5rem) scale(0.98);
+  transition: opacity 0.2s, transform 0.2s, visibility 0s 0.2s;
+  /* delay visibility hide */
+  pointer-events: none;
+}
+
+.streak-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -0.5rem;
+  left: 0;
+  width: 100%;
+  height: 0.5rem;
+  background: transparent;
+}
+
+.streak-wrapper:hover .streak-dropdown,
+.streak-wrapper:focus-within .streak-dropdown {
+  /* Visible state */
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  transition: opacity 0.2s, transform 0.2s, visibility 0s;
+  /* immediate visibility show */
+  pointer-events: auto;
+}
+
+.streak-warning {
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: normal;
+  margin-bottom: 0.75rem;
+  margin-top: -0.5em;
+  line-height: 1.4;
+  /* Removed bg and padding for text-only style */
+}
+
+/* ... existing styles ... */
+
+.day-today {
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 4px var(--accent-border);
+}
+
+.streak-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.streak-label {
+  color: var(--text-dim);
+}
+
+.streak-value {
+  color: var(--text-heading);
+  font-weight: 600;
+}
+
+.streak-calendar-wrapper {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.streak-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.calendar-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: var(--text-dimmest);
+  border-radius: 4px;
+  cursor: default;
+}
+
+.calendar-day.day-outside {
+  opacity: 0.3;
+}
+
+.day-active {
+  color: #10b981;
+  /* Green for success */
+}
+
+.day-active span {
+  filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.3));
+}
+
+.day-gap-dot {
+  font-size: 1.2em;
+  line-height: 0;
+  opacity: 0.5;
+}
+
+/* Dynamic Icon Sizes */
+.streak-icon-tiny {
+  font-size: 0.7em !important;
+}
+
+.streak-icon-sm {
+  font-size: 0.9em !important;
+}
+
+.streak-icon-med {
+  font-size: 1.1em !important;
+}
+
+.streak-icon-full {
+  font-size: 1.3em !important;
+}

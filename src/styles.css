@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "./css/streak.css";
 
 /* View Transitions - browser default crossfade */
 @view-transition {
@@ -37,6 +38,7 @@ html {
   --warning: #f59e0b;
   --info: #00b4d8;
   --info-dim: #0096c7;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 * {
@@ -324,8 +326,13 @@ header {
 }
 
 @keyframes sync-spin {
-  from { transform: translateY(-50%) rotate(0deg); }
-  to { transform: translateY(-50%) rotate(360deg); }
+  from {
+    transform: translateY(-50%) rotate(0deg);
+  }
+
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
 }
 
 /* Inline sync dropdown (inside profile cards) */
@@ -628,7 +635,7 @@ main.narrow header {
   display: grid;
 }
 
-.setup-content > div {
+.setup-content>div {
   grid-area: 1 / 1;
 }
 
@@ -1222,16 +1229,17 @@ button:disabled {
 }
 
 .welcome-ago {
-  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 1.5rem;
   color: var(--text-dim);
-  display: block;
-  margin-top: 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 400;
 }
 
 .diff-time {
-  margin-left: 0.5em;
   font-family: var(--font-mono);
-  font-size: 0.9em;
+  font-size: 0.8em;
   opacity: 0.7;
 }
 
@@ -1277,7 +1285,7 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0 0.5rem;
+  padding: 0.25rem 0.5rem;
   margin-left: 0.5rem;
   font-size: 0.85rem;
   font-weight: 500;
@@ -1298,6 +1306,7 @@ button:disabled {
 
 .btn-generate-inline .generate-icon {
   font-size: 0.7rem;
+  padding-top: 0.2em;
 }
 
 .btn-generate-sm {
@@ -2078,30 +2087,52 @@ button:disabled {
 
 /* Animations */
 @keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.05); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
 }
 
 @keyframes scan {
-  0% { left: -40%; }
-  100% { left: 100%; }
+  0% {
+    left: -40%;
+  }
+
+  100% {
+    left: 100%;
+  }
 }
 
 @keyframes diamond-spin {
-  0% { transform: rotateY(0deg); }
-  100% { transform: rotateY(360deg); }
+  0% {
+    transform: rotateY(0deg);
+  }
+
+  100% {
+    transform: rotateY(360deg);
+  }
 }
 
 /* Transitions for Alpine */
 .fade-enter {
   opacity: 0;
 }
+
 .fade-enter-active {
   transition: opacity 0.3s ease;
 }
+
 .fade-leave-active {
   transition: opacity 0.2s ease;
 }
+
 .fade-leave-to {
   opacity: 0;
 }
@@ -2192,7 +2223,8 @@ kbd {
 .bookmark-btn-existing {
   background: var(--accent);
   opacity: 0.4;
-  font-size: 0;  /* Hide any inner content for solid star */
+  font-size: 0;
+  /* Hide any inner content for solid star */
   transform: translateY(-50%) scale(0.75);
 }
 
@@ -2203,7 +2235,8 @@ kbd {
 
 .bookmark-btn-existing:hover {
   opacity: 1 !important;
-  font-size: 1.2rem;  /* Show the minus on hover */
+  font-size: 1.2rem;
+  /* Show the minus on hover */
 }
 
 .bookmark-btn-existing:hover::after {
@@ -2223,8 +2256,13 @@ kbd {
 }
 
 @keyframes bookmark-pulse {
-  0% { background: rgba(0, 212, 170, 0.3); }
-  100% { background: transparent; }
+  0% {
+    background: rgba(0, 212, 170, 0.3);
+  }
+
+  100% {
+    background: transparent;
+  }
 }
 
 /* Bookmarks list */
@@ -3358,8 +3396,13 @@ button.profile-card-action-alt:hover:not(:disabled) {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .sync-banner-text {
@@ -3932,7 +3975,7 @@ article section strong {
   color: var(--text-dim);
 }
 
-.visibility-status-icon.visibility-status-public + .visibility-status-label {
+.visibility-status-icon.visibility-status-public+.visibility-status-label {
   color: var(--accent-dim);
 }
 
