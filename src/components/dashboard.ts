@@ -231,6 +231,14 @@ Alpine.data('dashboard', () => ({
 
   async generate() {
     const forceNew = this.ctrlHeld;
+    const apiKey = (this as any).$store.app.apiKey;
+
+    // Check for demo profile
+    if (apiKey === 'demo-key-placeholder') {
+      this.error = 'This is a demo profile. To generate real diffs, go to Profiles and add your Anthropic API key, or create a new profile with a valid key.';
+      return;
+    }
+
     this.generating = true;
     this.error = null;
     this.diff = null;
@@ -253,7 +261,6 @@ Alpine.data('dashboard', () => ({
     try {
       let profile = (this as any).$store.app.profile;
       const lastDiff = (this as any).$store.app.history[0];
-      const apiKey = (this as any).$store.app.apiKey;
 
       // Resolve any unmapped custom items before fetching feeds
       const unmapped = getUnmappedItems(profile);

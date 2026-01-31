@@ -269,10 +269,13 @@
         <!-- Create mode: Continue / Start buttons -->
         <template x-if="!isEditing">
           <div class="create-footer-actions">
-            <button x-show="step < 6" class="btn-primary" @click="step === 1 ? nextStep() : step++"
-              :disabled="(step === 0 && !data.name.trim()) || (step === 1 && (!apiKey.trim() || validatingKey))">
-              <span x-show="!validatingKey">Continue &rarr;</span>
+            <button x-show="step < 6" class="btn-primary"
+              @click="(step === 0 && ctrlHeld) ? createDemoProfile() : (step === 1 ? nextStep() : step++)"
+              :disabled="(step === 0 && !ctrlHeld && !data.name.trim()) || (step === 1 && (!apiKey.trim() || validatingKey)) || saving">
+              <span x-show="!validatingKey && !saving && step === 0 && ctrlHeld">&#9670; Create Demo Profile</span>
+              <span x-show="!validatingKey && !saving && !(step === 0 && ctrlHeld)">Continue &rarr;</span>
               <span x-show="validatingKey">Validating...</span>
+              <span x-show="saving">Creating...</span>
             </button>
             <button x-show="step === 6" class="btn-primary" @click="saveProfile()" :disabled="saving">
               <span x-show="!saving">Start Diffing &#9670;</span>
