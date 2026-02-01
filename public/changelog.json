@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "3.0",
+      "date": "2026-02-02",
+      "summary": "Creds mode — no API key required",
+      "description": "Use difflog without your own API key. Sign up with email, get 5 free credits, and buy more when you need them.",
+      "changes": [
+        { "type": "feature", "text": "Creds mode with email signup and Stripe payments", "in": "3.0.0" },
+        { "type": "feature", "text": "5 free credits for new accounts", "in": "3.0.0" },
+        { "type": "feature", "text": "Pending diff recovery if disconnected", "in": "3.0.0" }
+      ]
+    },
+    {
       "version": "2.0",
       "date": "2026-01-31",
       "summary": "Streak tracking and stability improvements",
