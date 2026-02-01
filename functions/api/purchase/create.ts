@@ -56,27 +56,43 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     if (account?.stripe_customer_id) {
       stripeCustomerId = account.stripe_customer_id;
     } else {
-      // Create Stripe customer
-      const customerRes = await fetch('https://api.stripe.com/v1/customers', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${STRIPE_SECRET_KEY}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({ email: body.email }),
-      });
-
-      if (customerRes.ok) {
-        const customer = await customerRes.json() as { id: string };
-        stripeCustomerId = customer.id;
-
-        // Update or create account with Stripe customer ID
-        if (account) {
-          await DB.prepare(
-            'UPDATE accounts SET stripe_customer_id = ?, updated_at = datetime(\'now\') WHERE id = ?'
-          ).bind(stripeCustomerId, account.id).run();
+      // Search Stripe for existing customer by email (prevents duplicates)
+      const searchRes = await fetch(
+        `https://api.stripe.com/v1/customers?email=${encodeURIComponent(body.email)}&limit=1`,
+        {
+          headers: { 'Authorization': `Bearer ${STRIPE_SECRET_KEY}` },
         }
-        // If no account exists, it will be created when payment succeeds
+      );
+
+      if (searchRes.ok) {
+        const { data } = await searchRes.json() as { data: { id: string }[] };
+        if (data.length > 0) {
+          stripeCustomerId = data[0].id;
+        }
+      }
+
+      // Create new customer only if not found in Stripe
+      if (!stripeCustomerId) {
+        const customerRes = await fetch('https://api.stripe.com/v1/customers', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${STRIPE_SECRET_KEY}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({ email: body.email }),
+        });
+
+        if (customerRes.ok) {
+          const customer = await customerRes.json() as { id: string };
+          stripeCustomerId = customer.id;
+        }
+      }
+
+      // Sync customer ID to local account if we have one
+      if (stripeCustomerId && account) {
+        await DB.prepare(
+          'UPDATE accounts SET stripe_customer_id = ?, updated_at = datetime(\'now\') WHERE id = ?'
+        ).bind(stripeCustomerId, account.id).run();
       }
     }
 
