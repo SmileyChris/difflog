@@ -470,6 +470,26 @@
           </div>
         </div>
       </div>
+
+      <!-- Daily Limit Modal -->
+      <div
+        class="creds-modal"
+        x-show="showDailyLimit"
+        x-transition.opacity
+        @click.self="showDailyLimit = false"
+      >
+        <div class="creds-modal-content creds-modal-compact">
+          <div class="creds-empty-icon">&#9728;</div>
+          <h2 class="creds-empty-title">Time for a break!</h2>
+          <p class="creds-empty-desc">
+            You've caught up on today's dev news. Your next 5 diffs unlock at midnight UTC.
+          </p>
+          <div class="creds-empty-actions">
+            <a href="/setup?edit=1" class="btn-secondary">Switch to BYOK</a>
+            <button class="btn-ghost" @click="showDailyLimit = false">Close</button>
+          </div>
+        </div>
+      </div>
     </main>
     <!-- @include partials/site-footer.html -->
   </body>

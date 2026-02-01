@@ -73,6 +73,20 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
+    // Check daily limit (5 per day UTC)
+    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const usageToday = await DB.prepare(`
+      SELECT COUNT(*) as count FROM transactions
+      WHERE account_id = ? AND type = 'usage' AND date(created_at) = ?
+    `).bind(account.id, today).first<{ count: number }>();
+
+    if (usageToday && usageToday.count >= 5) {
+      return new Response(JSON.stringify({ error: 'Daily limit reached' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     // Call Anthropic API
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

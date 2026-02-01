@@ -23,6 +23,8 @@ Alpine.data('dashboard', () => ({
   syncBannerDismissed: false,
   // Out of creds modal state
   showOutOfCreds: false,
+  // Daily limit modal state
+  showDailyLimit: false,
 
   init() {
     if (!(this as any).$store.app.isUnlocked) {
@@ -447,6 +449,10 @@ Alpine.data('dashboard', () => ({
           const err = await res.json();
           if (res.status === 402) {
             this.showOutOfCreds = true;
+            return;
+          }
+          if (res.status === 429) {
+            this.showDailyLimit = true;
             return;
           }
           throw new Error(err.error || `API error: ${res.status}`);

@@ -106,6 +106,18 @@ Diffs track whether they were generated via creds or BYOK using the `cost` field
 
 This allows the UI to show "1 cred" vs "$0.050" in the archive.
 
+## Rate Limits
+
+Creds mode users are limited to **5 diffs per day** (UTC). This prevents abuse while ensuring fair access for all users.
+
+| Limit | Value | Reset |
+|-------|-------|-------|
+| Daily diffs | 5 per account | Midnight UTC |
+
+When the limit is reached, `/api/generate` returns `429 Too Many Requests` and the client shows a friendly modal suggesting the user wait until tomorrow or switch to BYOK mode.
+
+BYOK users have no daily limit — they call Anthropic directly and pay for their own usage.
+
 ## Security
 
 **Dev mode**: Verification codes are deterministically derived from email + secret for easy testing. Check wrangler logs for codes.

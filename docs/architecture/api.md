@@ -283,6 +283,13 @@ Generate diff using 1 cred. Requires email+code auth.
 { "error": "Insufficient creds" }
 ```
 
+**Response (429 - daily limit reached):**
+```json
+{ "error": "Daily limit reached" }
+```
+
+Creds users are limited to 5 diffs per day (UTC). See [Rate Limits](creds.md#rate-limits).
+
 ## `POST /api/purchase/create`
 
 Create Stripe payment intent. **No auth required** (email passed in body).
