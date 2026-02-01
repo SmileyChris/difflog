@@ -33,6 +33,7 @@ Alpine.data('setup', () => ({
   validatingKey: false,
   apiKeyValid: null as boolean | null,
   originalApiKey: '',
+  ctrlHeld: false,
   // Account/creds state
   accountEmail: '',
   accountCode: '',
@@ -96,6 +97,17 @@ Alpine.data('setup', () => ({
         customFocus: p.customFocus || ''
       };
     }
+
+    // Track Ctrl key state
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) this.ctrlHeld = true;
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (!e.ctrlKey && !e.metaKey) this.ctrlHeld = false;
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', () => { this.ctrlHeld = false; });
   },
 
   selectApiSource(source: 'byok' | 'creds') {
@@ -308,5 +320,68 @@ Alpine.data('setup', () => ({
       this.setupError = e instanceof Error ? e.message : 'Failed to save profile';
       this.saving = false;
     }
+  },
+
+  createDemoProfile() {
+    this.saving = true;
+    try {
+      // Create demo profile
+      (this as any).$store.app.createProfile({
+        name: 'Demo',
+        apiKey: 'demo-key-placeholder',
+        languages: ['TypeScript', 'Python', 'Rust'],
+        frameworks: ['React', 'Node.js'],
+        tools: ['Docker', 'PostgreSQL'],
+        topics: ['AI/ML', 'Web Development'],
+        depth: 'standard',
+        customFocus: ''
+      });
+
+      // Generate 5 demo diffs over the last 10 days (every 2 days)
+      const now = new Date();
+      const demoDiffs = [];
+
+      for (let i = 0; i < 5; i++) {
+        const daysAgo = i * 2;
+        const date = new Date(now);
+        date.setDate(date.getDate() - daysAgo);
+
+        const titles = [
+          'Developer Ecosystem Brief',
+          'Tech Stack Updates',
+          'Platform & Tools Roundup',
+          'Language & Framework News',
+          'Infrastructure & DevTools Digest'
+        ];
+
+        demoDiffs.push({
+          id: crypto.randomUUID(),
+          title: titles[i % titles.length],
+          content: this.generateDemoContent(daysAgo),
+          generated_at: date.toISOString(),
+          duration_seconds: 15 + Math.floor(Math.random() * 20)
+        });
+      }
+
+      // Add diffs to history using the setter (newest first)
+      (this as any).$store.app.history = demoDiffs;
+
+      window.location.href = '/';
+    } catch (e: unknown) {
+      this.setupError = e instanceof Error ? e.message : 'Failed to create demo profile';
+      this.saving = false;
+    }
+  },
+
+  generateDemoContent(daysAgo: number): string {
+    const topics = [
+      '## TypeScript 5.4 Brings New Type Inference Magic\n\nThe TypeScript team released [version 5.4](https://devblogs.microsoft.com/typescript/announcing-typescript-5-4/) with significant improvements to type inference and better error messages. The new `NoInfer` utility type helps prevent unwanted type widening.\n\n## React 19 Beta: Server Components Go Stable\n\nReact announced [version 19 beta](https://react.dev/blog/2024/04/25/react-19) with stable Server Components and new hooks like `useFormStatus` for better data fetching patterns.',
+      '## Python 3.13 JIT Compiler Shows 20% Speed Boost\n\nPython core developers [announced](https://discuss.python.org/t/a-jit-compiler-for-cpython/33092) experimental JIT compilation support in 3.13, showing up to 20% performance improvements in benchmarks.\n\n## Rust 1.77 Slashes Compile Times\n\nThe latest [Rust release](https://blog.rust-lang.org/2024/03/21/Rust-1.77.0.html) brings async improvements and notably faster compilation through improved incremental builds.',
+      '## Docker Desktop Optimizes Apple Silicon Performance\n\nDocker released [version 4.28](https://docs.docker.com/desktop/release-notes/) with major container performance improvements on Apple Silicon, reducing memory usage by up to 30%.\n\n## PostgreSQL 17 Beta Unveils Parallel Vacuum\n\nPostgreSQL [announced](https://www.postgresql.org/about/news/postgresql-17-beta-1-released-2853/) parallel vacuum operations and enhanced JSON indexing in the 17 beta release.',
+      '## VS Code Adds AI-Powered Completions\n\nMicrosoft [introduced](https://code.visualstudio.com/updates/) GitHub Copilot-powered debugging and improved multi-cursor editing in the latest VS Code update.\n\n## GitHub Actions Adds Larger Runners\n\nGitHub [announced](https://github.blog/changelog/2024-01-30-github-actions-introducing-the-new-m1-macos-runner/) new M1 macOS runners and improved caching strategies that cut CI/CD times by up to 50%.',
+      '## Claude 3.5 Sonnet Sets New Benchmarks\n\nAnthropic released [Claude 3.5 Sonnet](https://www.anthropic.com/news/claude-3-5-sonnet) with groundbreaking code generation capabilities and vision understanding.\n\n## Bun 1.0.30 Achieves npm Compatibility\n\nThe [latest Bun release](https://bun.sh/blog/bun-v1.0.30) brings near-complete npm compatibility while maintaining 10x faster package installation speeds.'
+    ];
+
+    return topics[daysAgo % topics.length];
   }
 }));

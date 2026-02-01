@@ -36,7 +36,7 @@
 
       <template x-if="$store.app.stars?.length > 0">
         <div class="bookmarks-list">
-          <template x-for="b in $store.app.stars" :key="b.id">
+          <template x-for="b in $store.app.stars" :key="b.diff_id + ':' + b.p_index">
             <div class="bookmark-card" x-data="{ starContent: $store.app.getStarContent(b) }">
               <template x-if="starContent">
                 <div class="bookmark-card-content">
@@ -74,7 +74,7 @@
         </div>
       </template>
 
-    <!-- @include partials/site-footer.html -->
   </main>
+  <!-- @include partials/site-footer.html -->
 </body>
 </html>

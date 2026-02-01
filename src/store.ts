@@ -1,6 +1,7 @@
 import Alpine from 'alpinejs';
 import { renderMarkdown } from './lib/markdown';
 import { timeAgo } from './lib/time';
+import { calculateStreak, getStreakCalendar, type StreakResult, type CalendarWeek } from './lib/streak';
 import { ApiError } from './lib/api';
 import {
   getSyncPassword,
@@ -159,6 +160,17 @@ Alpine.store('app', {
   get starCountLabel(): string {
     const count = this.stars?.length || 0;
     return `${count} ${count === 1 ? 'Star' : 'Stars'}`;
+  },
+
+  // Streak calculation
+  get streak(): StreakResult {
+    const dates = this.history.map((d: Diff) => new Date(d.generated_at));
+    return calculateStreak(dates);
+  },
+
+  get streakCalendar(): CalendarWeek[] {
+    const streak = this.streak;
+    return getStreakCalendar(streak.startDate, streak.activeDates);
   },
 
   // Sync state for UI

@@ -57,5 +57,6 @@ export const STORAGE_KEYS = {
   PENDING_SYNC: 'difflog-pending-sync',
   SYNC_PASSWORD: 'difflog-sync-password',
   REMEMBERED_PASSWORDS: 'difflog-remembered-passwords',
-  REMINDERS: 'difflog-reminders'
+  REMINDERS: 'difflog-reminders',
+  CHANGELOG_SEEN: 'difflog-changelog-seen'
 } as const;

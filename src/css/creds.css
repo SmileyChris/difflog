@@ -1,0 +1,708 @@
+/* =====================================================
+   Creds / API Source UI
+   ===================================================== */
+
+/* API Source Selection (setup wizard) */
+.api-source-choice {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.api-source-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  position: relative;
+}
+
+.api-source-option:hover {
+  border-color: var(--accent-border);
+  background: linear-gradient(135deg, var(--bg-card) 0%, #1a1a28 100%);
+}
+
+.api-source-option-selected {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.api-source-option-icon {
+  font-size: 1.5rem;
+}
+
+.api-source-option-icon-claude {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.api-source-option-label {
+  color: var(--text-heading);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.api-source-badge {
+  color: var(--accent);
+  font-size: 1.1rem;
+}
+
+/* Creds Setup (email verification) */
+.creds-setup {
+  margin-top: 1rem;
+}
+
+.creds-code-form {
+  text-align: center;
+}
+
+.creds-setup-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  margin: 0 0 0.5rem 0;
+}
+
+.creds-setup-title-inline {
+  text-align: left;
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.creds-setup-subtitle {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.creds-setup-subtitle a {
+  color: var(--accent);
+}
+
+.creds-setup-desc {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin: 0 0 1rem 0;
+}
+
+.creds-setup .input-group {
+  margin-bottom: 1rem;
+}
+
+.creds-setup .text-input {
+  text-align: center;
+}
+
+.text-input-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5rem;
+  letter-spacing: 0.5em;
+  padding-left: 1.5em;
+}
+
+.btn-creds-verify {
+  width: 100%;
+  max-width: 280px;
+}
+
+.creds-setup-note {
+  font-size: 0.75rem;
+  color: var(--text-dimmest);
+  margin: 1rem 0 0 0;
+}
+
+.byok-setup {
+  margin-top: 1rem;
+}
+
+.text-input-mono {
+  font-family: var(--font-mono);
+}
+
+.text-input-center {
+  text-align: center;
+}
+
+.text-input-configured {
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.creds-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.25rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: var(--bg-chip);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  color: var(--text-heading);
+  font-family: var(--font-mono);
+}
+
+/* Creds Badge (header) */
+.creds-badge-wrapper {
+  display: inline-flex;
+}
+
+.creds-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  background: var(--bg-chip);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.creds-badge:hover {
+  border-color: var(--accent-border);
+  color: var(--text-secondary);
+}
+
+.creds-badge-icon {
+  color: var(--accent);
+  font-size: 0.7rem;
+}
+
+.creds-badge-count {
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.creds-badge-label {
+  color: var(--text-dimmer);
+}
+
+.creds-badge-buy {
+  margin-left: 0.25rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--border-light);
+  color: var(--accent);
+}
+
+/* Creds Modal */
+.creds-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.creds-modal-content {
+  width: 100%;
+  max-width: 560px;
+  background: linear-gradient(180deg, #16161e 0%, #111118 100%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.creds-modal-compact {
+  max-width: 400px;
+  text-align: center;
+  padding: 2rem;
+}
+
+.creds-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.creds-modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  margin: 0;
+}
+
+.creds-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-dimmer);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.creds-modal-close:hover {
+  color: var(--text-secondary);
+  filter: none;
+}
+
+/* Creds Packs */
+.creds-packs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 400px) {
+  .creds-packs {
+    grid-template-columns: 1fr;
+  }
+}
+
+.creds-pack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.25rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.creds-pack-popular {
+  border-color: var(--accent);
+}
+
+.creds-pack-best {
+  border-color: var(--warning);
+}
+
+.creds-pack-badge {
+  position: absolute;
+  top: -0.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.2rem 0.6rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  white-space: nowrap;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.creds-pack-popular .creds-pack-badge {
+  background: var(--accent);
+  color: var(--bg-base);
+}
+
+.creds-pack-best .creds-pack-badge {
+  background: var(--warning);
+  color: var(--bg-base);
+}
+
+.creds-pack-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  margin-bottom: 0.25rem;
+}
+
+.creds-pack-amount {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 0.75rem;
+}
+
+.creds-pack-price {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin-bottom: 0.25rem;
+}
+
+.creds-pack-for {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.creds-pack-perunit {
+  font-size: 0.75rem;
+  color: var(--text-dimmest);
+  margin-top: 0.5em;
+}
+
+.btn-creds-buy {
+  margin-top: 0.5rem;
+  padding: 0.6rem 2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #00d4aa 0%, #00a888 100%);
+  border: none;
+  border-radius: 6px;
+  color: #000;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.creds-pack .creds-coin {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.creds-pack:has(.btn-creds-buy:hover) .creds-coin {
+  animation: spin-coin 1s linear infinite;
+}
+
+@keyframes spin-coin {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
+}
+
+.creds-modal-footer {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.creds-switch-link {
+  color: var(--accent);
+  text-decoration: none;
+  margin-left: 0.5rem;
+}
+
+.creds-switch-link:hover {
+  text-decoration: underline;
+}
+
+/* Out of Creds */
+.creds-empty-icon {
+  font-size: 3rem;
+  color: var(--text-dimmest);
+  margin-bottom: 1rem;
+}
+
+.creds-empty-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  margin: 0 0 0.5rem 0;
+}
+
+.creds-empty-desc {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin: 0 0 1.5rem 0;
+}
+
+.creds-empty-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.creds-empty-actions .btn-primary,
+.creds-empty-actions .btn-secondary {
+  width: 100%;
+  justify-content: center;
+}
+
+
+/* Creds coin icon */
+.creds-coin {
+  color: #f5a623;
+  margin-right: 0.2em;
+}
+
+/* Creds link in nav */
+.creds-nav-link {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  text-decoration: none;
+  margin-left: -0.25rem;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.creds-nav-link:hover {
+  color: var(--accent);
+  filter: none;
+}
+
+.creds-nav-link.creds-empty {
+  color: var(--danger);
+}
+
+/* Creds Page */
+.creds-page-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem 0;
+}
+
+.creds-intro {
+  color: var(--text-muted);
+  margin: 0;
+  text-align: center;
+}
+
+.creds-current {
+  text-align: center;
+  padding: 1.5rem 2rem;
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.creds-current-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: var(--text-dimmer);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.creds-current-balance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.creds-current-balance.creds-empty {
+  color: var(--danger);
+}
+
+.creds-current-balance .creds-coin {
+  font-size: 0.7em;
+}
+
+.creds-current-count {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.creds-current-email {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+.creds-byok-link {
+  font-size: 0.8rem;
+  color: var(--text-dimmer);
+  margin-top: 0.75rem;
+}
+
+.creds-byok-link a {
+  color: var(--text-muted);
+  margin-left: 0.25rem;
+}
+
+.creds-packs-page {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.creds-packs-page .creds-pack {
+  min-width: 180px;
+  padding: 1.25rem 1.5rem;
+}
+
+@media (min-width: 480px) {
+  .creds-packs-page .creds-pack {
+    padding: 1.25rem 3.5rem;
+  }
+}
+
+.creds-login-prompt {
+  text-align: center;
+  padding: 2rem;
+  background: var(--accent-bg);
+  border-radius: 12px;
+  border: 1px solid var(--accent-border);
+}
+
+.creds-login-prompt p {
+  margin: 0 0 1rem;
+  color: var(--text-secondary);
+}
+
+/* Creds Payment/Checkout Modal */
+.creds-checkout-modal {
+  max-width: 400px;
+}
+
+.creds-email-input {
+  margin-bottom: 1rem;
+}
+
+.creds-email-input label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.creds-email-input .input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.creds-email-input .input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.creds-payment-element {
+  min-height: 200px;
+  margin-bottom: 1rem;
+}
+
+.creds-error {
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid var(--error);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: var(--error);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.creds-pay-btn {
+  width: 100%;
+  padding: 0.875rem;
+  font-size: 1rem;
+}
+
+.creds-success-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  margin-top: 1rem;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.creds-success-check {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Purchase History */
+.creds-history {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-dim);
+}
+
+.creds-history-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.creds-history-tab {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8rem;
+  background: transparent;
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.creds-history-tab:hover {
+  border-color: var(--border);
+  color: var(--text-body);
+}
+
+.creds-history-tab.active {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.creds-history-loading {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.creds-history-empty {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.creds-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.creds-history-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.creds-history-item:last-child {
+  border-bottom: none;
+}
+
+.creds-history-amount {
+  color: var(--accent);
+  font-weight: 600;
+  min-width: 3rem;
+}
+
+.creds-history-amount.creds-usage {
+  color: var(--text-muted);
+}
+
+.creds-history-desc {
+  flex: 1;
+  color: var(--text-body);
+}
+
+.creds-history-date {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}

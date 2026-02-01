@@ -6,6 +6,9 @@
 
 import { mkdir, rm, cp, readdir, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
+import pkg from './package.json';
+
+const APP_VERSION = pkg.version;
 
 const ROOT = import.meta.dir;
 
@@ -60,6 +63,9 @@ async function processIncludes(html: string): Promise<string> {
 
     result = result.replace(fullMatch, partialsCache.get(partialPath)!);
   }
+
+  // Inject app version
+  result = result.replace(/\{\{APP_VERSION\}\}/g, APP_VERSION);
 
   return result;
 }
@@ -116,7 +122,7 @@ async function copyPublicFiles() {
         const withIncludes = await processIncludes(content);
         const processed = injectEnvVars(withIncludes);
         await writeFile(destPath, processed);
-      } else if (entry.name.endsWith('.svg') || entry.name.endsWith('.png') || entry.name.endsWith('.ico') || entry.name.endsWith('.js') || entry.name.startsWith('_')) {
+      } else if (entry.name.endsWith('.svg') || entry.name.endsWith('.png') || entry.name.endsWith('.ico') || entry.name.endsWith('.js') || entry.name.endsWith('.json') || entry.name.startsWith('_')) {
         // Copy other static assets and Cloudflare Pages config files (_redirects, _headers)
         await cp(srcPath, destPath);
       }
@@ -127,9 +133,24 @@ async function copyPublicFiles() {
   console.log('✓ Processed HTML files and assets → dist/');
 }
 
-async function copyStyles() {
-  await cp(join(SRC, 'styles.css'), join(DIST, 'styles.css'));
-  console.log('✓ Copied styles.css → dist/');
+async function bundleStyles() {
+  const isDev = process.env.NODE_ENV !== 'production';
+  const result = await Bun.build({
+    entrypoints: [join(SRC, 'styles.css')],
+    outdir: DIST,
+    minify: !isDev,
+    naming: 'styles.css',
+  });
+
+  if (!result.success) {
+    console.error('CSS build failed:');
+    for (const log of result.logs) {
+      console.error(log);
+    }
+    process.exit(1);
+  }
+
+  console.log(`✓ Bundled styles.css → dist/ ${isDev ? '(dev mode, not minified)' : '(minified)'}`);
 }
 
 async function copyPartials() {
@@ -161,7 +182,7 @@ async function build() {
   await clean();
   await bundleClientJS();
   await copyPublicFiles();
-  await copyStyles();
+  await bundleStyles();
   await copyPartials();
   // Functions are handled by wrangler directly, no need to copy
 

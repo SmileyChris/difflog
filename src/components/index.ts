@@ -8,4 +8,5 @@ import './sync-dropdown';
 import './share-dropdown';
 import './reminders';
 import './public-diff';
+import './changelog';
 import './creds';

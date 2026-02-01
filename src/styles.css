@@ -1,4 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "./css/streak.css";
+@import "./css/creds.css";
 
 /* View Transitions - browser default crossfade */
 @view-transition {
@@ -49,14 +51,17 @@ body {
   min-height: 100vh;
   color: var(--text-primary);
   font-family: 'Inter', -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Layout */
 main {
+  width: 100%;
   max-width: 800px;
   margin: 0 auto;
   padding: 1rem;
-  min-height: 100vh;
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -643,7 +648,7 @@ main.narrow header {
   display: grid;
 }
 
-.setup-content > div {
+.setup-content>div {
   grid-area: 1 / 1;
 }
 
@@ -1261,16 +1266,17 @@ button:disabled {
 }
 
 .welcome-ago {
-  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 1.5rem;
   color: var(--text-dim);
-  display: block;
-  margin-top: 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 400;
 }
 
 .diff-time {
-  margin-left: 0.5em;
   font-family: var(--font-mono);
-  font-size: 0.9em;
+  font-size: 0.8em;
   opacity: 0.7;
 }
 
@@ -1316,7 +1322,7 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0 0.5rem;
+  padding: 0.25rem 0.5rem;
   margin-left: 0.5rem;
   font-size: 0.85rem;
   font-weight: 500;
@@ -1337,6 +1343,7 @@ button:disabled {
 
 .btn-generate-inline .generate-icon {
   font-size: 0.7rem;
+  padding-top: 0.2em;
 }
 
 .btn-generate-sm {
@@ -2117,30 +2124,52 @@ button:disabled {
 
 /* Animations */
 @keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.05); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
 }
 
 @keyframes scan {
-  0% { left: -40%; }
-  100% { left: 100%; }
+  0% {
+    left: -40%;
+  }
+
+  100% {
+    left: 100%;
+  }
 }
 
 @keyframes diamond-spin {
-  0% { transform: rotateY(0deg); }
-  100% { transform: rotateY(360deg); }
+  0% {
+    transform: rotateY(0deg);
+  }
+
+  100% {
+    transform: rotateY(360deg);
+  }
 }
 
 /* Transitions for Alpine */
 .fade-enter {
   opacity: 0;
 }
+
 .fade-enter-active {
   transition: opacity 0.3s ease;
 }
+
 .fade-leave-active {
   transition: opacity 0.2s ease;
 }
+
 .fade-leave-to {
   opacity: 0;
 }
@@ -2231,7 +2260,8 @@ kbd {
 .bookmark-btn-existing {
   background: var(--accent);
   opacity: 0.4;
-  font-size: 0;  /* Hide any inner content for solid star */
+  font-size: 0;
+  /* Hide any inner content for solid star */
   transform: translateY(-50%) scale(0.75);
 }
 
@@ -2242,7 +2272,8 @@ kbd {
 
 .bookmark-btn-existing:hover {
   opacity: 1 !important;
-  font-size: 1.2rem;  /* Show the minus on hover */
+  font-size: 1.2rem;
+  /* Show the minus on hover */
 }
 
 .bookmark-btn-existing:hover::after {
@@ -2262,8 +2293,13 @@ kbd {
 }
 
 @keyframes bookmark-pulse {
-  0% { background: rgba(0, 212, 170, 0.3); }
-  100% { background: transparent; }
+  0% {
+    background: rgba(0, 212, 170, 0.3);
+  }
+
+  100% {
+    background: transparent;
+  }
 }
 
 /* Bookmarks list */
@@ -3487,8 +3523,13 @@ button.profile-card-action-alt:hover:not(:disabled) {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .sync-banner-text {
@@ -3602,8 +3643,7 @@ button.profile-card-action-alt:hover:not(:disabled) {
 
 /* About Content - also applies to article in main */
 article {
-  max-width: 640px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 /* Brand inline */
@@ -3802,6 +3842,197 @@ article section strong {
   opacity: 0.5;
   font-size: 0.5em;
   vertical-align: middle;
+}
+
+.heart-red {
+  transition: color 0.15s;
+}
+
+.site-footer-link:hover .heart-red {
+  color: #e25555;
+}
+
+/* Changelog */
+.changelog-wrapper {
+  text-align: right;
+  padding: 0 1rem 0.5rem;
+  margin-top: -1rem;
+}
+
+.changelog-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-dimmest);
+  padding: 0.25rem 0.5rem;
+  transition: color 0.15s;
+}
+
+.changelog-btn:hover {
+  color: var(--accent);
+}
+
+.changelog-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.changelog-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.changelog-modal-content {
+  width: 500px;
+  max-width: 100%;
+  max-height: 80vh;
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-transform: none;
+}
+
+.changelog-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.changelog-modal-title {
+  font-size: 1rem;
+  color: var(--text-heading);
+  margin: 0;
+}
+
+.changelog-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.changelog-modal-close:hover {
+  color: var(--text-heading);
+}
+
+.changelog-modal-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+}
+
+.changelog-loading,
+.changelog-error {
+  text-align: center;
+  color: var(--text-dim);
+  padding: 2rem;
+}
+
+.changelog-error {
+  color: var(--error);
+}
+
+.changelog-versions {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.changelog-version {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.changelog-version:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.changelog-version-date {
+  font-size: 0.8rem;
+  color: var(--text-dimmest);
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.changelog-version-summary {
+  font-size: 0.95rem;
+  color: var(--text-heading);
+  margin: 0 0 0.25rem 0;
+  font-weight: 500;
+  text-align: left;
+}
+
+.changelog-version-num {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent);
+  font-weight: 600;
+  margin-right: 0.75rem;
+}
+
+.changelog-version-desc {
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.changelog-changes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: left;
+}
+
+.changelog-change {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.changelog-change.is-new {
+  color: var(--accent);
+}
+
+.changelog-change-icon {
+  font-size: 0.8rem;
+  opacity: 0.5;
+}
+
+.changelog-change-type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-dimmest);
+  text-transform: uppercase;
 }
 
 .about-footer {
@@ -4052,7 +4283,7 @@ article section strong {
   color: var(--text-dim);
 }
 
-.visibility-status-icon.visibility-status-public + .visibility-status-label {
+.visibility-status-icon.visibility-status-public+.visibility-status-label {
   color: var(--accent-dim);
 }
 
@@ -4234,560 +4465,6 @@ article section strong {
   color: var(--text-dim);
 }
 
-/* =====================================================
-   Creds / API Source UI
-   ===================================================== */
-
-/* API Source Selection (setup wizard) */
-.api-source-choice {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-
-.api-source-option {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex: 1;
-  padding: 0.75rem 1rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: left;
-  position: relative;
-}
-
-.api-source-option:hover {
-  border-color: var(--accent-border);
-  background: linear-gradient(135deg, var(--bg-card) 0%, #1a1a28 100%);
-}
-
-.api-source-option-selected {
-  border-color: var(--accent);
-  background: var(--accent-bg);
-}
-
-.api-source-option-icon {
-  font-size: 1.5rem;
-}
-
-.api-source-option-icon-claude {
-  width: 1.1rem;
-  height: 1.1rem;
-}
-
-.api-source-option-label {
-  color: var(--text-heading);
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-
-.api-source-badge {
-  color: var(--accent);
-  font-size: 1.1rem;
-}
-
-/* Creds Setup (email verification) */
-.creds-setup {
-  margin-top: 1rem;
-}
-
-.creds-code-form {
-  text-align: center;
-}
-
-.creds-setup-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-heading);
-  margin: 0 0 0.5rem 0;
-}
-
-.creds-setup-title-inline {
-  text-align: left;
-  display: flex;
-  align-items: baseline;
-  gap: 1rem;
-}
-
-.creds-setup-subtitle {
-  font-size: 0.85rem;
-  font-weight: 400;
-  color: var(--text-dim);
-}
-
-.creds-setup-subtitle a {
-  color: var(--accent);
-}
-
-.creds-setup-desc {
-  font-size: 0.9rem;
-  color: var(--text-dim);
-  margin: 0 0 1rem 0;
-}
-
-.creds-setup .input-group {
-  margin-bottom: 1rem;
-}
-
-.creds-setup .text-input {
-  text-align: center;
-}
-
-.text-input-code {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1.5rem;
-  letter-spacing: 0.5em;
-  padding-left: 1.5em;
-}
-
-.btn-creds-verify {
-  width: 100%;
-  max-width: 280px;
-}
-
-.creds-setup-note {
-  font-size: 0.75rem;
-  color: var(--text-dimmest);
-  margin: 1rem 0 0 0;
-}
-
-.byok-setup {
-  margin-top: 1rem;
-}
-
-.text-input-mono {
-  font-family: var(--font-mono);
-}
-
-.text-input-center {
-  text-align: center;
-}
-
-.text-input-configured {
-  font-family: var(--font-mono);
-  text-align: center;
-}
-
-.creds-balance {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.875rem 1.25rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  background: var(--bg-chip);
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  color: var(--text-heading);
-  font-family: var(--font-mono);
-}
-
-/* Creds Badge (header) */
-.creds-badge-wrapper {
-  display: inline-flex;
-}
-
-.creds-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.75rem;
-  background: var(--bg-chip);
-  border: 1px solid var(--border-light);
-  border-radius: 20px;
-  color: var(--text-dim);
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.creds-badge:hover {
-  border-color: var(--accent-border);
-  color: var(--text-secondary);
-}
-
-.creds-badge-icon {
-  color: var(--accent);
-  font-size: 0.7rem;
-}
-
-.creds-badge-count {
-  font-weight: 600;
-  color: var(--text-heading);
-}
-
-.creds-badge-label {
-  color: var(--text-dimmer);
-}
-
-.creds-badge-buy {
-  margin-left: 0.25rem;
-  padding-left: 0.5rem;
-  border-left: 1px solid var(--border-light);
-  color: var(--accent);
-}
-
-/* Creds Modal */
-.creds-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-
-.creds-modal-content {
-  width: 100%;
-  max-width: 560px;
-  background: linear-gradient(180deg, #16161e 0%, #111118 100%);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.5rem;
-}
-
-.creds-modal-compact {
-  max-width: 400px;
-  text-align: center;
-  padding: 2rem;
-}
-
-.creds-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.creds-modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-heading);
-  margin: 0;
-}
-
-.creds-modal-close {
-  background: none;
-  border: none;
-  color: var(--text-dimmer);
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-}
-
-.creds-modal-close:hover {
-  color: var(--text-secondary);
-  filter: none;
-}
-
-/* Creds Packs */
-.creds-packs {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-}
-
-@media (max-width: 400px) {
-  .creds-packs {
-    grid-template-columns: 1fr;
-  }
-}
-
-.creds-pack {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 1.25rem 1rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  text-align: center;
-}
-
-.creds-pack-popular {
-  border-color: var(--accent);
-}
-
-.creds-pack-best {
-  border-color: var(--warning);
-}
-
-.creds-pack-badge {
-  position: absolute;
-  top: -0.6rem;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0.2rem 0.6rem;
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  border-radius: 4px;
-  white-space: nowrap;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-}
-
-.creds-pack-popular .creds-pack-badge {
-  background: var(--accent);
-  color: var(--bg-base);
-}
-
-.creds-pack-best .creds-pack-badge {
-  background: var(--warning);
-  color: var(--bg-base);
-}
-
-.creds-pack-name {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-heading);
-  margin-bottom: 0.25rem;
-}
-
-.creds-pack-amount {
-  font-size: 0.85rem;
-  color: var(--text-dim);
-  margin-bottom: 0.75rem;
-}
-
-.creds-pack-price {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-heading);
-  margin-bottom: 0.25rem;
-}
-
-.creds-pack-for {
-  font-size: 0.75rem;
-  font-weight: 400;
-  color: var(--text-muted);
-}
-
-.creds-pack-perunit {
-  font-size: 0.75rem;
-  color: var(--text-dimmest);
-  margin-top: 0.5em;
-}
-
-.btn-creds-buy {
-  margin-top: 0.5rem;
-  padding: 0.6rem 2rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  background: linear-gradient(135deg, #00d4aa 0%, #00a888 100%);
-  border: none;
-  border-radius: 6px;
-  color: #000;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.creds-pack .creds-coin {
-  display: inline-block;
-  transition: transform 0.3s ease;
-}
-
-.creds-pack:has(.btn-creds-buy:hover) .creds-coin {
-  animation: spin-coin 1s linear infinite;
-}
-
-@keyframes spin-coin {
-  from { transform: rotateY(0deg); }
-  to { transform: rotateY(360deg); }
-}
-
-.creds-modal-footer {
-  margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-  text-align: center;
-  font-size: 0.85rem;
-  color: var(--text-dim);
-}
-
-.creds-switch-link {
-  color: var(--accent);
-  text-decoration: none;
-  margin-left: 0.5rem;
-}
-
-.creds-switch-link:hover {
-  text-decoration: underline;
-}
-
-/* Out of Creds */
-.creds-empty-icon {
-  font-size: 3rem;
-  color: var(--text-dimmest);
-  margin-bottom: 1rem;
-}
-
-.creds-empty-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-heading);
-  margin: 0 0 0.5rem 0;
-}
-
-.creds-empty-desc {
-  font-size: 0.9rem;
-  color: var(--text-dim);
-  margin: 0 0 1.5rem 0;
-}
-
-.creds-empty-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.creds-empty-actions .btn-primary,
-.creds-empty-actions .btn-secondary {
-  width: 100%;
-  justify-content: center;
-}
-
-
-/* Creds coin icon */
-.creds-coin {
-  color: #f5a623;
-  margin-right: 0.2em;
-}
-
-/* Creds link in nav */
-.creds-nav-link {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-  text-decoration: none;
-  margin-left: -0.25rem;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-}
-
-.creds-nav-link:hover {
-  color: var(--accent);
-  filter: none;
-}
-
-.creds-nav-link.creds-empty {
-  color: var(--danger);
-}
-
-/* Creds Page */
-.creds-page-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2rem;
-  padding: 2rem 0;
-}
-
-.creds-intro {
-  color: var(--text-muted);
-  margin: 0;
-  text-align: center;
-}
-
-.creds-current {
-  text-align: center;
-  padding: 1.5rem 2rem;
-  background: var(--bg-card);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-}
-
-.creds-current-label {
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
-  color: var(--text-dimmer);
-  text-transform: uppercase;
-  margin-bottom: 0.5rem;
-}
-
-.creds-current-balance {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: var(--text-heading);
-}
-
-.creds-current-balance.creds-empty {
-  color: var(--danger);
-}
-
-.creds-current-balance .creds-coin {
-  font-size: 0.7em;
-}
-
-.creds-current-count {
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.creds-current-email {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-top: 0.5rem;
-}
-
-.creds-byok-link {
-  font-size: 0.8rem;
-  color: var(--text-dimmer);
-  margin-top: 0.75rem;
-}
-
-.creds-byok-link a {
-  color: var(--text-muted);
-  margin-left: 0.25rem;
-}
-
-.creds-packs-page {
-  display: flex;
-  gap: 1.5rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.creds-packs-page .creds-pack {
-  min-width: 180px;
-  padding: 1.25rem 1.5rem;
-}
-
-@media (min-width: 480px) {
-  .creds-packs-page .creds-pack {
-    padding: 1.25rem 3.5rem;
-  }
-}
-
-.creds-login-prompt {
-  text-align: center;
-  padding: 2rem;
-  background: var(--accent-bg);
-  border-radius: 12px;
-  border: 1px solid var(--accent-border);
-}
-
-.creds-login-prompt p {
-  margin: 0 0 1rem;
-  color: var(--text-secondary);
-}
-
 /* Modal Overlay (generic) */
 .modal-overlay {
   position: fixed;
@@ -4836,159 +4513,4 @@ article section strong {
   color: var(--text-heading);
   margin: 0 0 1.5rem;
   text-align: center;
-}
-
-/* Creds Payment/Checkout Modal */
-.creds-checkout-modal {
-  max-width: 400px;
-}
-
-.creds-email-input {
-  margin-bottom: 1rem;
-}
-
-.creds-email-input label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.creds-email-input .input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-size: 0.95rem;
-}
-
-.creds-email-input .input:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.creds-payment-element {
-  min-height: 200px;
-  margin-bottom: 1rem;
-}
-
-.creds-error {
-  background: rgba(255, 107, 107, 0.1);
-  border: 1px solid var(--error);
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  color: var(--error);
-  font-size: 0.85rem;
-  margin-bottom: 1rem;
-}
-
-.creds-pay-btn {
-  width: 100%;
-  padding: 0.875rem;
-  font-size: 1rem;
-}
-
-.creds-success-inline {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: var(--accent-bg);
-  border: 1px solid var(--accent-border);
-  border-radius: 8px;
-  margin-top: 1rem;
-  color: var(--accent);
-  font-size: 0.9rem;
-}
-
-.creds-success-check {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-/* Purchase History */
-.creds-history {
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--border-dim);
-}
-
-.creds-history-tabs {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.creds-history-tab {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.8rem;
-  background: transparent;
-  border: 1px solid var(--border-dim);
-  border-radius: 4px;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.creds-history-tab:hover {
-  border-color: var(--border);
-  color: var(--text-body);
-}
-
-.creds-history-tab.active {
-  background: var(--accent-bg);
-  border-color: var(--accent-border);
-  color: var(--accent);
-}
-
-.creds-history-loading {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-}
-
-.creds-history-empty {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  opacity: 0.5;
-}
-
-.creds-history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.creds-history-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  font-size: 0.875rem;
-  border-bottom: 1px solid var(--border-dim);
-}
-
-.creds-history-item:last-child {
-  border-bottom: none;
-}
-
-.creds-history-amount {
-  color: var(--accent);
-  font-weight: 600;
-  min-width: 3rem;
-}
-
-.creds-history-amount.creds-usage {
-  color: var(--text-muted);
-}
-
-.creds-history-desc {
-  flex: 1;
-  color: var(--text-body);
-}
-
-.creds-history-date {
-  color: var(--text-muted);
-  font-size: 0.8rem;
 }

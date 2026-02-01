@@ -238,7 +238,9 @@ export async function checkStatus(
       try {
         // Hash plaintext content for deterministic comparison
         localDiffsHash = await computeContentHash(history);
-        localStarsHash = await computeContentHash(stars);
+        // Map stars to temporary objects with ID for hashing
+        const starsWithIds = stars.map(s => ({ ...s, id: starId(s) }));
+        localStarsHash = await computeContentHash(starsWithIds);
 
         needsSync = localDiffsHash !== status.diffs_hash || localStarsHash !== status.stars_hash;
       } catch (e) {
@@ -419,7 +421,9 @@ export async function uploadContent(
 
   // Compute hashes over plaintext content for deterministic comparison
   const diffsHash = await computeContentHash(history);
-  const starsHash = await computeContentHash(stars);
+  // Map stars to temporary objects with ID for hashing
+  const starsWithIds = stars.map(s => ({ ...s, id: starId(s) }));
+  const starsHash = await computeContentHash(starsWithIds);
 
   // Include profile data if modified
   const profileData = pending.profileModified ? {
@@ -598,7 +602,9 @@ export async function downloadContent(
 
   // Compute hashes over plaintext content for deterministic comparison
   const diffsHash = await computeContentHash(filteredHistory);
-  const starsHash = await computeContentHash(filteredStars);
+  // Map stars to temporary objects with ID for hashing
+  const starsWithIds = filteredStars.map(s => ({ ...s, id: starId(s) }));
+  const starsHash = await computeContentHash(starsWithIds);
 
   // Keep all pending modifications - they still need to be uploaded even if server has the item
   // (e.g., local changes like isPublic flag need to be pushed to server)
