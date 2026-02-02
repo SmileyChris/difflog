@@ -86,3 +86,16 @@ Docs use [Zensical](https://zensical.com/) (MkDocs-based). Config in `zensical.t
 
 - `docs/architecture/` — System design (encryption, sync, API)
 - `docs/operations/` — Deployment, cleanup, migrations
+
+## Releasing
+
+When ready to cut a release:
+
+1. **Bump version** in `package.json` (patch for fixes, minor for features)
+2. **Update changelog** in `public/changelog.json`:
+   - For patches: add entries to existing version's `changes` array with `"in": "x.y.z"`
+   - For minor: add new version object at top of `versions` array
+3. **Commit**: `release: vX.Y.Z`
+4. **Tag**: `git tag vX.Y.Z && git push --tags`
+
+See `docs/operations/changelog.md` for changelog format details.

@@ -9,7 +9,8 @@
         { "type": "feature", "text": "Streak tracking with weekly activity calendar", "in": "2.0.0" },
         { "type": "feature", "text": "Ctrl+click demo profile creation on setup", "in": "2.0.0" },
         { "type": "fix", "text": "Star hashing and Alpine.js key generation", "in": "2.0.0" },
-        { "type": "fix", "text": "Streak calendar shows full history from first diff", "in": "2.0.1" }
+        { "type": "fix", "text": "Streak calendar shows full history from first diff", "in": "2.0.1" },
+        { "type": "fix", "text": "Markdown links with nested brackets like [pdf] now render correctly", "in": "2.0.2" }
       ]
     },
     {
