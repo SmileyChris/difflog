@@ -19,7 +19,8 @@ function isSafeUrl(url: string): boolean {
 function parseInline(text: string): string {
   // Process bold, links, and inline code
   let result = '';
-  const regex = /(\*\*|__)(.+?)\1|\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`/g;
+  // Link pattern allows one level of nested brackets (e.g., [Title [pdf]](url))
+  const regex = /(\*\*|__)(.+?)\1|\[((?:[^\[\]]|\[[^\]]*\])*)\]\(([^)]+)\)|`([^`]+)`/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
