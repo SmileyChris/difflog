@@ -25,6 +25,8 @@ jobs:
 
       - name: Build
         run: bun run build
+        env:
+          NODE_ENV: production
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

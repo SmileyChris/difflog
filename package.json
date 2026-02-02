@@ -7,7 +7,7 @@
     "dev": "bun run build && bun run dev:migrate && (trap 'kill -INT 0' EXIT; bun run watch.ts & wrangler pages dev dist --persist-to=.wrangler/state --live-reload)",
     "dev:static": "bun --hot server.ts",
     "build": "bun run build.ts",
-    "deploy": "bun run build && wrangler pages deploy dist",
+    "deploy": "NODE_ENV=production bun run build && wrangler pages deploy dist",
     "db:create": "wrangler d1 create difflog-db",
     "db:migrate": "wrangler d1 migrations apply difflog-db --remote",
     "dev:migrate": "wrangler d1 migrations apply difflog-db --local --persist-to=.wrangler/state",
