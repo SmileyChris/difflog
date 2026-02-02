@@ -9,7 +9,7 @@ interface Profile {
 }
 
 const DEPTH_INSTRUCTIONS: Record<string, string> = {
-  quick: 'Keep it very concise. 1-2 bullet points per section max. Headlines and key facts only.',
+  quick: 'Keep it very concise. Max 3 sections, 1-2 bullet points each. Headlines and key facts only. Target ~500 words total.',
   standard: 'Provide balanced coverage. 2-4 bullet points per section with key details and context.',
   deep: 'Provide comprehensive analysis. Include background context, implications, and detailed analysis for each item.'
 };

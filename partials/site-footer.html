@@ -13,12 +13,12 @@
   <!-- @dev --><a href="/_dev/design.html" class="changelog-btn" style="margin-right: 0.5rem;">Design</a><!-- @enddev -->
   <button class="changelog-btn" @click="show()">
     v{{APP_VERSION}}
-    <span class="changelog-dot" x-show="hasUnseen" x-cloak></span>
+    <span class="changelog-dot" x-show="showDot" x-cloak></span>
   </button>
   <!-- Changelog Modal -->
   <dialog x-dialog="open" @close="hide()">
     <header>
-      <h2 class="dialog-title">What's New</h2>
+      <h2 class="dialog-title" x-text="hasUnseen ? 'What\'s new in diff·log' : 'diff·log changes'"></h2>
       <button class="dialog-close" x-dialog-close>&times;</button>
     </header>
     <div class="dialog-body">
@@ -30,22 +30,24 @@
       </template>
       <template x-if="data && !loading">
         <div class="changelog-versions">
-          <template x-for="version in data.versions" :key="version.version">
+          <template x-for="version in visibleVersions" :key="version.version">
             <div class="changelog-version">
               <div class="changelog-version-date" x-text="formatDate(version.date)"></div>
               <p class="changelog-version-summary"><span class="changelog-version-num" x-text="'v' + version.version"></span> <span x-text="version.summary"></span></p>
-              <p class="changelog-version-desc" x-show="version.description" x-text="version.description"></p>
-              <ul class="changelog-changes">
+              <p class="changelog-version-desc" x-show="version.description"><span x-text="version.description"></span> <a href="#" class="link-secondary" x-show="!isVersionExpanded(version) && version.changes?.length" @click.prevent="toggleVersion(version)">See highlights</a></p>
+              <ul class="changelog-changes" x-show="isVersionExpanded(version)">
                 <template x-for="change in version.changes" :key="change.text">
                   <li class="changelog-change" :class="{ 'is-new': isNewChange(change) }">
                     <span class="changelog-change-icon" x-show="getChangeIcon(change.type)" x-text="getChangeIcon(change.type)"></span>
                     <span class="changelog-change-type" x-show="getChangeFallback(change.type)" x-text="getChangeFallback(change.type)"></span>
                     <span x-text="change.text"></span>
+                    <code class="changelog-change-version" x-show="change.in && (!change.in.endsWith('.0') || isNewChange(change))"><span class="changelog-dot-inline" x-show="isNewChange(change)"></span><span x-text="change.in"></span></code>
                   </li>
                 </template>
               </ul>
             </div>
           </template>
+          <button class="changelog-more" x-show="!showAll && hiddenCount > 0" @click="showAll = true" x-text="hiddenCount + ' older'"></button>
         </div>
       </template>
     </div>

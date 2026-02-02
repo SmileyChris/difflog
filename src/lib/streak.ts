@@ -13,6 +13,7 @@ export interface CalendarDay {
     isToday: boolean;
     isOutside: boolean;
     label: string;
+    diffCount: number;
 }
 
 export type CalendarWeek = CalendarDay[];
@@ -104,9 +105,10 @@ function toLocalDateString(date: Date): string {
 /**
  * Generate calendar grid data from streak start to today.
  * Groups weeks by month.
+ * @param startDateStr - ISO date string of the first diff
+ * @param diffCounts - Map of ISO date strings (YYYY-MM-DD) to diff counts
  */
-export function getStreakCalendar(startDateStr: string | null, activeDates: string[]): CalendarMonth[] {
-    const activeSet = new Set(activeDates);
+export function getStreakCalendar(startDateStr: string | null, diffCounts: Map<string, number>): CalendarMonth[] {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -150,7 +152,8 @@ export function getStreakCalendar(startDateStr: string | null, activeDates: stri
         const week: CalendarWeek = [];
         for (let i = 0; i < 7; i++) {
             const iso = toLocalDateString(iter);
-            const isActive = activeSet.has(iso);
+            const count = diffCounts.get(iso) || 0;
+            const isActive = count > 0;
             const isToday = iter.getTime() === today.getTime();
             const isOutside = iter.getMonth() !== currentMonth;
 
@@ -161,7 +164,8 @@ export function getStreakCalendar(startDateStr: string | null, activeDates: stri
                 isGap: !isActive && iter >= firstDiff && iter <= today && !isOutside,
                 isToday,
                 isOutside,
-                label: iter.getDate().toString()
+                label: iter.getDate().toString(),
+                diffCount: count
             });
 
             iter.setDate(iter.getDate() + 1);

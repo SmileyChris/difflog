@@ -41,17 +41,40 @@ Alpine.data('changelog', () => ({
   error: '',
   data: null as ChangelogData | null,
   lastSeen: '',
-
-  get currentVersion(): string {
-    return (this.$el as HTMLElement).dataset.version || '';
-  },
+  showAll: false,
+  currentVersion: '',
+  dotDismissed: false,
+  expandedVersions: [] as string[],
 
   get hasUnseen(): boolean {
     if (!this.lastSeen || !this.currentVersion) return false;
     return compareVersions(this.currentVersion, this.lastSeen) > 0;
   },
 
+  get showDot(): boolean {
+    return this.hasUnseen && !this.dotDismissed;
+  },
+
+  get visibleVersions(): Version[] {
+    if (!this.data) return [];
+    if (this.showAll) return this.data.versions;
+
+    // Show all versions that have unseen changes
+    const visible = this.data.versions.filter(v =>
+      v.changes.some(c => c.in && compareVersions(c.in, this.lastSeen) > 0)
+    );
+
+    // Always show at least the latest version
+    return visible.length > 0 ? visible : this.data.versions.slice(0, 1);
+  },
+
+  get hiddenCount(): number {
+    if (!this.data) return 0;
+    return Math.max(0, this.data.versions.length - this.visibleVersions.length);
+  },
+
   init() {
+    this.currentVersion = (this.$el as HTMLElement).dataset.version || '';
     this.lastSeen = localStorage.getItem(STORAGE_KEYS.CHANGELOG_SEEN) || '';
 
     // First visit - set current version as seen (no dot on first load)
@@ -63,6 +86,7 @@ Alpine.data('changelog', () => ({
 
   async show() {
     this.open = true;
+    this.dotDismissed = true;
 
     if (!this.data) {
       this.loading = true;
@@ -78,21 +102,38 @@ Alpine.data('changelog', () => ({
         this.loading = false;
       }
     }
-
-    // Mark as seen
-    if (this.currentVersion) {
-      this.lastSeen = this.currentVersion;
-      localStorage.setItem(STORAGE_KEYS.CHANGELOG_SEEN, this.currentVersion);
-    }
   },
 
   hide() {
     this.open = false;
+    this.showAll = false;
+    this.expandedVersions = [];
+
+    // Save to storage for next session, but keep lastSeen unchanged for this session
+    if (this.currentVersion) {
+      localStorage.setItem(STORAGE_KEYS.CHANGELOG_SEEN, this.currentVersion);
+    }
   },
 
   isNewChange(change: Change): boolean {
-    if (!this.lastSeen) return false;
+    if (!this.lastSeen || !change.in) return false;
     return compareVersions(change.in, this.lastSeen) > 0;
+  },
+
+  hasUnseenChanges(version: Version): boolean {
+    return version.changes.some(c => this.isNewChange(c));
+  },
+
+  isVersionExpanded(version: Version): boolean {
+    return this.hasUnseenChanges(version) || this.expandedVersions.includes(version.version);
+  },
+
+  toggleVersion(version: Version) {
+    if (this.expandedVersions.includes(version.version)) {
+      this.expandedVersions = this.expandedVersions.filter(v => v !== version.version);
+    } else {
+      this.expandedVersions = [...this.expandedVersions, version.version];
+    }
   },
 
   getChangeIcon(type: string): string {

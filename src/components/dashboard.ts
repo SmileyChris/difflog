@@ -1,5 +1,5 @@
 import Alpine from 'alpinejs';
-import { SCAN_MESSAGES, DEPTHS, WAIT_TIPS } from '../lib/constants';
+import { SCAN_MESSAGES, DEPTHS, DEPTH_TOKEN_LIMITS, WAIT_TIPS } from '../lib/constants';
 import { timeAgo, daysSince, getCurrentDateFormatted } from '../lib/time';
 import { buildPrompt } from '../lib/prompt';
 import { starId } from '../lib/sync';
@@ -63,6 +63,13 @@ Alpine.data('dashboard', () => ({
     if (!this.diff) {
       this.loadLatestDiff();
     }
+
+    // Re-evaluate when history changes from sync
+    (this as any).$watch('$store.app.history', () => {
+      if (!this.diff && !this.generating && !this.error) {
+        this.loadLatestDiff();
+      }
+    });
   },
 
   async checkPendingDiffs() {
@@ -480,7 +487,7 @@ Alpine.data('dashboard', () => ({
           },
           body: JSON.stringify({
             model: 'claude-sonnet-4-5',
-            max_tokens: 4096,
+            max_tokens: DEPTH_TOKEN_LIMITS[this.selectedDepth] || 8192,
             messages: [{ role: 'user', content: prompt }],
             tools: [{
               name: 'submit_diff',
@@ -510,6 +517,11 @@ Alpine.data('dashboard', () => ({
         }
 
         const result = await res.json();
+
+        if (result.stop_reason === 'max_tokens') {
+          throw new Error('Response truncated: the diff exceeded the token limit. Try a shallower depth setting.');
+        }
+
         const toolUse = result.content.find((b: any) => b.type === 'tool_use');
         if (!toolUse?.input?.content) {
           throw new Error('No content returned from API');
@@ -677,5 +689,26 @@ Alpine.data('dashboard', () => ({
 
   dismissSyncBanner() {
     this.syncBannerDismissed = true;
+  },
+
+  goToDiffOnDate(isoDate: string) {
+    const history = (this as any).$store.app.history;
+    // Find all diffs that match this date (YYYY-MM-DD)
+    const matches = history.filter((d: any) => {
+      const diffDate = new Date(d.generated_at);
+      const diffIso = `${diffDate.getFullYear()}-${String(diffDate.getMonth() + 1).padStart(2, '0')}-${String(diffDate.getDate()).padStart(2, '0')}`;
+      return diffIso === isoDate;
+    });
+    if (matches.length === 0) return;
+
+    // If current diff is one of the matches, cycle to the next one
+    const currentIdx = matches.findIndex((d: any) => d.id === this.diff?.id);
+    if (currentIdx >= 0) {
+      // Cycle to next diff on this day
+      this.diff = matches[(currentIdx + 1) % matches.length];
+    } else {
+      // Show first diff on this day
+      this.diff = matches[0];
+    }
   }
 }));

@@ -10,6 +10,12 @@ export const DEPTHS = [
   { id: 'deep', label: 'Deep Dive', desc: '10+ min, full analysis', icon: '\uD83D\uDD2C' }
 ] as const;
 
+export const DEPTH_TOKEN_LIMITS: Record<string, number> = {
+  quick: 4096,
+  standard: 8192,
+  deep: 16384
+};
+
 export const SCAN_MESSAGES = [
   { text: "Scanning HN, Reddit, GitHub, Lobsters, Dev.to...", icon: "\uD83D\uDCE1" },
   { text: "Analyzing your tech interests...", icon: "\uD83D\uDD0D" },

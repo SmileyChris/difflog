@@ -1,7 +1,7 @@
 import Alpine from 'alpinejs';
 import { renderMarkdown } from './lib/markdown';
 import { timeAgo } from './lib/time';
-import { calculateStreak, getStreakCalendar, type StreakResult, type CalendarWeek } from './lib/streak';
+import { calculateStreak, getStreakCalendar, type StreakResult, type CalendarMonth } from './lib/streak';
 import { ApiError } from './lib/api';
 import {
   getSyncPassword,
@@ -168,9 +168,16 @@ Alpine.store('app', {
     return calculateStreak(dates);
   },
 
-  get streakCalendar(): CalendarWeek[] {
+  get streakCalendar(): CalendarMonth[] {
     const streak = this.streak;
-    return getStreakCalendar(streak.startDate, streak.activeDates);
+    // Build a map of date -> diff count
+    const diffCounts = new Map<string, number>();
+    for (const diff of this.history) {
+      const d = new Date(diff.generated_at);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      diffCounts.set(iso, (diffCounts.get(iso) || 0) + 1);
+    }
+    return getStreakCalendar(streak.startDate, diffCounts);
   },
 
   // Sync state for UI

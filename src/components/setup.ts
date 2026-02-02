@@ -337,22 +337,23 @@ Alpine.data('setup', () => ({
         customFocus: ''
       });
 
-      // Generate 5 demo diffs over the last 10 days (every 2 days)
+      // Generate demo diffs over the last 10 days (every 2 days, with 2 diffs on day 2)
       const now = new Date();
       const demoDiffs = [];
+
+      const titles = [
+        'Developer Ecosystem Brief',
+        'Tech Stack Updates',
+        'Platform & Tools Roundup',
+        'Language & Framework News',
+        'Infrastructure & DevTools Digest',
+        'Morning Tech Roundup'
+      ];
 
       for (let i = 0; i < 5; i++) {
         const daysAgo = i * 2;
         const date = new Date(now);
         date.setDate(date.getDate() - daysAgo);
-
-        const titles = [
-          'Developer Ecosystem Brief',
-          'Tech Stack Updates',
-          'Platform & Tools Roundup',
-          'Language & Framework News',
-          'Infrastructure & DevTools Digest'
-        ];
 
         demoDiffs.push({
           id: crypto.randomUUID(),
@@ -361,6 +362,19 @@ Alpine.data('setup', () => ({
           generated_at: date.toISOString(),
           duration_seconds: 15 + Math.floor(Math.random() * 20)
         });
+
+        // Add a second diff on day 2 (2 days ago) to demo multiple diffs per day
+        if (daysAgo === 2) {
+          const earlierDate = new Date(date);
+          earlierDate.setHours(earlierDate.getHours() - 8);
+          demoDiffs.push({
+            id: crypto.randomUUID(),
+            title: titles[5],
+            content: this.generateDemoContent(daysAgo),
+            generated_at: earlierDate.toISOString(),
+            duration_seconds: 15 + Math.floor(Math.random() * 20)
+          });
+        }
       }
 
       // Add diffs to history using the setter (newest first)

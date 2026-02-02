@@ -2655,6 +2655,17 @@ kbd {
   color: var(--accent);
 }
 
+.link-secondary {
+  color: var(--text-subtle);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.link-secondary:hover {
+  color: var(--accent);
+}
+
 /* Profiles Page */
 .profiles-section {
   margin-bottom: 2.5rem;
@@ -3014,12 +3025,10 @@ kbd {
 }
 
 .profile-count-link {
-  color: var(--text-subtle);
   text-decoration: none;
-  transition: color 0.15s;
 }
 
-.profile-count-link:hover {
+.profile-count-link:hover .link-secondary {
   color: var(--accent);
 }
 
@@ -3946,6 +3955,16 @@ article section strong {
   border-radius: 50%;
 }
 
+.changelog-dot-inline {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 50%;
+  margin-right: 0.25rem;
+  vertical-align: middle;
+}
+
 
 .changelog-loading,
 .changelog-error {
@@ -4024,7 +4043,30 @@ article section strong {
 }
 
 .changelog-change.is-new {
+  color: var(--text);
+}
+
+.changelog-change.is-new .changelog-change-version {
   color: var(--accent);
+}
+
+.changelog-more {
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-subtle);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.changelog-more:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .changelog-change-icon {
@@ -4037,6 +4079,13 @@ article section strong {
   font-size: 0.7rem;
   color: var(--text-disabled);
   text-transform: uppercase;
+}
+
+.changelog-change-version {
+  font-size: 0.6rem;
+  color: var(--text-disabled);
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .about-footer {
@@ -4462,6 +4511,14 @@ article section strong {
 .public-diff-date {
   font-size: 0.9rem;
   color: var(--text-subtle);
+}
+
+.public-diff-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+  line-height: 1.2;
 }
 
 /* Modal Overlay (generic) */
