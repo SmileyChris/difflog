@@ -1,8 +1,10 @@
 import Alpine from 'alpinejs';
 import persist from '@alpinejs/persist';
+import { registerDirectives } from './directives';
 
-// Initialize plugins BEFORE importing store/components
+// Initialize plugins and directives BEFORE importing store/components
 Alpine.plugin(persist);
+registerDirectives(Alpine);
 
 // Dynamic imports ensure plugins are registered first
 async function init() {

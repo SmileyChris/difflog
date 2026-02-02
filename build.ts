@@ -47,7 +47,7 @@ const CLIENT_ENV_VARS: Record<string, string> = {
   STRIPE_PK: process.env.STRIPE_PK || 'pk_test_xxx',
 };
 
-async function processIncludes(html: string): Promise<string> {
+async function processIncludes(html: string, isDev: boolean): Promise<string> {
   const includeRegex = /<!-- @include (\S+) -->/g;
   let result = html;
   let match;
@@ -63,6 +63,11 @@ async function processIncludes(html: string): Promise<string> {
 
     result = result.replace(fullMatch, partialsCache.get(partialPath)!);
   }
+
+  // Process dev-only blocks: <!-- @dev -->...<!-- @enddev -->
+  result = result.replace(/<!-- @dev -->([\s\S]*?)<!-- @enddev -->/g, (_, content) =>
+    isDev ? content : ''
+  );
 
   // Inject app version
   result = result.replace(/\{\{APP_VERSION\}\}/g, APP_VERSION);
@@ -109,7 +114,12 @@ async function copyPublicFiles() {
     await mkdir(destDir, { recursive: true });
     const entries = await readdir(srcDir, { withFileTypes: true });
 
+    const isDev = process.env.NODE_ENV !== 'production';
+
     for (const entry of entries) {
+      // Skip _dev folders in production
+      if (!isDev && entry.name === '_dev') continue;
+
       const srcPath = join(srcDir, entry.name);
       const destPath = join(destDir, entry.name);
 
@@ -119,7 +129,7 @@ async function copyPublicFiles() {
       } else if (entry.name.endsWith('.html')) {
         // Process HTML files for includes and env vars
         const content = await readFile(srcPath, 'utf-8');
-        const withIncludes = await processIncludes(content);
+        const withIncludes = await processIncludes(content, isDev);
         const processed = injectEnvVars(withIncludes);
         await writeFile(destPath, processed);
       } else if (entry.name.endsWith('.svg') || entry.name.endsWith('.png') || entry.name.endsWith('.ico') || entry.name.endsWith('.js') || entry.name.endsWith('.json') || entry.name.startsWith('_')) {

@@ -4,14 +4,25 @@
   display: flex;
   align-items: center;
   z-index: 10;
+  outline: none;
 }
 
 .streak-badge-btn {
+  display: flex;
+  align-items: center;
+  color: var(--streak);
+  font-weight: 600;
+  font-size: 0.9em;
+  cursor: help;
   transition: opacity 0.2s;
 }
 
 .streak-badge-btn:hover {
   opacity: 0.8;
+}
+
+.streak-icon {
+  margin-right: 0.25rem;
 }
 
 .streak-dropdown {
@@ -63,10 +74,10 @@
   color: var(--danger);
   font-size: 0.8rem;
   font-weight: normal;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
   margin-top: -0.5em;
   line-height: 1.4;
-  /* Removed bg and padding for text-only style */
+  text-align: right;
 }
 
 /* ... existing styles ... */
@@ -99,6 +110,27 @@
   padding-top: 1rem;
 }
 
+.streak-month {
+  margin-bottom: 1rem;
+}
+
+.streak-month-label {
+  font-size: 0.75em;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+}
+
+.streak-calendar-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+  text-align: center;
+  font-size: 0.7em;
+  color: var(--text-dimmest);
+}
+
 .streak-calendar {
   display: flex;
   flex-direction: column;
@@ -117,7 +149,7 @@
   align-items: center;
   justify-content: center;
   font-size: 0.85rem;
-  color: var(--text-dimmest);
+  color: var(--text-dim);
   border-radius: 4px;
   cursor: default;
 }
@@ -127,8 +159,7 @@
 }
 
 .day-active {
-  color: #10b981;
-  /* Green for success */
+  color: var(--success);
 }
 
 .day-active span {

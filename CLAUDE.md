@@ -20,7 +20,31 @@ bun run docs         # Serve architecture documentation locally
 bun test             # Run tests
 ```
 
-**Note:** No tsconfig.json. Use `bun run build` to verify TypeScript.
+**Note:** This project has no tsconfig.json. Do not use `npx tsc`. Do not build after changes, the development server rebuilds and makes you doing this redundant.
+
+## Architecture
+
+**Multi-page with View Transitions** — each page is a full HTML document in `public/`. CSS View Transitions provide smooth cross-document animations. Each page works standalone on direct load.
+
+### Pages (in `public/`)
+- `index.html` (`/`) — Dashboard: profile summary, generate button, diff display
+- `welcome.html` (`/welcome`) — Landing page for new users
+- `setup.html` (`/setup`) — 7-step profile setup wizard
+- `profiles.html` (`/profiles`) — Profile management, sync, sharing
+- `archive.html` (`/archive`) — Past diffs list
+- `stars.html` (`/stars`) — Bookmarked paragraphs
+
+### Client-Side State
+Alpine.js with `$persist` plugin for localStorage persistence. Keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-active-profile`.
+
+### API Flow
+1. User clicks Generate → fetches `/api/feeds` for context
+2. Builds prompt with `src/lib/prompt.ts`
+3. Calls Anthropic API directly from browser (API key in localStorage)
+4. Stores markdown in history, renders with `src/lib/markdown.ts`
+
+### Sync System
+Local-first with optional password-protected cloud sync via Cloudflare D1. All data encrypted client-side (AES-GCM) before upload. See `src/lib/sync.ts` and `src/lib/crypto.ts`.
 
 ## Key Directories
 
@@ -52,4 +76,12 @@ The changelog modal shows users what's new. Version from package.json is injecte
 
 ## Styling
 
-Dark theme with `#00d4aa` accent. Class-based CSS in `src/styles.css` and `src/css/`.
+Class-based CSS in `src/styles.css` with CSS custom properties. Other styles done as part of the build system.
+Use and update the design language in `_dev/design.html` where appropriate.
+
+## Documentation
+
+Docs use [Zensical](https://zensical.com/) (MkDocs-based). Config in `zensical.toml`.
+
+- `docs/architecture/` — System design (encryption, sync, API)
+- `docs/operations/` — Deployment, cleanup, migrations
