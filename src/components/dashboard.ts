@@ -549,5 +549,26 @@ Alpine.data('dashboard', () => ({
 
   dismissSyncBanner() {
     this.syncBannerDismissed = true;
+  },
+
+  goToDiffOnDate(isoDate: string) {
+    const history = (this as any).$store.app.history;
+    // Find all diffs that match this date (YYYY-MM-DD)
+    const matches = history.filter((d: any) => {
+      const diffDate = new Date(d.generated_at);
+      const diffIso = `${diffDate.getFullYear()}-${String(diffDate.getMonth() + 1).padStart(2, '0')}-${String(diffDate.getDate()).padStart(2, '0')}`;
+      return diffIso === isoDate;
+    });
+    if (matches.length === 0) return;
+
+    // If current diff is one of the matches, cycle to the next one
+    const currentIdx = matches.findIndex((d: any) => d.id === this.diff?.id);
+    if (currentIdx >= 0) {
+      // Cycle to next diff on this day
+      this.diff = matches[(currentIdx + 1) % matches.length];
+    } else {
+      // Show first diff on this day
+      this.diff = matches[0];
+    }
   }
 }));

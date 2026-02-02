@@ -160,10 +160,37 @@
 
 .day-active {
   color: var(--success);
+  cursor: pointer;
 }
 
-.day-active span {
+.day-active:hover {
+  background: var(--bg-hover);
+}
+
+.day-diamond {
+  position: relative;
   filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.3));
+}
+
+.day-diamond.has-multi {
+  transform: translateX(-0.3em);
+}
+
+.day-diamond.has-multi::before,
+.day-diamond.has-multi::after {
+  content: "◆";
+  position: absolute;
+  left: 0;
+}
+
+.day-diamond.has-multi::before {
+  opacity: 0.7;
+  transform: translateX(0.3em);
+}
+
+.day-diamond.has-multi::after {
+  opacity: 0.4;
+  transform: translateX(0.6em);
 }
 
 .day-gap-dot {

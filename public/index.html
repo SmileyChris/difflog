@@ -134,8 +134,9 @@
                             <template x-for="day in week">
                               <div class="calendar-day"
                                 :class="{ 'day-active': day.isActive, 'day-gap': day.isGap, 'day-today': day.isToday, 'day-outside': day.isOutside }"
-                                :title="day.isActive ? new Date(day.iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''">
-                                <span x-show="day.isActive">&#9670;</span>
+                                :title="day.isActive ? new Date(day.iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + (day.diffCount > 1 ? ', ' + day.diffCount + ' diffs' : '') : ''"
+                                @click="day.isActive && goToDiffOnDate(day.iso)">
+                                <span class="day-diamond" x-show="day.isActive" :class="{ 'has-multi': day.diffCount > 1 }">&#9670;</span>
                                 <span x-show="!day.isActive && day.isGap" class="day-gap-dot">&middot;</span>
                               </div>
                             </template>
