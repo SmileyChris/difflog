@@ -133,7 +133,7 @@
                           <div class="calendar-week">
                             <template x-for="day in week">
                               <div class="calendar-day"
-                                :class="{ 'day-active': day.isActive, 'day-gap': day.isGap, 'day-today': day.isToday }"
+                                :class="{ 'day-active': day.isActive, 'day-gap': day.isGap, 'day-today': day.isToday, 'day-outside': day.isOutside }"
                                 :title="day.isActive ? new Date(day.iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''">
                                 <span x-show="day.isActive">&#9670;</span>
                                 <span x-show="!day.isActive && day.isGap" class="day-gap-dot">&middot;</span>
