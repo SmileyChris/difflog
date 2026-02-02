@@ -1,5 +1,5 @@
 import Alpine from 'alpinejs';
-import { SCAN_MESSAGES, DEPTHS, WAIT_TIPS } from '../lib/constants';
+import { SCAN_MESSAGES, DEPTHS, DEPTH_TOKEN_LIMITS, WAIT_TIPS } from '../lib/constants';
 import { timeAgo, daysSince, getCurrentDateFormatted } from '../lib/time';
 import { buildPrompt } from '../lib/prompt';
 import { starId } from '../lib/sync';
@@ -367,7 +367,7 @@ Alpine.data('dashboard', () => ({
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-5',
-          max_tokens: 4096,
+          max_tokens: DEPTH_TOKEN_LIMITS[this.selectedDepth] || 8192,
           messages: [{ role: 'user', content: prompt }],
           tools: [{
             name: 'submit_diff',
@@ -397,6 +397,11 @@ Alpine.data('dashboard', () => ({
       }
 
       const result = await res.json();
+
+      if (result.stop_reason === 'max_tokens') {
+        throw new Error('Response truncated: the diff exceeded the token limit. Try a shallower depth setting.');
+      }
+
       const toolUse = result.content.find((b: any) => b.type === 'tool_use');
       if (!toolUse?.input?.content) {
         throw new Error('No content returned from API');
