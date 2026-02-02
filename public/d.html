@@ -35,14 +35,8 @@
 
     <!-- Diff Content -->
     <div x-show="diff && !loading && !error">
-      <div class="public-diff-meta">
-        <span class="public-diff-date" x-text="diff ? new Date(diff.generated_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''"></span>
-      </div>
+      <h1 class="public-diff-title" x-show="diff?.title" x-text="diff?.title"></h1>
       <div class="diff-container">
-        <h1 class="diff-title" x-show="diff?.title">
-          <span class="diff-title-icon">&#9632;</span>
-          <span x-text="diff?.title"></span>
-        </h1>
         <div class="diff-content" x-html="renderedContent"></div>
       </div>
     </div>
