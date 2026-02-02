@@ -21,6 +21,10 @@ nav = [
     { "API Endpoints" = "architecture/api.md" },
   ]},
   { "Operations" = "operations/index.md" },
+  { "Future" = [
+    { "Roadmap" = "future/index.md" },
+    { "CLI Interface" = "future/cli.md" }
+  ]},
 ]
 
 [project.theme]
