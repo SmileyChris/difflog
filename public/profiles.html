@@ -300,12 +300,8 @@
         </div>
 
         <!-- Import Modal -->
-        <div class="unlock-modal" x-show="showImport" x-transition.opacity>
-          <div
-            class="unlock-modal-content"
-            @click.outside="showImport = false; importError = ''"
-          >
-            <div class="unlock-modal-body">
+        <dialog class="sm dark" x-dialog="showImport" @close="importError = ''">
+            <div class="dialog-body padded">
               <h2 class="unlock-title">Import Shared Profile</h2>
               <p class="unlock-subtitle">Sync a profile that's been uploaded to the server from another device.</p>
 
@@ -349,11 +345,8 @@
               ></div>
             </div>
 
-            <div class="unlock-actions">
-              <button
-                class="btn-secondary"
-                @click="showImport = false; importError = ''"
-              >
+            <footer>
+              <button class="btn-secondary" x-dialog-close>
                 Cancel
               </button>
               <button
@@ -364,17 +357,12 @@
                 <span x-show="!importing">Import</span>
                 <span x-show="importing">Importing...</span>
               </button>
-            </div>
-          </div>
-        </div>
+            </footer>
+        </dialog>
 
         <!-- QR Scanner Modal -->
-        <div class="unlock-modal" x-show="showScanner" x-transition.opacity>
-          <div
-            class="unlock-modal-content scanner-modal"
-            @click.outside="stopScanner()"
-          >
-            <div class="unlock-modal-body">
+        <dialog class="sm dark scanner-modal" x-dialog="showScanner" @close="stopScanner()">
+            <div class="dialog-body padded">
               <h2 class="unlock-title">Scan QR Code</h2>
               <p class="unlock-subtitle">
                 Point your camera at a profile QR code
@@ -398,24 +386,16 @@
               ></div>
             </div>
 
-            <div class="unlock-actions">
-              <button
-                class="btn-secondary"
-                @click="stopScanner(); showImport = true"
-              >
+            <footer>
+              <button class="btn-secondary" x-dialog-close @click="showImport = true">
                 Back
               </button>
-            </div>
-          </div>
-        </div>
+            </footer>
+        </dialog>
 
         <!-- Share Modal -->
-        <div class="unlock-modal" x-show="showShare" x-transition.opacity>
-          <div
-            class="unlock-modal-content"
-            @click.outside="showShare = false; shareError = ''"
-          >
-            <div class="unlock-modal-body">
+        <dialog class="sm dark" x-dialog="showShare" @close="shareError = ''; sharePassword = ''; sharePasswordConfirm = ''">
+            <div class="dialog-body padded">
               <h2 class="unlock-title">Upload Profile</h2>
               <p class="unlock-subtitle">
                 Your profile data and API key will be encrypted with your
@@ -472,11 +452,8 @@
               ></div>
             </div>
 
-            <div class="unlock-actions">
-              <button
-                class="btn-secondary"
-                @click="showShare = false; shareError = ''"
-              >
+            <footer>
+              <button class="btn-secondary" x-dialog-close>
                 Cancel
               </button>
               <button
@@ -487,14 +464,12 @@
                 <span x-show="!sharing">Upload</span>
                 <span x-show="sharing">Uploading...</span>
               </button>
-            </div>
-          </div>
-        </div>
+            </footer>
+        </dialog>
 
         <!-- Share Info Modal -->
-        <div class="unlock-modal" x-show="showInfo" x-transition.opacity>
-          <div class="unlock-modal-content" @click.outside="showInfo = false">
-            <div class="unlock-modal-body">
+        <dialog class="sm dark" x-dialog="showInfo">
+            <div class="dialog-body padded">
               <h2 class="unlock-title">Share Profile</h2>
               <p class="unlock-subtitle">
                 Share this profile with another device or person
@@ -522,25 +497,16 @@
               </p>
             </div>
 
-            <div class="unlock-actions">
-              <button class="btn-secondary" @click="showInfo = false">
+            <footer>
+              <button class="btn-secondary" x-dialog-close>
                 Close
               </button>
-            </div>
-          </div>
-        </div>
+            </footer>
+        </dialog>
 
         <!-- Password Update Modal -->
-        <div
-          class="unlock-modal"
-          x-show="showPasswordUpdate"
-          x-transition.opacity
-        >
-          <div
-            class="unlock-modal-content"
-            @click.outside="showPasswordUpdate = false; passwordUpdateError = ''; passwordUpdateSuccess = false"
-          >
-            <div class="unlock-modal-body">
+        <dialog class="sm dark" x-dialog="showPasswordUpdate" @close="passwordUpdateError = ''; passwordUpdateSuccess = false; currentPassword = ''; newPassword = ''; newPasswordConfirm = ''">
+            <div class="dialog-body padded">
               <h2 class="unlock-title">Change Password</h2>
               <p class="unlock-subtitle" x-show="!passwordUpdateSuccess">
                 Update your sync password. All data will be re-encrypted with the
@@ -612,11 +578,8 @@
               </template>
             </div>
 
-            <div class="unlock-actions" x-show="!passwordUpdateSuccess">
-              <button
-                class="btn-secondary"
-                @click="showPasswordUpdate = false; passwordUpdateError = ''"
-              >
+            <footer x-show="!passwordUpdateSuccess">
+              <button class="btn-secondary" x-dialog-close>
                 Cancel
               </button>
               <button
@@ -627,18 +590,14 @@
                 <span x-show="!passwordUpdating">Update Password</span>
                 <span x-show="passwordUpdating">Updating...</span>
               </button>
-            </div>
+            </footer>
 
-            <div class="unlock-actions" x-show="passwordUpdateSuccess">
-              <button
-                class="btn-primary"
-                @click="showPasswordUpdate = false; passwordUpdateSuccess = false"
-              >
+            <footer x-show="passwordUpdateSuccess">
+              <button class="btn-primary" x-dialog-close>
                 Done
               </button>
-            </div>
-          </div>
-        </div>
+            </footer>
+        </dialog>
 
     </main>
     <!-- @include partials/site-footer.html -->

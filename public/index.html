@@ -94,17 +94,15 @@
             <code class="diff-time" x-show="diff" x-text="diff ? timeAgo(diff.generated_at) : ''"></code>
 
             <!-- Streak Badge -->
-            <div class="streak-wrapper" tabindex="0" x-show="$store.app.streak.streak >= 2" x-transition.opacity
-              style="position: relative; display: flex; align-items: center; z-index: 10; outline: none;">
+            <div class="streak-wrapper" tabindex="0" x-show="$store.app.streak.streak >= 2" x-transition.opacity>
 
-              <div class="streak-badge-btn"
-                style="display: flex; align-items: center; color: #ff8c00; font-weight: 600; font-size: 0.9em; cursor: help;">
+              <div class="streak-badge-btn">
                 <span class="streak-icon" :class="{
                     'streak-icon-tiny': $store.app.streak.streak < 5,
                     'streak-icon-sm': $store.app.streak.streak >= 5 && $store.app.streak.streak < 10,
                     'streak-icon-med': $store.app.streak.streak >= 10 && $store.app.streak.streak < 20,
                     'streak-icon-full': $store.app.streak.streak >= 20
-                  }" style="margin-right: 4px;">&#128293;</span>
+                  }">&#128293;</span>
                 <span x-text="$store.app.streak.streak"></span>
               </div>
 
@@ -117,8 +115,7 @@
                       x-text="$store.app.streak.streak + ' diffs'"></span></span>
                 </div>
 
-                <div class="streak-warning" x-show="$store.app.streak.expiresInDays <= 3"
-                  style="margin-bottom: 0.5rem; text-align: right;">
+                <div class="streak-warning" x-show="$store.app.streak.expiresInDays <= 3">
                   <span x-show="$store.app.streak.expiresInDays > 1">expires in <span
                       x-text="$store.app.streak.expiresInDays"></span> days!</span>
                   <span x-show="$store.app.streak.expiresInDays <= 1">expires tomorrow!</span>
@@ -126,12 +123,9 @@
 
                 <div class="streak-calendar-wrapper">
                   <template x-for="month in $store.app.streakCalendar">
-                    <div style="margin-bottom: 1rem;">
-                      <div class="streak-month-label"
-                        style="font-size: 0.75em; font-weight: 600; color: var(--text-dim); margin-bottom: 0.5rem;"
-                        x-text="month.monthLabel"></div>
-                      <div class="streak-calendar-header"
-                        style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; text-align: center; font-size: 0.7em; color: var(--text-dimmest);">
+                    <div class="streak-month">
+                      <div class="streak-month-label" x-text="month.monthLabel"></div>
+                      <div class="streak-calendar-header">
                         <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
                       </div>
                       <div class="streak-calendar">
@@ -153,8 +147,8 @@
                 </div>
               </div>
             </div>
-            <button class="btn-generate-inline" x-show="!isTodayDiff()" @click="diff = null">
-              <span class="generate-icon">&#9670;</span> New Diff
+            <button class="btn-generate-inline btn-branded" x-show="!isTodayDiff()" @click="diff = null">
+              New Diff
             </button>
           </span>
         </div>
@@ -188,15 +182,15 @@
           x-effect="if (diff) injectBookmarkButtons()" @click="handleBookmarkClick($event)"></div>
       </div>
       <div class="diff-footer">
-        <button class="btn-generate-sm" x-show="prevDiff()" @click="diff = prevDiff()">
+        <button class="btn-secondary btn-sm" x-show="prevDiff()" @click="diff = prevDiff()">
           &larr; Older
         </button>
         <span x-show="!prevDiff()"></span>
-        <button class="btn-generate-sm" x-show="nextDiff()" @click="diff = nextDiff()">
+        <button class="btn-secondary btn-sm" x-show="nextDiff()" @click="diff = nextDiff()">
           Newer &rarr;
         </button>
-        <button class="btn-generate-sm" x-show="isTodayDiff() && !nextDiff()" @click="diff = null">
-          <span class="generate-icon">&#9670;</span> Regenerate
+        <button class="btn-secondary btn-sm btn-branded" x-show="isTodayDiff() && !nextDiff()" @click="diff = null">
+          Regenerate
         </button>
       </div>
     </div>
@@ -211,8 +205,7 @@
         <div class="first-time-tracking-items" x-text="trackingText()"></div>
         <a href="/setup?edit=1" class="first-time-tracking-edit">edit</a>
       </div>
-      <button class="btn-generate" @click="generate()" :disabled="generating">
-        <span class="generate-icon">&#9670;</span>
+      <button class="btn-generate btn-branded" @click="generate()" :disabled="generating">
         <span x-text="isTodayDiff() && !ctrlHeld ? 'Regenerate Diff' : 'Generate Diff'"></span>
       </button>
       <div class="depth-selector">
@@ -267,17 +260,13 @@
     </div>
 
     <!-- Prompt Preview Modal -->
-    <div class="prompt-modal" x-show="showPrompt" x-transition.opacity @click.self="showPrompt = false">
-      <div class="prompt-modal-content">
-        <div class="prompt-modal-header">
-          <h2 class="prompt-modal-title">Prompt Preview</h2>
-          <button class="prompt-modal-close" @click="showPrompt = false">
-            &times;
-          </button>
-        </div>
-        <pre class="prompt-text" x-text="promptText"></pre>
-      </div>
-    </div>
+    <dialog class="lg" x-dialog="showPrompt">
+      <header>
+        <h2 class="dialog-title subtle">Prompt Preview</h2>
+        <button class="dialog-close" x-dialog-close>&times;</button>
+      </header>
+      <pre class="prompt-text" x-text="promptText"></pre>
+    </dialog>
 
   </main>
   <!-- @include partials/site-footer.html -->

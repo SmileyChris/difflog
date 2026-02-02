@@ -19,7 +19,7 @@ bun run db:migrate   # Apply D1 migrations
 bun run docs         # Serve architecture documentation locally
 ```
 
-**Note:** This project has no tsconfig.json. Use `bun run build` to verify TypeScript compiles correctly. Do not use `npx tsc`.
+**Note:** This project has no tsconfig.json. Do not use `npx tsc`. Do not build after changes, the development server rebuilds and makes you doing this redundant.
 
 ## Architecture
 
@@ -77,7 +77,8 @@ bun test src/lib/sync.test.ts      # Run specific test file
 
 ## Styling
 
-Class-based CSS in `src/styles.css` with CSS custom properties. Dark theme with `#00d4aa` accent color.
+Class-based CSS in `src/styles.css` with CSS custom properties. Other styles done as part of the build system.
+Use and update the design language in `_dev/design.html` where appropriate.
 
 ## Documentation
 
