@@ -13,6 +13,7 @@ site
 dist-ssr
 *.local
 .env
+.dev.vars
 .wrangler
 
 # Editor directories and files
