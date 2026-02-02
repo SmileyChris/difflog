@@ -56,6 +56,13 @@ Alpine.data('dashboard', () => ({
     if (!this.diff) {
       this.loadLatestDiff();
     }
+
+    // Re-evaluate when history changes from sync
+    (this as any).$watch('$store.app.history', () => {
+      if (!this.diff && !this.generating && !this.error) {
+        this.loadLatestDiff();
+      }
+    });
   },
 
   loadLatestDiff() {
