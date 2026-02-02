@@ -17,7 +17,7 @@
   padding: 0.75rem 1rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
@@ -26,7 +26,7 @@
 
 .api-source-option:hover {
   border-color: var(--accent-border);
-  background: linear-gradient(135deg, var(--bg-card) 0%, #1a1a28 100%);
+  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card-hover) 100%);
 }
 
 .api-source-option-selected {
@@ -102,7 +102,7 @@
 }
 
 .text-input-code {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 1.5rem;
   letter-spacing: 0.5em;
   padding-left: 1.5em;
@@ -145,7 +145,7 @@
   font-weight: 600;
   background: var(--bg-chip);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--text-heading);
   font-family: var(--font-mono);
 }
@@ -202,7 +202,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: var(--overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -213,9 +213,9 @@
 .creds-modal-content {
   width: 100%;
   max-width: 560px;
-  background: linear-gradient(180deg, #16161e 0%, #111118 100%);
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card-bottom) 100%);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 1.5rem;
 }
 
@@ -275,7 +275,7 @@
   padding: 1.25rem 1rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   text-align: center;
 }
 
@@ -296,7 +296,7 @@
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -350,10 +350,10 @@
   padding: 0.6rem 2rem;
   font-size: 0.85rem;
   font-weight: 600;
-  background: linear-gradient(135deg, #00d4aa 0%, #00a888 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-muted) 100%);
   border: none;
-  border-radius: 6px;
-  color: #000;
+  border-radius: var(--radius);
+  color: var(--text-on-accent);
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -426,7 +426,7 @@
 
 /* Creds coin icon */
 .creds-coin {
-  color: #f5a623;
+  color: var(--coin);
   margin-right: 0.2em;
 }
 
@@ -470,7 +470,7 @@
   text-align: center;
   padding: 1.5rem 2rem;
   background: var(--bg-card);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border);
 }
 
@@ -501,7 +501,7 @@
 }
 
 .creds-current-count {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 .creds-current-email {
@@ -543,7 +543,7 @@
   text-align: center;
   padding: 2rem;
   background: var(--accent-bg);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--accent-border);
 }
 
@@ -573,7 +573,7 @@
   padding: 0.75rem 1rem;
   background: var(--bg-input);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: 0.95rem;
 }
@@ -589,11 +589,11 @@
 }
 
 .creds-error {
-  background: rgba(255, 107, 107, 0.1);
-  border: 1px solid var(--error);
-  border-radius: 8px;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
   padding: 0.75rem 1rem;
-  color: var(--error);
+  color: var(--danger);
   font-size: 0.85rem;
   margin-bottom: 1rem;
 }
@@ -611,7 +611,7 @@
   padding: 0.75rem 1rem;
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   margin-top: 1rem;
   color: var(--accent);
   font-size: 0.9rem;
@@ -626,7 +626,7 @@
 .creds-history {
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--border-dim);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .creds-history-tabs {
@@ -640,15 +640,15 @@
   padding: 0.375rem 0.75rem;
   font-size: 0.8rem;
   background: transparent;
-  border: 1px solid var(--border-dim);
-  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   cursor: pointer;
 }
 
 .creds-history-tab:hover {
   border-color: var(--border);
-  color: var(--text-body);
+  color: var(--text-primary);
 }
 
 .creds-history-tab.active {
@@ -680,7 +680,7 @@
   gap: 0.75rem;
   padding: 0.5rem 0;
   font-size: 0.875rem;
-  border-bottom: 1px solid var(--border-dim);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .creds-history-item:last-child {
@@ -699,7 +699,7 @@
 
 .creds-history-desc {
   flex: 1;
-  color: var(--text-body);
+  color: var(--text-primary);
 }
 
 .creds-history-date {
