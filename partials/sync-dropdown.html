@@ -1,5 +1,5 @@
 <!-- Sync Status Dropdown -->
-<div class="sync-dropdown-wrapper" x-data="syncDropdown()" x-show="show" @click.stop @mouseenter="$store.app.openSyncDropdown()" @mouseleave="if (!needsPassword || !isOpen) close()" @click.outside="close()">
+<div class="sync-dropdown-wrapper" x-data="syncDropdown()" x-show="show" x-cloak @click.stop @mouseenter="$store.app.openSyncDropdown()" @mouseleave="if (!needsPassword || !isOpen) close()" @click.outside="close()">
   <button class="sync-status" :title="state === 'syncing' ? 'Syncing...' : 'Sync status'" :disabled="syncing">
     <span class="sync-status-cloud">&#9729;</span>
     <span class="sync-status-indicator sync-status-spinning" x-show="state === 'syncing'">&#8635;</span>

@@ -36,7 +36,7 @@
         </header>
 
         <!-- Saved Profiles -->
-        <div class="profiles-section" x-show="Object.keys(profiles).length > 0">
+        <div class="profiles-section" x-show="Object.keys(profiles).length > 0" x-cloak>
           <h2 class="profiles-section-title">Your Profiles</h2>
           <p class="profiles-section-desc" x-show="Object.keys(profiles).length > 1">Click to switch</p>
 
@@ -82,12 +82,14 @@
                       <span
                         class="profile-status profile-status-warning"
                         x-show="profile.syncedAt === null"
+                        x-cloak
                         title="Profile not found on server"
                         >not on server</span
                       >
                       <span
                         class="profile-status profile-status-local"
                         x-show="!('syncedAt' in profile)"
+                        x-cloak
                         >local</span
                       >
                       <button
@@ -204,7 +206,7 @@
         </div>
 
         <!-- Reminders -->
-        <div class="reminders-section" x-data="reminders()" x-show="Object.keys($store.app.profiles).length > 0 || settings.enabled">
+        <div class="reminders-section" x-data="reminders()" x-show="Object.keys($store.app.profiles).length > 0 || settings.enabled" x-cloak>
           <div class="reminders-title-row">
             <div>
               <h2 class="profiles-section-title">Reminders</h2>

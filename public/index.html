@@ -26,7 +26,7 @@
       </div>
       <div class="header-right">
         <div class="header-profile-group">
-          <a href="/stars" class="header-link" x-show="$store.app.stars?.length > 0">
+          <a href="/stars" class="header-link" x-show="$store.app.stars?.length > 0" x-cloak>
             <span class="header-link-icon">&#9733;</span>
             <span x-text="$store.app.starCountLabel"></span>
           </a>
@@ -43,7 +43,7 @@
     </header>
 
     <!-- Sync Notification Banner -->
-    <div class="sync-banner" x-show="needsSyncPrompt()" x-transition.opacity>
+    <div class="sync-banner" x-show="needsSyncPrompt()" x-cloak x-transition.opacity>
       <span class="sync-banner-icon">&#8635;</span>
       <span class="sync-banner-text">You have unsynced changes</span>
       <button class="sync-banner-btn" @click="$store.app.openSyncDropdown()">
@@ -55,7 +55,7 @@
     </div>
 
     <!-- Profile Summary Bar -->
-    <div class="profile-summary" x-show="showProfile" x-transition.opacity>
+    <div class="profile-summary" x-show="showProfile" x-cloak x-transition.opacity>
       <div class="profile-section">
         <span class="profile-label-row">
           <span class="profile-label">TRACKING</span>
@@ -94,7 +94,7 @@
             <code class="diff-time" x-show="diff" x-text="diff ? timeAgo(diff.generated_at) : ''"></code>
 
             <!-- Streak Badge -->
-            <div class="streak-wrapper" tabindex="0" x-show="$store.app.streak.streak >= 2" x-transition.opacity>
+            <div class="streak-wrapper" tabindex="0" x-show="$store.app.streak.streak >= 2" x-cloak x-transition.opacity>
 
               <div class="streak-badge-btn">
                 <span class="streak-icon" :class="{
@@ -115,7 +115,7 @@
                       x-text="$store.app.streak.streak + ' diffs'"></span></span>
                 </div>
 
-                <div class="streak-warning" x-show="$store.app.streak.expiresInDays <= 3">
+                <div class="streak-warning" x-show="$store.app.streak.expiresInDays <= 3" x-cloak>
                   <span x-show="$store.app.streak.expiresInDays > 1">expires in <span
                       x-text="$store.app.streak.expiresInDays"></span> days!</span>
                   <span x-show="$store.app.streak.expiresInDays <= 1">expires tomorrow!</span>
@@ -197,7 +197,7 @@
     </div>
 
     <!-- No diff yet -->
-    <div x-show="!diff && !generating && !error" class="welcome-area">
+    <div x-show="!diff && !generating && !error" x-cloak class="welcome-area">
       <h1 class="welcome-heading-lg" x-text="welcomeHeading()"></h1>
       <p class="welcome-text" x-html="welcomeText()"></p>
       <!-- First-time profile summary -->
@@ -254,7 +254,7 @@
     </div>
 
     <!-- Error -->
-    <div x-show="error && !generating" class="error-box">
+    <div x-show="error && !generating" x-cloak class="error-box">
       <div class="error-icon">&#9888;&#65039;</div>
       <p class="error-text" x-text="error"></p>
       <button class="btn-retry" @click="generate()">Try Again</button>

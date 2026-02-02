@@ -11,7 +11,7 @@
 <body>
   <main id="content" x-data>
     <!-- No profile: top nav -->
-    <nav class="about-nav" x-show="!$store.app.profile">
+    <nav class="about-nav" x-show="!$store.app.profile" x-cloak>
       <a href="/about" class="about-nav-link">welcome</a>
       <span class="about-nav-sep">&#9670;</span>
       <span class="about-nav-link about-nav-link-active">privacy</span>
@@ -100,7 +100,7 @@
       </section>
 
       <!-- No profile: CTA -->
-      <div class="about-cta" x-show="!$store.app.profile">
+      <div class="about-cta" x-show="!$store.app.profile" x-cloak>
         <a href="/setup" class="splash-cta">
           <span class="splash-cta-icon">&#9670;</span>
           Get Started
