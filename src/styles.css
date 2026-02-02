@@ -1565,6 +1565,20 @@ button:disabled {
   opacity: 0.75;
 }
 
+.depth-creds-badge {
+  font-size: 0.65rem;
+  color: var(--text-hint);
+  background: var(--bg-chip);
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--radius-sm);
+  margin-left: 0.25rem;
+}
+
+.depth-option-active .depth-creds-badge {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
 /* Prompt Preview */
 .prompt-preview-link {
   margin-top: 0.75rem;

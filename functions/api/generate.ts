@@ -12,6 +12,17 @@ interface GenerateRequest {
   email: string;
   code: string;
   prompt: string;
+  depth?: 'quick' | 'standard' | 'deep';
+}
+
+const DEPTH_TOKEN_LIMITS: Record<string, number> = {
+  quick: 4096,
+  standard: 8192,
+  deep: 16384
+};
+
+function getCredCost(depth: string): number {
+  return depth === 'deep' ? 2 : 1;
 }
 
 const DEV_SECRET = 'difflog-dev-secret';
@@ -36,7 +47,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   try {
     const body = await context.request.json() as GenerateRequest;
-    const { email, code, prompt } = body;
+    const { email, code, prompt, depth = 'standard' } = body;
+    const credCost = getCredCost(depth);
 
     if (!email || !code || !prompt) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
@@ -66,8 +78,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-    if (account.creds < 1) {
-      return new Response(JSON.stringify({ error: 'Insufficient creds' }), {
+    if (account.creds < credCost) {
+      return new Response(JSON.stringify({ error: 'Insufficient creds', required: credCost, available: account.creds }), {
         status: 402,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -97,7 +109,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 4096,
+        max_tokens: DEPTH_TOKEN_LIMITS[depth] || 8192,
         messages: [{ role: 'user', content: prompt }],
         tools: [{
           name: 'submit_diff',
@@ -143,16 +155,17 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-    // Deduct cred and log transaction
-    const newBalance = account.creds - 1;
+    // Deduct creds and log transaction
+    const newBalance = account.creds - credCost;
     await DB.prepare(
       'UPDATE accounts SET creds = ?, updated_at = datetime(\'now\') WHERE id = ?'
     ).bind(newBalance, account.id).run();
 
+    const description = credCost > 1 ? `Generated diff (${depth})` : 'Generated diff';
     await DB.prepare(`
       INSERT INTO transactions (id, account_id, type, amount, balance_after, description, created_at)
-      VALUES (?, ?, 'usage', -1, ?, 'Generated diff', datetime('now'))
-    `).bind(crypto.randomUUID(), account.id, newBalance).run();
+      VALUES (?, ?, 'usage', ?, ?, ?, datetime('now'))
+    `).bind(crypto.randomUUID(), account.id, -credCost, newBalance, description).run();
 
     const diffId = crypto.randomUUID();
     const title = toolUse.input.title || '';

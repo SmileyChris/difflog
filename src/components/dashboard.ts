@@ -314,7 +314,8 @@ Alpine.data('dashboard', () => ({
 
   async generate() {
     // Check if using creds mode and has enough creds
-    if ((this as any).$store.app.usingCreds && !(this as any).$store.app.hasCreds) {
+    const credCost = this.selectedDepth === 'deep' ? 2 : 1;
+    if ((this as any).$store.app.usingCredits && (this as any).$store.app.creds < credCost) {
       this.showOutOfCreds = true;
       return;
     }
@@ -448,7 +449,8 @@ Alpine.data('dashboard', () => ({
           body: JSON.stringify({
             email: store.user.email,
             code: store.user.code,
-            prompt
+            prompt,
+            depth: this.selectedDepth
           }),
         });
 

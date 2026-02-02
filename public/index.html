@@ -205,13 +205,14 @@
       </button>
       <div class="depth-selector">
         <template
-          x-for="d in [{id:'quick',label:'Quick Scan',icon:'\u26A1'},{id:'standard',label:'Standard Brief',icon:'\uD83D\uDCCB'},{id:'deep',label:'Deep Dive',icon:'\uD83D\uDD2C'}]"
+          x-for="d in [{id:'quick',label:'Quick Scan',icon:'\u26A1'},{id:'standard',label:'Standard Brief',icon:'\uD83D\uDCCB'},{id:'deep',label:'Deep Dive',icon:'\uD83D\uDD2C',creds:2}]"
           :key="d.id">
           <button class="depth-option"
             :class="{ 'depth-option-active': selectedDepth === d.id, 'depth-option-default': d.id === $store.app.profile?.depth }"
             @click="selectedDepth = d.id">
             <span class="depth-option-icon" x-text="d.icon"></span>
             <span x-text="d.label"></span>
+            <span class="depth-creds-badge" x-show="d.creds && $store.app.usingCredits" x-text="d.creds + ' creds'"></span>
           </button>
         </template>
       </div>
