@@ -2609,6 +2609,17 @@ kbd {
   color: var(--accent);
 }
 
+.link-secondary {
+  color: var(--text-subtle);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.link-secondary:hover {
+  color: var(--accent);
+}
+
 /* Profiles Page */
 .profiles-section {
   margin-bottom: 2.5rem;
@@ -2890,19 +2901,11 @@ kbd {
 }
 
 .profile-count-link {
-  color: var(--text-subtle);
   text-decoration: none;
-  transition: color 0.15s;
 }
 
-.profile-count-link:hover {
+.profile-count-link:hover .link-secondary {
   color: var(--accent);
-}
-
-.profile-count-link span:not(.profile-count-icon) {
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
 }
 
 .profile-count-stars {

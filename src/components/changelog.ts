@@ -44,6 +44,7 @@ Alpine.data('changelog', () => ({
   showAll: false,
   currentVersion: '',
   dotDismissed: false,
+  expandedVersions: [] as string[],
 
   get hasUnseen(): boolean {
     if (!this.lastSeen || !this.currentVersion) return false;
@@ -106,6 +107,7 @@ Alpine.data('changelog', () => ({
   hide() {
     this.open = false;
     this.showAll = false;
+    this.expandedVersions = [];
 
     // Save to storage for next session, but keep lastSeen unchanged for this session
     if (this.currentVersion) {
@@ -116,6 +118,22 @@ Alpine.data('changelog', () => ({
   isNewChange(change: Change): boolean {
     if (!this.lastSeen || !change.in) return false;
     return compareVersions(change.in, this.lastSeen) > 0;
+  },
+
+  hasUnseenChanges(version: Version): boolean {
+    return version.changes.some(c => this.isNewChange(c));
+  },
+
+  isVersionExpanded(version: Version): boolean {
+    return this.hasUnseenChanges(version) || this.expandedVersions.includes(version.version);
+  },
+
+  toggleVersion(version: Version) {
+    if (this.expandedVersions.includes(version.version)) {
+      this.expandedVersions = this.expandedVersions.filter(v => v !== version.version);
+    } else {
+      this.expandedVersions = [...this.expandedVersions, version.version];
+    }
   },
 
   getChangeIcon(type: string): string {

@@ -34,8 +34,8 @@
             <div class="changelog-version">
               <div class="changelog-version-date" x-text="formatDate(version.date)"></div>
               <p class="changelog-version-summary"><span class="changelog-version-num" x-text="'v' + version.version"></span> <span x-text="version.summary"></span></p>
-              <p class="changelog-version-desc" x-show="version.description" x-text="version.description"></p>
-              <ul class="changelog-changes">
+              <p class="changelog-version-desc" x-show="version.description"><span x-text="version.description"></span> <a href="#" class="link-secondary" x-show="!isVersionExpanded(version) && version.changes?.length" @click.prevent="toggleVersion(version)">See highlights</a></p>
+              <ul class="changelog-changes" x-show="isVersionExpanded(version)">
                 <template x-for="change in version.changes" :key="change.text">
                   <li class="changelog-change" :class="{ 'is-new': isNewChange(change) }">
                     <span class="changelog-change-icon" x-show="getChangeIcon(change.type)" x-text="getChangeIcon(change.type)"></span>
