@@ -30,9 +30,12 @@ describe("streak.ts", () => {
     test("getStreakCalendar generates months with weeks", () => {
         // Mock a streak from 2 weeks ago to today
         const start = daysAgo(10);
-        const active = [toIso(start), toIso(today)];
+        const diffCounts = new Map<string, number>([
+            [toIso(start), 1],
+            [toIso(today), 1]
+        ]);
 
-        const months = getStreakCalendar(start.toISOString(), active);
+        const months = getStreakCalendar(start.toISOString(), diffCounts);
 
         // Should have at least 1 month (3 months total for 3-month window)
         expect(months.length).toBeGreaterThanOrEqual(1);
