@@ -23,6 +23,14 @@ Alpine.data('dashboard', () => ({
   currentDate: getCurrentDateFormatted(),
   // Sync banner state
   syncBannerDismissed: false,
+  // Resume from failure cache
+  stageCache: null as {
+    timestamp: number;
+    profileHash: string;
+    feedContext?: string;
+    webContext?: string;
+    prompt?: string;
+  } | null,
 
   init() {
     if (!(this as any).$store.app.isUnlocked) {
@@ -255,6 +263,11 @@ Alpine.data('dashboard', () => ({
       return;
     }
 
+    // Clear cache if force new (Ctrl+click)
+    if (forceNew) {
+      this.stageCache = null;
+    }
+
     this.generating = true;
     this.error = null;
     this.diff = null;
@@ -287,85 +300,108 @@ Alpine.data('dashboard', () => ({
         gemini: profile.apiKeys?.gemini,
       };
 
-      // Resolve any unmapped custom items before fetching feeds
-      const unmapped = getUnmappedItems(profile);
-      if (unmapped.length > 0 && apiKey) {
-        console.log(`Resolving ${unmapped.length} custom item(s):`, unmapped.map(u => u.item));
-        const newMappings = { ...profile.resolvedMappings };
-        for (const { item, category } of unmapped) {
-          const mapping = await resolveSourcesForItem(keys, item, category);
-          newMappings[item] = mapping;
-          console.log(`Resolved "${item}":`, mapping);
-        }
-        // Save resolved mappings to profile
-        (this as any).$store.app.updateProfile({ resolvedMappings: newMappings });
-        // Refresh profile reference after update
-        profile = (this as any).$store.app.profile;
-      }
-
-      // Calculate window for search
-      const lastDiffDate = this.getLastDiffDate();
-      const windowDays = lastDiffDate
-        ? Math.min(Math.max(Math.ceil((Date.now() - new Date(lastDiffDate).getTime()) / 86400000), 1), 7)
-        : 7;
-      // Run web search and feed fetch in parallel
-      const [webSearchResults, feedRes] = await Promise.all([
-        searchWeb(keys, profile, windowDays).catch(() => []),
-        fetch('/api/feeds', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            languages: profile.languages || [],
-            frameworks: profile.frameworks || [],
-            tools: profile.tools || [],
-            topics: profile.topics || [],
-            resolvedMappings: profile.resolvedMappings || {},
-          }),
-        }).catch(() => null),
-      ]);
-
       let feedContext = '';
       let webContext = '';
+      let prompt = '';
 
-      // Process feed results
-      if (feedRes?.ok) {
-        try {
-          const feedData = await feedRes.json();
-          const feeds = feedData.feeds || {};
+      // Check if we can resume from cache
+      const canResume = this._isCacheValid() && this.stageCache?.prompt;
 
-          // Curate general feeds (HN, Lobsters) for relevance
-          const generalItems: FeedItem[] = [...(feeds.hn || []), ...(feeds.lobsters || [])];
-          let curatedGeneral: FeedItem[] = generalItems;
-          if (generalItems.length > 0) {
-            curatedGeneral = await curateGeneralFeeds(keys, generalItems, profile);
+      if (canResume && this.stageCache) {
+        // Resume from cache - skip stages 1-4
+        feedContext = this.stageCache.feedContext || '';
+        webContext = this.stageCache.webContext || '';
+        prompt = this.stageCache.prompt || '';
+      } else {
+        // Clear stale cache and run all stages
+        this.stageCache = null;
+
+        // Resolve any unmapped custom items before fetching feeds
+        const unmapped = getUnmappedItems(profile);
+        if (unmapped.length > 0 && apiKey) {
+          console.log(`Resolving ${unmapped.length} custom item(s):`, unmapped.map(u => u.item));
+          const newMappings = { ...profile.resolvedMappings };
+          for (const { item, category } of unmapped) {
+            const mapping = await resolveSourcesForItem(keys, item, category);
+            newMappings[item] = mapping;
+            console.log(`Resolved "${item}":`, mapping);
           }
-
-          // Combine curated general feeds with already-targeted feeds
-          const allItems: FeedItem[] = [
-            ...curatedGeneral,
-            ...(feeds.reddit || []),
-            ...(feeds.github || []),
-            ...(feeds.devto || []),
-          ];
-
-          feedContext = formatItemsForPrompt(allItems);
-        } catch {
-          // Feed processing failed, continue without
+          // Save resolved mappings to profile
+          (this as any).$store.app.updateProfile({ resolvedMappings: newMappings });
+          // Refresh profile reference after update
+          profile = (this as any).$store.app.profile;
         }
-      }
 
-      // Process web search results
-      if (webSearchResults.length > 0) {
-        webContext = formatWebSearchForPrompt(webSearchResults);
-      }
+        // Calculate window for search
+        const lastDiffDate = this.getLastDiffDate();
+        const windowDays = lastDiffDate
+          ? Math.min(Math.max(Math.ceil((Date.now() - new Date(lastDiffDate).getTime()) / 86400000), 1), 7)
+          : 7;
+        // Run web search and feed fetch in parallel
+        const [webSearchResults, feedRes] = await Promise.all([
+          searchWeb(keys, profile, windowDays).catch(() => []),
+          fetch('/api/feeds', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              languages: profile.languages || [],
+              frameworks: profile.frameworks || [],
+              tools: profile.tools || [],
+              topics: profile.topics || [],
+              resolvedMappings: profile.resolvedMappings || {},
+            }),
+          }).catch(() => null),
+        ]);
 
-      const prompt = buildPrompt(
-        { ...profile, depth: this.selectedDepth },
-        feedContext,
-        this.getLastDiffDate(),
-        lastDiff?.content,
-        webContext
-      );
+        // Process feed results
+        if (feedRes?.ok) {
+          try {
+            const feedData = await feedRes.json();
+            const feeds = feedData.feeds || {};
+
+            // Curate general feeds (HN, Lobsters) for relevance
+            const generalItems: FeedItem[] = [...(feeds.hn || []), ...(feeds.lobsters || [])];
+            let curatedGeneral: FeedItem[] = generalItems;
+            if (generalItems.length > 0) {
+              curatedGeneral = await curateGeneralFeeds(keys, generalItems, profile);
+            }
+
+            // Combine curated general feeds with already-targeted feeds
+            const allItems: FeedItem[] = [
+              ...curatedGeneral,
+              ...(feeds.reddit || []),
+              ...(feeds.github || []),
+              ...(feeds.devto || []),
+            ];
+
+            feedContext = formatItemsForPrompt(allItems);
+          } catch {
+            // Feed processing failed, continue without
+          }
+        }
+
+        // Process web search results
+        if (webSearchResults.length > 0) {
+          webContext = formatWebSearchForPrompt(webSearchResults);
+        }
+
+        prompt = buildPrompt(
+          { ...profile, depth: this.selectedDepth },
+          feedContext,
+          this.getLastDiffDate(),
+          lastDiff?.content,
+          webContext
+        );
+
+        // Cache intermediate results before synthesis
+        this.stageCache = {
+          timestamp: Date.now(),
+          profileHash: this._profileHash(),
+          feedContext,
+          webContext,
+          prompt,
+        };
+      }
 
       // Use selected synthesis provider (defaults to anthropic)
       const synthesisProvider = profile.providerSelections?.synthesis || 'anthropic';
@@ -377,6 +413,9 @@ Alpine.data('dashboard', () => ({
         prompt,
         maxTokens
       );
+
+      // Clear cache on success
+      this.stageCache = null;
 
       let cleanedContent = rawContent;
       const dateStart = cleanedContent.indexOf('Intelligence Window');
@@ -423,6 +462,7 @@ Alpine.data('dashboard', () => ({
 
       (this as any).$store.app.autoSync();
     } catch (e: unknown) {
+      // Keep cache on failure for resume
       this.error = `Failed to generate diff: ${e instanceof Error ? e.message : 'Unknown error'}`;
     } finally {
       this.generating = false;
@@ -517,6 +557,24 @@ Alpine.data('dashboard', () => ({
 
   dismissSyncBanner() {
     this.syncBannerDismissed = true;
+  },
+
+  _profileHash(): string {
+    const p = (this as any).$store.app.profile;
+    if (!p) return '';
+    return JSON.stringify({
+      languages: p.languages,
+      frameworks: p.frameworks,
+      tools: p.tools,
+      topics: p.topics,
+      depth: this.selectedDepth,
+    });
+  },
+
+  _isCacheValid(): boolean {
+    if (!this.stageCache) return false;
+    if (Date.now() - this.stageCache.timestamp > 15 * 60 * 1000) return false; // 15min TTL
+    return this.stageCache.profileHash === this._profileHash();
   },
 
   goToDiffOnDate(isoDate: string) {

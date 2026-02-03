@@ -257,7 +257,12 @@
     <div x-show="error && !generating" x-cloak class="error-box">
       <div class="error-icon">&#9888;&#65039;</div>
       <p class="error-text" x-text="error"></p>
-      <button class="btn-retry" @click="generate()">Try Again</button>
+      <div class="error-actions">
+        <button class="btn-retry" @click="generate()" x-text="stageCache ? 'Resume' : 'Try Again'"></button>
+        <button x-show="stageCache" class="btn-text link-secondary" @click="stageCache = null; generate()">
+          Start Fresh
+        </button>
+      </div>
     </div>
 
     <!-- Prompt Preview Modal -->
