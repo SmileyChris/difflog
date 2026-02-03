@@ -44,10 +44,33 @@ export interface ResolvedMapping {
   devtoTags: string[];
 }
 
+export interface ApiKeys {
+  anthropic?: string;
+  serper?: string;
+  perplexity?: string;
+  deepseek?: string;
+  gemini?: string;
+}
+
+export interface ProviderSelections {
+  search?: string | null;
+  curation?: string | null;
+  synthesis?: string | null;
+}
+
+/**
+ * Get Anthropic API key from profile (handles backwards compat with legacy apiKey field)
+ */
+export function getAnthropicKey(profile: { apiKey?: string; apiKeys?: ApiKeys }): string | undefined {
+  return profile.apiKeys?.anthropic || profile.apiKey;
+}
+
 export interface Profile {
   id: string;
   name: string;
   apiKey?: string;
+  apiKeys?: ApiKeys;
+  providerSelections?: ProviderSelections;
   salt?: string;
   passwordSalt?: string;
   syncedAt?: string | null;
