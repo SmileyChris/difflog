@@ -153,7 +153,7 @@ describe('resolveSourcesForItem', () => {
       json: () => Promise.resolve(mockResponse),
     })) as any;
 
-    const result = await resolveSourcesForItem('test-api-key', 'Homelab', 'topic');
+    const result = await resolveSourcesForItem({ anthropic: 'test-api-key' }, 'Homelab', 'topic');
 
     expect(result).toEqual({
       subreddits: ['selfhosted', 'homelab'],
@@ -178,7 +178,7 @@ describe('resolveSourcesForItem', () => {
       });
     }) as any;
 
-    await resolveSourcesForItem('test-api-key', 'Zig', 'language');
+    await resolveSourcesForItem({ anthropic: 'test-api-key' }, 'Zig', 'language');
 
     expect(capturedRequest.url).toBe('https://api.anthropic.com/v1/messages');
     expect(capturedRequest.options.method).toBe('POST');
@@ -186,8 +186,8 @@ describe('resolveSourcesForItem', () => {
 
     const body = JSON.parse(capturedRequest.options.body);
     expect(body.model).toBe('claude-haiku-4-5');
-    expect(body.tools[0].name).toBe('submit_sources');
-    expect(body.tool_choice).toEqual({ type: 'tool', name: 'submit_sources' });
+    expect(body.tools[0].name).toBe('submit_result');
+    expect(body.tool_choice).toEqual({ type: 'tool', name: 'submit_result' });
     expect(body.messages[0].content).toContain('language');
     expect(body.messages[0].content).toContain('Zig');
   });
@@ -198,7 +198,7 @@ describe('resolveSourcesForItem', () => {
       status: 500,
     })) as any;
 
-    const result = await resolveSourcesForItem('test-api-key', 'Homelab', 'topic');
+    const result = await resolveSourcesForItem({ anthropic: 'test-api-key' }, 'Homelab', 'topic');
 
     expect(result).toEqual({
       subreddits: [],
@@ -210,7 +210,7 @@ describe('resolveSourcesForItem', () => {
   test('returns empty mapping on network error', async () => {
     globalThis.fetch = mock(() => Promise.reject(new Error('Network error'))) as any;
 
-    const result = await resolveSourcesForItem('test-api-key', 'Homelab', 'topic');
+    const result = await resolveSourcesForItem({ anthropic: 'test-api-key' }, 'Homelab', 'topic');
 
     expect(result).toEqual({
       subreddits: [],
@@ -227,7 +227,7 @@ describe('resolveSourcesForItem', () => {
       }),
     })) as any;
 
-    const result = await resolveSourcesForItem('test-api-key', 'Homelab', 'topic');
+    const result = await resolveSourcesForItem({ anthropic: 'test-api-key' }, 'Homelab', 'topic');
 
     expect(result).toEqual({
       subreddits: [],
@@ -250,7 +250,7 @@ describe('resolveSourcesForItem', () => {
       }),
     })) as any;
 
-    const result = await resolveSourcesForItem('test-api-key', 'Homelab', 'topic');
+    const result = await resolveSourcesForItem({ anthropic: 'test-api-key' }, 'Homelab', 'topic');
 
     expect(result).toEqual({
       subreddits: ['homelab'],
@@ -290,7 +290,7 @@ describe('resolved mappings integration', () => {
       }),
     })) as any;
 
-    const resolved = await resolveSourcesForItem('key', 'Homelab', 'topic');
+    const resolved = await resolveSourcesForItem({ anthropic: 'key' }, 'Homelab', 'topic');
 
     // Step 4: Save to profile (simulating what dashboard does)
     profile.resolvedMappings = { 'Homelab': resolved };
@@ -318,7 +318,8 @@ describe('resolved mappings integration', () => {
 });
 
 // Import additional functions for testing
-import { curateGeneralFeeds, searchWebForProfile, formatItemsForPrompt, formatWebSearchForPrompt, type FeedItem, type WebSearchResult } from './feeds';
+import { curateGeneralFeeds, formatItemsForPrompt, formatWebSearchForPrompt, type FeedItem, type WebSearchResult } from './feeds';
+import { searchWithAnthropic } from './search';
 
 describe('curateGeneralFeeds', () => {
   const originalFetch = globalThis.fetch;
@@ -354,7 +355,7 @@ describe('curateGeneralFeeds', () => {
       }),
     })) as any;
 
-    const result = await curateGeneralFeeds('test-api-key', sampleItems, profile as any);
+    const result = await curateGeneralFeeds({ anthropic: 'test-api-key' }, sampleItems, profile as any);
 
     expect(result).toHaveLength(3);
     expect(result[0].title).toBe('New Rust feature released');
@@ -378,7 +379,7 @@ describe('curateGeneralFeeds', () => {
       });
     }) as any;
 
-    await curateGeneralFeeds('test-api-key', sampleItems, profile as any);
+    await curateGeneralFeeds({ anthropic: 'test-api-key' }, sampleItems, profile as any);
 
     expect(capturedRequest.url).toBe('https://api.anthropic.com/v1/messages');
     expect(capturedRequest.options.method).toBe('POST');
@@ -386,8 +387,8 @@ describe('curateGeneralFeeds', () => {
 
     const body = JSON.parse(capturedRequest.options.body);
     expect(body.model).toBe('claude-haiku-4-5');
-    expect(body.tools[0].name).toBe('select_relevant');
-    expect(body.tool_choice).toEqual({ type: 'tool', name: 'select_relevant' });
+    expect(body.tools[0].name).toBe('submit_result');
+    expect(body.tool_choice).toEqual({ type: 'tool', name: 'submit_result' });
     // Check that items are included with indices
     expect(body.messages[0].content).toContain('[0]');
     expect(body.messages[0].content).toContain('New Rust feature released');
@@ -402,7 +403,7 @@ describe('curateGeneralFeeds', () => {
       status: 500,
     })) as any;
 
-    const result = await curateGeneralFeeds('test-api-key', sampleItems, profile as any);
+    const result = await curateGeneralFeeds({ anthropic: 'test-api-key' }, sampleItems, profile as any);
 
     expect(result).toEqual(sampleItems);
   });
@@ -410,7 +411,7 @@ describe('curateGeneralFeeds', () => {
   test('returns all items on network error', async () => {
     globalThis.fetch = mock(() => Promise.reject(new Error('Network error'))) as any;
 
-    const result = await curateGeneralFeeds('test-api-key', sampleItems, profile as any);
+    const result = await curateGeneralFeeds({ anthropic: 'test-api-key' }, sampleItems, profile as any);
 
     expect(result).toEqual(sampleItems);
   });
@@ -423,7 +424,7 @@ describe('curateGeneralFeeds', () => {
       }),
     })) as any;
 
-    const result = await curateGeneralFeeds('test-api-key', sampleItems, profile as any);
+    const result = await curateGeneralFeeds({ anthropic: 'test-api-key' }, sampleItems, profile as any);
 
     expect(result).toEqual(sampleItems);
   });
@@ -439,7 +440,7 @@ describe('curateGeneralFeeds', () => {
       }),
     })) as any;
 
-    const result = await curateGeneralFeeds('test-api-key', sampleItems, profile as any);
+    const result = await curateGeneralFeeds({ anthropic: 'test-api-key' }, sampleItems, profile as any);
 
     expect(result).toHaveLength(2);
     expect(result[0].title).toBe('New Rust feature released');
@@ -447,7 +448,7 @@ describe('curateGeneralFeeds', () => {
   });
 
   test('returns empty array for empty input', async () => {
-    const result = await curateGeneralFeeds('test-api-key', [], profile as any);
+    const result = await curateGeneralFeeds({ anthropic: 'test-api-key' }, [], profile as any);
     expect(result).toEqual([]);
   });
 });
@@ -489,7 +490,7 @@ describe('formatItemsForPrompt', () => {
   });
 });
 
-describe('searchWebForProfile', () => {
+describe('searchWithAnthropic', () => {
   const originalFetch = globalThis.fetch;
 
   afterEach(() => {
@@ -517,7 +518,7 @@ ITEM: "TypeScript 5.5 Features" | https://devblogs.microsoft.com/ts-5.5 | New fe
       }),
     })) as any;
 
-    const results = await searchWebForProfile('test-api-key', profile as any, 7);
+    const results = await searchWithAnthropic('test-api-key', profile as any, 7);
 
     expect(results).toHaveLength(2);
     expect(results[0].title).toBe('Rust 1.80 Released');
@@ -542,7 +543,7 @@ ITEM: "TypeScript 5.5 Features" | https://devblogs.microsoft.com/ts-5.5 | New fe
       }),
     })) as any;
 
-    const results = await searchWebForProfile('test-api-key', profile as any, 7);
+    const results = await searchWithAnthropic('test-api-key', profile as any, 7);
 
     expect(results.length).toBeGreaterThan(0);
     expect(results[0].url).toBe('https://blog.rust-lang.org/1.80');
@@ -554,7 +555,7 @@ ITEM: "TypeScript 5.5 Features" | https://devblogs.microsoft.com/ts-5.5 | New fe
       status: 500,
     })) as any;
 
-    const results = await searchWebForProfile('test-api-key', profile as any, 7);
+    const results = await searchWithAnthropic('test-api-key', profile as any, 7);
 
     expect(results).toEqual([]);
   });
@@ -562,7 +563,7 @@ ITEM: "TypeScript 5.5 Features" | https://devblogs.microsoft.com/ts-5.5 | New fe
   test('handles network errors gracefully', async () => {
     globalThis.fetch = mock(() => Promise.reject(new Error('Network error'))) as any;
 
-    const results = await searchWebForProfile('test-api-key', profile as any, 7);
+    const results = await searchWithAnthropic('test-api-key', profile as any, 7);
 
     expect(results).toEqual([]);
   });
@@ -575,7 +576,7 @@ ITEM: "TypeScript 5.5 Features" | https://devblogs.microsoft.com/ts-5.5 | New fe
       topics: [],
     };
 
-    const results = await searchWebForProfile('test-api-key', emptyProfile as any, 7);
+    const results = await searchWithAnthropic('test-api-key', emptyProfile as any, 7);
 
     expect(results).toEqual([]);
   });

@@ -1,4 +1,7 @@
-import type { ResolvedMapping } from './sync';
+import type { ResolvedMapping, ApiKeys } from './sync';
+import { completeJson } from './llm';
+// Re-export search types for backwards compatibility
+export { searchWeb, type WebSearchResult } from './search';
 
 interface Profile {
   languages: string[];
@@ -394,204 +397,65 @@ export function getUnmappedItems(profile: Profile): UnmappedItem[] {
 }
 
 export async function resolveSourcesForItem(
-  apiKey: string,
+  keys: ApiKeys,
   item: string,
   category: 'language' | 'framework' | 'tool' | 'topic'
 ): Promise<ResolvedMapping> {
   const emptyMapping: ResolvedMapping = { subreddits: [], lobstersTags: [], devtoTags: [] };
 
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5',
-        max_tokens: 1024,
-        messages: [{
-          role: 'user',
-          content: `You're helping configure a developer news feed. Given the ${category} "${item}", suggest relevant sources. Be specific and practical.
+  const prompt = `You're helping configure a developer news feed. Given the ${category} "${item}", suggest relevant sources. Be specific and practical.
 
 Return:
 - subreddits: Reddit communities (without r/ prefix)
 - lobstersTags: Lobste.rs tags
 - devtoTags: Dev.to tags
 
-Only include sources that actually exist and are active. Prefer popular, well-established communities over niche ones.`
-        }],
-        tools: [{
-          name: 'submit_sources',
-          description: 'Submit the discovered sources for the given item',
-          input_schema: {
-            type: 'object',
-            properties: {
-              subreddits: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Reddit subreddit names without the r/ prefix'
-              },
-              lobstersTags: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Lobste.rs tag names'
-              },
-              devtoTags: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Dev.to tag names'
-              }
-            },
-            required: ['subreddits', 'lobstersTags', 'devtoTags']
-          }
-        }],
-        tool_choice: { type: 'tool', name: 'submit_sources' }
-      }),
-    });
+Only include sources that actually exist and are active. Prefer popular, well-established communities over niche ones.`;
 
-    if (!res.ok) {
-      console.warn(`AI source resolution failed for "${item}": ${res.status}`);
-      return emptyMapping;
-    }
+  const schema = {
+    type: 'object' as const,
+    properties: {
+      subreddits: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Reddit subreddit names without the r/ prefix'
+      },
+      lobstersTags: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Lobste.rs tag names'
+      },
+      devtoTags: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Dev.to tag names'
+      }
+    },
+    required: ['subreddits', 'lobstersTags', 'devtoTags']
+  };
 
-    const result = await res.json();
-    const toolUse = result.content?.find((b: any) => b.type === 'tool_use');
+  const result = await completeJson<ResolvedMapping>(keys, prompt, schema);
 
-    if (!toolUse?.input) {
-      console.warn(`AI returned no tool use for "${item}"`);
-      return emptyMapping;
-    }
-
-    return {
-      subreddits: toolUse.input.subreddits || [],
-      lobstersTags: toolUse.input.lobstersTags || [],
-      devtoTags: toolUse.input.devtoTags || [],
-    };
-  } catch (e) {
-    console.warn(`AI source resolution error for "${item}":`, e);
+  if (!result) {
+    console.warn(`AI source resolution failed for "${item}"`);
     return emptyMapping;
   }
+
+  return {
+    subreddits: result.subreddits || [],
+    lobstersTags: result.lobstersTags || [],
+    devtoTags: result.devtoTags || [],
+  };
 }
 
-export interface WebSearchResult {
-  title: string;
-  url: string;
-  snippet: string;
-}
-
-/**
- * Search the web for recent developer news based on profile.
- * Uses Sonnet with web_search tool to find and summarize relevant content.
- */
-export async function searchWebForProfile(
-  apiKey: string,
-  profile: Profile,
-  windowDays: number = 7
-): Promise<WebSearchResult[]> {
-  // Build profile context for search - include everything
-  const technologies = [
-    ...(profile.languages || []),
-    ...(profile.frameworks || []),
-    ...(profile.tools || []),
-  ].join(', ');
-
-  const topics = (profile.topics || []).join(', ');
-
-  if (!technologies && !topics) {
-    return []; // No profile to search for
-  }
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 2048,
-        tools: [{
-          type: 'web_search_20250305',
-          name: 'web_search',
-          max_uses: 5,
-        }],
-        messages: [{
-          role: 'user',
-          content: `Search for recent developer news from the past ${windowDays} days relevant to:
-- Technologies: ${technologies || 'general programming'}
-- Topics: ${topics || 'general tech'}
-
-Find releases, announcements, blog posts, and significant developments. Search for specific technologies and topics.
-
-List each finding as a single line in this exact format:
-ITEM: "Title" | URL | Brief description (1 sentence)
-
-Find 5-10 relevant items. Only include items with real URLs you found.`
-        }],
-      }),
-    });
-
-    if (!res.ok) {
-      console.warn(`Web search failed: ${res.status}`);
-      return [];
-    }
-
-    const result = await res.json();
-    const results: WebSearchResult[] = [];
-
-    // Extract items from Claude's text response
-    for (const block of result.content || []) {
-      if (block.type === 'text') {
-        const lines = block.text.split('\n');
-        for (const line of lines) {
-          const match = line.match(/^ITEM:\s*"([^"]+)"\s*\|\s*(https?:\/\/[^\s|]+)\s*\|\s*(.+)$/i);
-          if (match) {
-            results.push({
-              title: match[1].trim(),
-              url: match[2].trim(),
-              snippet: match[3].trim(),
-            });
-          }
-        }
-      }
-
-      // Also extract from citations if available
-      if (block.type === 'text' && block.citations) {
-        for (const citation of block.citations) {
-          if (citation.type === 'web_search_result_location' && citation.url) {
-            // Avoid duplicates
-            if (!results.some(r => r.url === citation.url)) {
-              results.push({
-                title: citation.title || 'Untitled',
-                url: citation.url,
-                snippet: citation.cited_text || '',
-              });
-            }
-          }
-        }
-      }
-    }
-
-    console.log(`Web search found ${results.length} items`);
-    return results;
-  } catch (e) {
-    console.warn('Web search error:', e);
-    return [];
-  }
-}
+// WebSearchResult is now exported from ./search
 
 /**
  * Filter general feed items (HN, Lobsters) for relevance to user's profile.
- * Uses Haiku to quickly determine which items are worth including.
+ * Uses cheapest available LLM to quickly determine which items are worth including.
  */
 export async function curateGeneralFeeds(
-  apiKey: string,
+  keys: ApiKeys,
   items: FeedItem[],
   profile: Profile
 ): Promise<FeedItem[]> {
@@ -610,21 +474,7 @@ export async function curateGeneralFeeds(
     `[${i}] "${item.title}" (${item.source})`
   ).join('\n');
 
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5',
-        max_tokens: 1024,
-        messages: [{
-          role: 'user',
-          content: `You're filtering a developer news feed. Select items relevant to this developer's profile.
+  const prompt = `You're filtering a developer news feed. Select items relevant to this developer's profile.
 
 PROFILE:
 - Technologies: ${tracking}
@@ -640,51 +490,33 @@ RULES:
 ITEMS:
 ${itemList}
 
-Return the indices of relevant items.`
-        }],
-        tools: [{
-          name: 'select_relevant',
-          description: 'Submit the indices of relevant feed items',
-          input_schema: {
-            type: 'object',
-            properties: {
-              indices: {
-                type: 'array',
-                items: { type: 'number' },
-                description: 'Array of item indices (0-based) that are relevant'
-              }
-            },
-            required: ['indices']
-          }
-        }],
-        tool_choice: { type: 'tool', name: 'select_relevant' }
-      }),
-    });
+Return the indices of relevant items.`;
 
-    if (!res.ok) {
-      console.warn(`Feed curation failed: ${res.status}, returning all items`);
-      return items;
-    }
+  const schema = {
+    type: 'object' as const,
+    properties: {
+      indices: {
+        type: 'array',
+        items: { type: 'number' },
+        description: 'Array of item indices (0-based) that are relevant'
+      }
+    },
+    required: ['indices']
+  };
 
-    const result = await res.json();
-    const toolUse = result.content?.find((b: any) => b.type === 'tool_use');
+  const result = await completeJson<{ indices: number[] }>(keys, prompt, schema);
 
-    if (!toolUse?.input?.indices) {
-      console.warn('Feed curation returned no indices, returning all items');
-      return items;
-    }
-
-    const indices = toolUse.input.indices as number[];
-    const filtered = indices
-      .filter(i => i >= 0 && i < items.length)
-      .map(i => items[i]);
-
-    console.log(`Curated ${items.length} items → ${filtered.length} relevant`);
-    return filtered;
-  } catch (e) {
-    console.warn('Feed curation error, returning all items:', e);
+  if (!result?.indices) {
+    console.warn('Feed curation returned no indices, returning all items');
     return items;
   }
+
+  const filtered = result.indices
+    .filter(i => i >= 0 && i < items.length)
+    .map(i => items[i]);
+
+  console.log(`Curated ${items.length} items → ${filtered.length} relevant`);
+  return filtered;
 }
 
 export async function fetchFeeds(profile: Profile, lastDiffDate?: string, resolvedSources?: ResolvedSources): Promise<FeedResults> {
