@@ -3,7 +3,9 @@ import { SCAN_MESSAGES, DEPTHS, DEPTH_TOKEN_LIMITS, WAIT_TIPS } from '../lib/con
 import { timeAgo, daysSince, getCurrentDateFormatted } from '../lib/time';
 import { buildPrompt } from '../lib/prompt';
 import { starId } from '../lib/sync';
-import { getUnmappedItems, resolveSourcesForItem, curateGeneralFeeds, searchWebForProfile, formatItemsForPrompt, formatWebSearchForPrompt, type FeedItem } from '../lib/feeds';
+import { getUnmappedItems, resolveSourcesForItem, curateGeneralFeeds, formatItemsForPrompt, formatWebSearchForPrompt, type FeedItem } from '../lib/feeds';
+import { searchWeb } from '../lib/search';
+import { synthesizeDiff } from '../lib/llm';
 
 Alpine.data('dashboard', () => ({
   generating: false,
@@ -276,13 +278,22 @@ Alpine.data('dashboard', () => ({
       let profile = (this as any).$store.app.profile;
       const lastDiff = (this as any).$store.app.history[0];
 
+      // Build API keys object for LLM/search calls
+      const keys = {
+        anthropic: apiKey,
+        serper: profile.apiKeys?.serper,
+        perplexity: profile.apiKeys?.perplexity,
+        deepseek: profile.apiKeys?.deepseek,
+        gemini: profile.apiKeys?.gemini,
+      };
+
       // Resolve any unmapped custom items before fetching feeds
       const unmapped = getUnmappedItems(profile);
       if (unmapped.length > 0 && apiKey) {
         console.log(`Resolving ${unmapped.length} custom item(s):`, unmapped.map(u => u.item));
         const newMappings = { ...profile.resolvedMappings };
         for (const { item, category } of unmapped) {
-          const mapping = await resolveSourcesForItem(apiKey, item, category);
+          const mapping = await resolveSourcesForItem(keys, item, category);
           newMappings[item] = mapping;
           console.log(`Resolved "${item}":`, mapping);
         }
@@ -297,10 +308,9 @@ Alpine.data('dashboard', () => ({
       const windowDays = lastDiffDate
         ? Math.min(Math.max(Math.ceil((Date.now() - new Date(lastDiffDate).getTime()) / 86400000), 1), 7)
         : 7;
-
       // Run web search and feed fetch in parallel
       const [webSearchResults, feedRes] = await Promise.all([
-        apiKey ? searchWebForProfile(apiKey, profile, windowDays).catch(() => []) : Promise.resolve([]),
+        searchWeb(keys, profile, windowDays).catch(() => []),
         fetch('/api/feeds', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -326,8 +336,8 @@ Alpine.data('dashboard', () => ({
           // Curate general feeds (HN, Lobsters) for relevance
           const generalItems: FeedItem[] = [...(feeds.hn || []), ...(feeds.lobsters || [])];
           let curatedGeneral: FeedItem[] = generalItems;
-          if (generalItems.length > 0 && apiKey) {
-            curatedGeneral = await curateGeneralFeeds(apiKey, generalItems, profile);
+          if (generalItems.length > 0) {
+            curatedGeneral = await curateGeneralFeeds(keys, generalItems, profile);
           }
 
           // Combine curated general feeds with already-targeted feeds
@@ -357,63 +367,16 @@ Alpine.data('dashboard', () => ({
         webContext
       );
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': (this as any).$store.app.apiKey!,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
-          max_tokens: DEPTH_TOKEN_LIMITS[this.selectedDepth] || 8192,
-          messages: [{ role: 'user', content: prompt }],
-          tools: [{
-            name: 'submit_diff',
-            description: 'Submit the generated developer intelligence diff',
-            input_schema: {
-              type: 'object',
-              properties: {
-                title: {
-                  type: 'string',
-                  description: 'A short, creative title (3-8 words) capturing the main theme of this diff. Plain text, no markdown.'
-                },
-                content: {
-                  type: 'string',
-                  description: 'The full markdown content of the diff, starting with the date line'
-                }
-              },
-              required: ['title', 'content']
-            }
-          }],
-          tool_choice: { type: 'tool', name: 'submit_diff' }
-        }),
-      });
+      // Use selected synthesis provider (defaults to anthropic)
+      const synthesisProvider = profile.providerSelections?.synthesis || 'anthropic';
+      const maxTokens = DEPTH_TOKEN_LIMITS[this.selectedDepth] || 8192;
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message || `API error: ${res.status}`);
-      }
-
-      const result = await res.json();
-
-      if (result.stop_reason === 'max_tokens') {
-        throw new Error('Response truncated: the diff exceeded the token limit. Try a shallower depth setting.');
-      }
-
-      const toolUse = result.content.find((b: any) => b.type === 'tool_use');
-      if (!toolUse?.input?.content) {
-        throw new Error('No content returned from API');
-      }
-
-      // Calculate cost from usage (Claude Sonnet 4.5: $3/1M input, $15/1M output)
-      const usage = result.usage;
-      const cost = usage
-        ? (usage.input_tokens * 3 + usage.output_tokens * 15) / 1_000_000
-        : undefined;
-
-      const { title, content: rawContent } = toolUse.input;
+      const { title, content: rawContent, cost } = await synthesizeDiff(
+        keys,
+        synthesisProvider,
+        prompt,
+        maxTokens
+      );
 
       let cleanedContent = rawContent;
       const dateStart = cleanedContent.indexOf('Intelligence Window');

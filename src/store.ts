@@ -20,6 +20,7 @@ import {
   downloadContent,
   updatePassword as updatePasswordApi,
   starId,
+  getAnthropicKey,
   type PendingChanges,
   type SyncStatus,
   type Profile,
@@ -111,7 +112,7 @@ Alpine.store('app', {
     return this.activeProfileId ? this.profiles[this.activeProfileId] : null;
   },
   get apiKey(): string | null {
-    return this.profile?.apiKey || null;
+    return this.profile ? getAnthropicKey(this.profile) || null : null;
   },
   get isUnlocked(): boolean {
     return this.profile !== null && this.apiKey !== null;
