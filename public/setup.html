@@ -40,80 +40,173 @@
           </div>
         </div>
 
-        <!-- Step 1: API Key -->
+        <!-- Step 1: API Providers -->
         <div x-show="step === 1" x-transition.opacity>
-          <h2 class="step-title">Connect Your API Key</h2>
-          <p class="step-desc">difflog uses Claude to generate your personalized diffs. Your key is stored locally in your browser.</p>
+          <h2 class="step-title">Connect API Providers</h2>
+          <p class="step-desc">Add your API key to generate diffs. You can optionally use multiple providers for different steps.</p>
 
-          <!-- Show choice when creating new profile and existing profiles have API keys -->
-          <div x-show="showKeyChoice" class="api-key-choice">
-            <button class="api-key-option" @click="selectUseExistingKey()">
-              <span class="api-key-option-icon">&#10003;</span>
-              <span class="api-key-option-text">
-                <strong>Use same API key</strong>
-                <span>From your existing profile</span>
-              </span>
-            </button>
-            <button class="api-key-option" @click="selectEnterNewKey()">
-              <span class="api-key-option-icon">&#9998;</span>
-              <span class="api-key-option-text">
-                <strong>Enter a different key</strong>
-                <span>Use a new or separate API key</span>
-              </span>
-            </button>
-          </div>
-
-          <!-- Show confirmed existing key -->
-          <div x-show="!isEditing && useExistingKey" class="input-group">
-            <label class="input-label">API Key</label>
-            <div class="api-key-confirmed">
-              <span class="api-key-confirmed-icon">&#10003;</span>
-              <span>Using API key from existing profile</span>
-            </div>
-            <button class="btn-link" @click="selectEnterNewKey()" style="margin-top: 0.5rem;">
-              Use a different key instead
-            </button>
-          </div>
-
-          <!-- Show validated key confirmation -->
-          <div x-show="showKeyInput && apiKeyValid === true" class="input-group">
-            <label class="input-label">API Key</label>
-            <div class="api-key-confirmed">
-              <span class="api-key-confirmed-icon">&#10003;</span>
-              <span>API key validated</span>
-            </div>
-            <button class="btn-link" @click="apiKeyValid = null; apiKey = ''" style="margin-top: 0.5rem;">
-              Use a different key
-            </button>
-          </div>
-
-          <!-- Show input for new key -->
-          <div class="input-group" x-show="showKeyInput && apiKeyValid !== true">
-            <label class="input-label">Anthropic API Key</label>
-            <div class="input-with-status">
-              <input type="password" class="text-input" placeholder="sk-ant-..."
-                x-model="apiKey" @input="apiKeyValid = null"
-                autocomplete="off" data-1p-ignore data-lpignore="true" />
-              <span class="input-status input-status-invalid" x-show="apiKeyValid === false">&#10007;</span>
-            </div>
-            <span class="input-hint">Get one at <a href="https://platform.claude.com/settings/keys/" target="_blank">platform.claude.com/settings/keys</a></span>
-          </div>
-
-          <!-- When editing but not changing key -->
-          <template x-if="isEditing && !changeApiKey">
-            <div>
-              <div class="input-group">
-                <label class="input-label">API Key</label>
-                <div class="api-key-confirmed">
-                  <span class="api-key-confirmed-icon">&#10003;</span>
-                  <span>API key configured</span>
-                </div>
+          <!-- Import existing keys prompt -->
+          <div class="key-import-prompt" x-show="hasExistingKeys" x-cloak>
+            <div class="key-import-content">
+              <span class="key-import-check">&#10003;</span>
+              <div class="key-import-text">
+                <template x-if="missingKeys.length === 1">
+                  <span class="key-import-title">You have the <span x-text="existingKeyNames"></span> key in another profile</span>
+                </template>
+                <template x-if="missingKeys.length > 1">
+                  <div>
+                    <span class="key-import-title">You have API keys in other profiles</span>
+                    <span class="key-import-providers" x-text="existingKeyNames"></span>
+                  </div>
+                </template>
               </div>
-              <button class="btn-secondary" @click="changeApiKey = true" style="margin-top: 1rem;">
-                Change API Key
-              </button>
             </div>
-          </template>
+            <button class="btn-secondary btn-import" @click="importExistingKeys()" x-text="missingKeys.length === 1 ? 'Use this key' : 'Use these keys'"></button>
+          </div>
+
+          <!-- Provider table -->
+          <table class="provider-table">
+            <thead>
+              <tr>
+                <th class="provider-col">Provider</th>
+                <th class="step-col">Search</th>
+                <th class="step-col">Curation</th>
+                <th class="step-col">Synthesis</th>
+                <th class="key-col"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Anthropic (always visible) -->
+              <tr :class="{ 'provider-row-active': providers.anthropic.status === 'valid' }">
+                <td class="provider-name">
+                  <span>Anthropic</span>
+                  <span x-show="providers.anthropic.status === 'valid'" class="provider-check">&#10003;</span>
+                </td>
+                <template x-for="s in steps" :key="s.id">
+                  <td class="step-cell"
+                      :class="{
+                        'cell-selected': getCellState('anthropic', s.id) === 'selected',
+                        'cell-available': getCellState('anthropic', s.id) === 'available',
+                        'cell-unavailable': getCellState('anthropic', s.id) === 'unavailable',
+                      }"
+                      @click="toggleSelection('anthropic', s.id)">
+                    <span x-show="getCellState('anthropic', s.id) === 'selected'" class="cell-icon">&#9679;</span>
+                    <span x-show="getCellState('anthropic', s.id) === 'available'" class="cell-icon">&#9675;</span>
+                    <span x-show="getCellState('anthropic', s.id) === 'unavailable'" class="cell-icon cell-icon-dim">&#9675;</span>
+                  </td>
+                </template>
+                <td class="key-cell">
+                  <button class="btn-key" :class="providers.anthropic.status === 'valid' ? 'btn-key-edit' : 'btn-key-add'"
+                          @click="openKeyModal('anthropic')"
+                          x-text="providers.anthropic.status === 'valid' ? 'Edit' : 'Add'">
+                  </button>
+                </td>
+              </tr>
+
+              <!-- Other providers toggle (hidden when any other provider is validated) -->
+              <tr class="provider-row-toggle"
+                  x-show="!providerList.some(p => p.id !== 'anthropic' && providers[p.id].status === 'valid')"
+                  @click="showOtherProviders = !showOtherProviders">
+                <td colspan="5" class="provider-toggle-cell">
+                  <span class="provider-toggle-arrow" :class="{ 'provider-toggle-open': showOtherProviders }">&#9656;</span>
+                  <span>Other providers</span>
+                  <span class="provider-toggle-hint" x-show="!showOtherProviders">Serper, Perplexity, DeepSeek, Gemini</span>
+                </td>
+              </tr>
+
+              <!-- Other providers (expandable, or always visible if any is validated) -->
+              <template x-for="provider in providerList.filter(p => p.id !== 'anthropic')" :key="provider.id">
+                <tr x-show="showOtherProviders || providerList.some(p => p.id !== 'anthropic' && providers[p.id].status === 'valid')"
+                    :class="{ 'provider-row-active': providers[provider.id].status === 'valid' }">
+                  <td class="provider-name">
+                    <span x-text="provider.name"></span>
+                    <span x-show="providers[provider.id].status === 'valid'" class="provider-check">&#10003;</span>
+                  </td>
+
+                  <template x-for="s in steps" :key="s.id">
+                    <td class="step-cell"
+                        :class="{
+                          'cell-selected': getCellState(provider.id, s.id) === 'selected',
+                          'cell-available': getCellState(provider.id, s.id) === 'available',
+                          'cell-unavailable': getCellState(provider.id, s.id) === 'unavailable',
+                          'cell-unsupported': getCellState(provider.id, s.id) === 'unsupported',
+                        }"
+                        @click="toggleSelection(provider.id, s.id)">
+                      <span x-show="getCellState(provider.id, s.id) === 'selected'" class="cell-icon">&#9679;</span>
+                      <span x-show="getCellState(provider.id, s.id) === 'available'" class="cell-icon">&#9675;</span>
+                      <span x-show="getCellState(provider.id, s.id) === 'unavailable'" class="cell-icon cell-icon-dim">&#9675;</span>
+                      <span x-show="getCellState(provider.id, s.id) === 'unsupported'" class="cell-icon cell-icon-none">&mdash;</span>
+                    </td>
+                  </template>
+
+                  <td class="key-cell">
+                    <button class="btn-key" :class="providers[provider.id].status === 'valid' ? 'btn-key-edit' : 'btn-key-add'"
+                            @click="openKeyModal(provider.id)"
+                            x-text="providers[provider.id].status === 'valid' ? 'Edit' : 'Add'">
+                    </button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+
+          <div class="cost-estimate" x-show="isProviderConfigComplete">
+            <span class="cost-label">Est. cost per diff:</span>
+            <span class="cost-value" x-text="formatCost(costEstimate.min) + ' – ' + formatCost(costEstimate.max)"></span>
+          </div>
+
+          <!-- Key edit modal -->
+          <div x-show="editingProvider" class="key-modal-overlay" @click.self="cancelKeyModal()" x-cloak>
+            <div class="key-modal" @click.stop>
+              <template x-if="editingProvider">
+                <div>
+                  <h3 class="key-modal-title" x-text="getProviderConfig(editingProvider).name + ' API Key'"></h3>
+                  <div class="key-input-group">
+                    <input :type="providers[editingProvider].masked ? 'password' : 'text'"
+                           class="key-input"
+                           :placeholder="getProviderConfig(editingProvider).keyPlaceholder"
+                           x-model="providers[editingProvider].key"
+                           @keydown.enter="providers[editingProvider].status === 'valid' ? closeKeyModal() : validateProviderKey(editingProvider)" />
+                    <button class="btn-mask" @click="toggleMask(editingProvider)" :title="providers[editingProvider].masked ? 'Show key' : 'Hide key'">
+                      <!-- Eye open (visible) -->
+                      <svg x-show="!providers[editingProvider].masked" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                      <!-- Eye closed (hidden) -->
+                      <svg x-show="providers[editingProvider].masked" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                        <path d="M1 1l22 22"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="key-status">
+                    <span x-show="providers[editingProvider].status === 'validating'" class="status-validating">Validating...</span>
+                    <span x-show="providers[editingProvider].status === 'valid'" class="status-valid">&#10003; Connected</span>
+                    <span x-show="providers[editingProvider].status === 'invalid'" class="status-invalid">&#10007; Invalid key</span>
+                  </div>
+                  <div class="key-modal-actions">
+                    <button class="btn-secondary" @click="cancelKeyModal()">Cancel</button>
+                    <!-- Primary button: OK when valid, Remove when cleared, Verify otherwise -->
+                    <button class="btn-primary"
+                            @click="(originalEditingKey && !providers[editingProvider].key.trim()) ? (clearProviderKey(editingProvider), closeKeyModal()) :
+                                   (providers[editingProvider].status === 'valid' && providers[editingProvider].key.trim()) ? closeKeyModal() :
+                                   validateProviderKey(editingProvider)"
+                            :disabled="providers[editingProvider].status === 'validating' ||
+                                      (!providers[editingProvider].key.trim() && !originalEditingKey)">
+                      <span x-show="providers[editingProvider].status === 'validating'">...</span>
+                      <span x-show="providers[editingProvider].status === 'valid' && providers[editingProvider].key.trim()">OK</span>
+                      <span x-show="originalEditingKey && !providers[editingProvider].key.trim() && providers[editingProvider].status !== 'validating'">Remove</span>
+                      <span x-show="!(providers[editingProvider].status === 'validating') && !(providers[editingProvider].status === 'valid' && providers[editingProvider].key.trim()) && !(originalEditingKey && !providers[editingProvider].key.trim())">Verify</span>
+                    </button>
+                  </div>
+                  <a :href="getProviderConfig(editingProvider).docsUrl" target="_blank" class="key-docs-link"
+                     x-show="getProviderConfig(editingProvider).docsUrl">Get API key &rarr;</a>
+                </div>
+              </template>
+            </div>
+          </div>
 
           <div class="setup-error" x-show="setupError" x-text="setupError"></div>
         </div>
@@ -254,9 +347,8 @@
         <!-- Edit mode: Save + < > navigation -->
         <template x-if="isEditing">
           <div class="edit-footer-actions">
-            <button class="btn-primary" @click="saveProfile()" :disabled="saving || validatingKey">
-              <span x-show="!saving && !validatingKey">Save</span>
-              <span x-show="validatingKey">Validating...</span>
+            <button class="btn-primary" @click="saveProfile()" :disabled="saving">
+              <span x-show="!saving">Save</span>
               <span x-show="saving">Saving...</span>
             </button>
             <div class="step-nav-btns">
@@ -271,10 +363,9 @@
           <div class="create-footer-actions">
             <button x-show="step < 6" class="btn-primary"
               @click="(step === 0 && ctrlHeld) ? createDemoProfile() : (step === 1 ? nextStep() : step++)"
-              :disabled="(step === 0 && !ctrlHeld && !data.name.trim()) || (step === 1 && (!apiKey.trim() || validatingKey)) || saving">
-              <span x-show="!validatingKey && !saving && step === 0 && ctrlHeld">&#9670; Create Demo Profile</span>
-              <span x-show="!validatingKey && !saving && !(step === 0 && ctrlHeld)">Continue &rarr;</span>
-              <span x-show="validatingKey">Validating...</span>
+              :disabled="(step === 0 && !ctrlHeld && !data.name.trim()) || (step === 1 && !isProviderConfigComplete) || saving">
+              <span x-show="!saving && step === 0 && ctrlHeld">&#9670; Create Demo Profile</span>
+              <span x-show="!saving && !(step === 0 && ctrlHeld)">Continue &rarr;</span>
               <span x-show="saving">Creating...</span>
             </button>
             <button x-show="step === 6" class="btn-primary" @click="saveProfile()" :disabled="saving">

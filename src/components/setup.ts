@@ -7,7 +7,15 @@ import {
   DEPTHS,
   FIELD_OPTIONS
 } from '../lib/constants';
-import { validateApiKey } from '../lib/api';
+import {
+  validateAnthropicKey,
+  validateSerperKey,
+  validatePerplexityKey,
+  validateDeepSeekKey,
+  validateGeminiKey,
+} from '../lib/api';
+import { PROVIDERS, STEPS, type ProviderStep, type ProviderConfig } from '../lib/providers';
+import { estimateDiffCost } from '../lib/pricing';
 
 interface SetupData {
   name: string;
@@ -19,19 +27,29 @@ interface SetupData {
   customFocus: string;
 }
 
+type ValidationStatus = 'idle' | 'validating' | 'valid' | 'invalid';
+
+interface ProviderState {
+  key: string;
+  status: ValidationStatus;
+  masked: boolean;
+}
+
+const VALIDATORS: Record<string, (key: string) => Promise<boolean>> = {
+  anthropic: validateAnthropicKey,
+  serper: validateSerperKey,
+  perplexity: validatePerplexityKey,
+  deepseek: validateDeepSeekKey,
+  gemini: validateGeminiKey,
+};
+
 Alpine.data('setup', () => ({
   step: 0,
   customInput: '',
-  apiKey: '',
-  useExistingKey: false,
-  changeApiKey: false,
   saving: false,
   setupError: '',
   isEditing: false,
   hasExistingProfiles: false,
-  validatingKey: false,
-  apiKeyValid: null as boolean | null,
-  originalApiKey: '',
   ctrlHeld: false,
   data: {
     name: '',
@@ -48,15 +66,31 @@ Alpine.data('setup', () => ({
   topics: TOPICS,
   depths: DEPTHS,
 
-  get existingApiKey(): string | null {
-    const profiles = Object.values((this as any).$store.app.profiles);
-    if (profiles.length === 0) return null;
-    return (profiles[0] as any).apiKey || null;
+  // Provider config state
+  providers: Object.fromEntries(
+    Object.keys(PROVIDERS).map(id => [id, {
+      key: '',
+      status: 'idle' as ValidationStatus,
+      masked: true,
+    }])
+  ) as Record<string, ProviderState>,
+
+  selections: {
+    search: null as string | null,
+    curation: null as string | null,
+    synthesis: null as string | null,
   },
 
-  get apiKeyUnchanged(): boolean {
-    return this.isEditing && this.apiKey === this.originalApiKey;
-  },
+  editingProvider: null as string | null,
+  originalEditingKey: '' as string,  // Track original key when modal opens
+  providerList: Object.values(PROVIDERS),
+  steps: STEPS,
+
+  // Show other providers (beyond Anthropic)
+  showOtherProviders: false,
+
+  // Key sharing across profiles
+  existingKeys: {} as Record<string, string>,
 
   init() {
     const params = new URLSearchParams(window.location.search);
@@ -67,8 +101,6 @@ Alpine.data('setup', () => ({
       this.isEditing = true;
       this.step = parseInt(editStep);
       const p = (this as any).$store.app.profile;
-      this.apiKey = p.apiKey || '';
-      this.originalApiKey = p.apiKey || '';
       this.data = {
         name: p.name,
         languages: [...(p.languages || [])],
@@ -78,6 +110,47 @@ Alpine.data('setup', () => ({
         depth: p.depth || 'standard',
         customFocus: p.customFocus || ''
       };
+
+      // Load existing provider keys
+      if (p.apiKey) {
+        this.providers.anthropic.key = p.apiKey;
+        this.providers.anthropic.status = 'valid';
+      }
+      if (p.apiKeys) {
+        for (const [id, key] of Object.entries(p.apiKeys)) {
+          if (key && this.providers[id]) {
+            this.providers[id].key = key as string;
+            this.providers[id].status = 'valid';
+          }
+        }
+      }
+      // Load selections
+      if (p.providerSelections) {
+        this.selections = { ...this.selections, ...p.providerSelections };
+      }
+
+      // Auto-select valid providers for any empty steps (handles upgrades from old profiles)
+      for (const step of ['search', 'curation', 'synthesis'] as ProviderStep[]) {
+        if (!this.selections[step]) {
+          for (const [id, state] of Object.entries(this.providers)) {
+            if (state.status === 'valid' && this.hasCapability(id, step)) {
+              this.selections[step] = id;
+              break;
+            }
+          }
+        }
+      }
+
+      // Expand other providers if profile uses non-Anthropic keys
+      const hasOtherKeys = p.apiKeys && Object.keys(p.apiKeys).some(k => k !== 'anthropic' && p.apiKeys[k]);
+      this.showOtherProviders = hasOtherKeys;
+
+      // Check for importable keys from other profiles (excluding current profile)
+      this.existingKeys = this.getExistingKeys(p.id);
+    } else {
+      // New profile: check for existing keys from other profiles
+      this.existingKeys = this.getExistingKeys();
+      this.showOtherProviders = false;
     }
 
     // Track Ctrl key state
@@ -92,49 +165,205 @@ Alpine.data('setup', () => ({
     window.addEventListener('blur', () => { this.ctrlHeld = false; });
   },
 
-  selectUseExistingKey() {
-    this.useExistingKey = true;
-    this.apiKey = this.existingApiKey || '';
+  // Provider config methods
+  getProviderConfig(id: string): ProviderConfig {
+    return PROVIDERS[id];
   },
 
-  selectEnterNewKey() {
-    this.useExistingKey = false;
-    this.apiKey = '';
-    this.apiKeyValid = null;
-    setTimeout(() => {
-      const input = document.querySelector('.text-input[placeholder="sk-ant-..."]') as HTMLInputElement;
-      input?.focus();
-    }, 50);
+  hasCapability(providerId: string, step: ProviderStep): boolean {
+    return PROVIDERS[providerId]?.capabilities.includes(step) ?? false;
   },
 
-  async validateApiKey(): Promise<boolean> {
-    if (!this.apiKey.trim()) return false;
+  getCellState(providerId: string, step: ProviderStep): 'selected' | 'available' | 'unavailable' | 'unsupported' {
+    if (!this.hasCapability(providerId, step)) {
+      return 'unsupported';
+    }
+    if (this.selections[step] === providerId) {
+      return 'selected';
+    }
+    if (this.providers[providerId].status === 'valid') {
+      return 'available';
+    }
+    return 'unavailable';
+  },
 
-    this.validatingKey = true;
-    this.setupError = '';
-    this.apiKeyValid = null;
+  toggleSelection(providerId: string, step: ProviderStep) {
+    if (!this.hasCapability(providerId, step)) return;
+    if (this.providers[providerId].status !== 'valid') return;
+
+    if (this.selections[step] === providerId) {
+      // Don't allow deselecting synthesis
+      if (step !== 'synthesis') {
+        this.selections[step] = null;
+      }
+    } else {
+      this.selections[step] = providerId;
+    }
+  },
+
+  async validateProviderKey(providerId: string) {
+    const state = this.providers[providerId];
+    if (!state.key.trim()) {
+      state.status = 'idle';
+      return;
+    }
+
+    state.status = 'validating';
+    const validator = VALIDATORS[providerId];
 
     try {
-      const valid = await validateApiKey(this.apiKey);
-      this.apiKeyValid = valid;
-      if (!valid) {
-        this.setupError = 'Invalid API key';
+      const valid = await validator(state.key);
+      state.status = valid ? 'valid' : 'invalid';
+
+      if (valid) {
+        // Auto-select this provider for any steps it supports that don't have a selection yet
+        for (const step of ['search', 'curation', 'synthesis'] as ProviderStep[]) {
+          if (!this.selections[step] && this.hasCapability(providerId, step)) {
+            this.selections[step] = providerId;
+          }
+        }
       }
-      return valid;
     } catch {
-      this.apiKeyValid = false;
-      this.setupError = 'Could not validate API key';
-      return false;
-    } finally {
-      this.validatingKey = false;
+      state.status = 'invalid';
     }
   },
 
-  async nextStep() {
-    if (this.step === 1 && this.apiKeyValid !== true && !this.apiKeyUnchanged) {
-      const valid = await this.validateApiKey();
-      if (!valid) return;
+  clearProviderKey(providerId: string) {
+    this.providers[providerId].key = '';
+    this.providers[providerId].status = 'idle';
+
+    // Clear selections that used this provider
+    for (const step of ['search', 'curation', 'synthesis'] as ProviderStep[]) {
+      if (this.selections[step] === providerId) {
+        this.selections[step] = null;
+      }
     }
+  },
+
+  toggleMask(providerId: string) {
+    this.providers[providerId].masked = !this.providers[providerId].masked;
+  },
+
+  openKeyModal(providerId: string) {
+    this.editingProvider = providerId;
+    this.originalEditingKey = this.providers[providerId].key;
+  },
+
+  closeKeyModal() {
+    this.editingProvider = null;
+    this.originalEditingKey = '';
+  },
+
+  cancelKeyModal() {
+    // Restore original key on cancel
+    if (this.editingProvider && this.originalEditingKey) {
+      this.providers[this.editingProvider].key = this.originalEditingKey;
+      this.providers[this.editingProvider].status = 'valid';
+    }
+    this.closeKeyModal();
+  },
+
+  // Get existing keys from other profiles (optionally excluding a specific profile)
+  getExistingKeys(excludeProfileId?: string): Record<string, string> {
+    const profiles = (this as any).$store.app.profiles;
+    const keys: Record<string, string> = {};
+    for (const p of Object.values(profiles) as any[]) {
+      if (excludeProfileId && p.id === excludeProfileId) continue;
+      if (p.apiKey && !keys.anthropic) keys.anthropic = p.apiKey;
+      if (p.apiKeys) {
+        for (const [id, key] of Object.entries(p.apiKeys)) {
+          if (key && !keys[id]) keys[id] = key as string;
+        }
+      }
+    }
+    return keys;
+  },
+
+  // Get keys from other profiles that aren't already set up
+  get missingKeys(): string[] {
+    return Object.keys(this.existingKeys)
+      .filter(id => !this.providers[id]?.key || this.providers[id]?.status !== 'valid');
+  },
+
+  // Get display names for missing keys
+  get existingKeyNames(): string {
+    return this.missingKeys.map(id => {
+      const provider = PROVIDERS[id];
+      return provider ? provider.name : id;
+    }).join(', ');
+  },
+
+  // Check if there are existing keys not yet entered
+  get hasExistingKeys(): boolean {
+    for (const [id, key] of Object.entries(this.existingKeys)) {
+      const state = this.providers[id];
+      // Show prompt if any existing key isn't entered or validated (but not while validating)
+      if (key && (!state.key || (state.status !== 'valid' && state.status !== 'validating'))) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  // Import existing keys from other profiles (already validated, no need to re-verify)
+  importExistingKeys() {
+    const hasNonAnthropic = Object.keys(this.existingKeys).some(id => id !== 'anthropic');
+
+    for (const [id, key] of Object.entries(this.existingKeys)) {
+      // Only import if not already set up
+      if (!this.providers[id].key || this.providers[id].status !== 'valid') {
+        this.providers[id].key = key;
+        this.providers[id].status = 'valid';  // Trust keys from other profiles
+      }
+    }
+
+    // Auto-select providers for steps
+    for (const step of ['search', 'curation', 'synthesis'] as ProviderStep[]) {
+      if (!this.selections[step]) {
+        for (const [id, state] of Object.entries(this.providers)) {
+          if (state.status === 'valid' && this.hasCapability(id, step)) {
+            this.selections[step] = id;
+            break;
+          }
+        }
+      }
+    }
+
+    // Expand other providers if we imported non-Anthropic keys
+    if (hasNonAnthropic) this.showOtherProviders = true;
+  },
+
+  get isProviderConfigComplete(): boolean {
+    return this.selections.synthesis !== null &&
+           this.providers[this.selections.synthesis]?.status === 'valid';
+  },
+
+  get costEstimate() {
+    return estimateDiffCost({
+      search: this.selections.search as any,
+      curation: this.selections.curation as any,
+      synthesis: this.selections.synthesis as any,
+    });
+  },
+
+  formatCost(cost: number): string {
+    if (cost < 0.01) {
+      return `$${cost.toFixed(4)}`;
+    }
+    return `$${cost.toFixed(2)}`;
+  },
+
+  get validKeyCount(): number {
+    return Object.values(this.providers).filter(p => p.status === 'valid').length;
+  },
+
+  // Navigation
+  async nextStep() {
+    if (this.step === 1 && !this.isProviderConfigComplete) {
+      this.setupError = 'Select a provider for synthesis to continue';
+      return;
+    }
+    this.setupError = '';
     this.step++;
   },
 
@@ -142,16 +371,7 @@ Alpine.data('setup', () => ({
     if (this.step > 0) this.step--;
   },
 
-  get showKeyChoice(): boolean {
-    return !this.isEditing && !!this.existingApiKey && !this.useExistingKey && this.apiKey === '';
-  },
-
-  get showKeyInput(): boolean {
-    if (this.isEditing) return this.changeApiKey;
-    if (!this.existingApiKey) return true;
-    return !this.useExistingKey && !this.showKeyChoice;
-  },
-
+  // Profile data methods
   toggle(field: string, item: string) {
     const arr = (this.data as any)[field] as string[];
     const idx = arr.indexOf(item);
@@ -183,36 +403,55 @@ Alpine.data('setup', () => ({
     window.location.href = this.hasExistingProfiles ? '/profiles' : '/welcome';
   },
 
+  buildApiKeys(): { apiKey?: string; apiKeys?: Record<string, string> } {
+    const result: { apiKey?: string; apiKeys?: Record<string, string> } = {};
+    const otherKeys: Record<string, string> = {};
+
+    for (const [id, state] of Object.entries(this.providers)) {
+      if (state.status === 'valid' && state.key) {
+        if (id === 'anthropic') {
+          result.apiKey = state.key;
+        } else {
+          otherKeys[id] = state.key;
+        }
+      }
+    }
+
+    if (Object.keys(otherKeys).length > 0) {
+      result.apiKeys = otherKeys;
+    }
+
+    return result;
+  },
+
   async saveProfile() {
     this.setupError = '';
-
-    if (!this.apiKey) {
-      this.setupError = 'API key is required';
-      return;
-    }
 
     if (!this.data.name.trim()) {
       this.setupError = 'Name is required';
       return;
     }
 
-    // Only validate if API key changed
-    if (!this.apiKeyUnchanged && this.apiKeyValid !== true) {
-      const valid = await this.validateApiKey();
-      if (!valid) return;
+    if (!this.isProviderConfigComplete) {
+      this.setupError = 'Configure at least one provider for synthesis';
+      return;
     }
 
     this.saving = true;
     try {
+      const keys = this.buildApiKeys();
+
       if (this.isEditing) {
         (this as any).$store.app.updateProfile({
           ...this.data,
-          apiKey: this.apiKey,
+          ...keys,
+          providerSelections: this.selections,
         });
       } else {
         (this as any).$store.app.createProfile({
           ...this.data,
-          apiKey: this.apiKey,
+          ...keys,
+          providerSelections: this.selections,
         });
       }
       window.location.href = '/';
@@ -225,22 +464,19 @@ Alpine.data('setup', () => ({
   createDemoProfile() {
     this.saving = true;
     try {
-      // Create demo profile
       (this as any).$store.app.createProfile({
         name: 'Demo',
         apiKey: 'demo-key-placeholder',
         languages: ['TypeScript', 'Python', 'Rust'],
         frameworks: ['React', 'Node.js'],
         tools: ['Docker', 'PostgreSQL'],
-        topics: ['AI/ML', 'Web Development'],
+        topics: ['AI/ML & LLMs', 'DevOps & Platform'],
         depth: 'standard',
         customFocus: ''
       });
 
-      // Generate demo diffs over the last 10 days (every 2 days, with 2 diffs on day 2)
       const now = new Date();
       const demoDiffs = [];
-
       const titles = [
         'Developer Ecosystem Brief',
         'Tech Stack Updates',
@@ -263,7 +499,6 @@ Alpine.data('setup', () => ({
           duration_seconds: 15 + Math.floor(Math.random() * 20)
         });
 
-        // Add a second diff on day 2 (2 days ago) to demo multiple diffs per day
         if (daysAgo === 2) {
           const earlierDate = new Date(date);
           earlierDate.setHours(earlierDate.getHours() - 8);
@@ -277,9 +512,7 @@ Alpine.data('setup', () => ({
         }
       }
 
-      // Add diffs to history using the setter (newest first)
       (this as any).$store.app.history = demoDiffs;
-
       window.location.href = '/';
     } catch (e: unknown) {
       this.setupError = e instanceof Error ? e.message : 'Failed to create demo profile';
@@ -289,13 +522,12 @@ Alpine.data('setup', () => ({
 
   generateDemoContent(daysAgo: number): string {
     const topics = [
-      '## TypeScript 5.4 Brings New Type Inference Magic\n\nThe TypeScript team released [version 5.4](https://devblogs.microsoft.com/typescript/announcing-typescript-5-4/) with significant improvements to type inference and better error messages. The new `NoInfer` utility type helps prevent unwanted type widening.\n\n## React 19 Beta: Server Components Go Stable\n\nReact announced [version 19 beta](https://react.dev/blog/2024/04/25/react-19) with stable Server Components and new hooks like `useFormStatus` for better data fetching patterns.',
-      '## Python 3.13 JIT Compiler Shows 20% Speed Boost\n\nPython core developers [announced](https://discuss.python.org/t/a-jit-compiler-for-cpython/33092) experimental JIT compilation support in 3.13, showing up to 20% performance improvements in benchmarks.\n\n## Rust 1.77 Slashes Compile Times\n\nThe latest [Rust release](https://blog.rust-lang.org/2024/03/21/Rust-1.77.0.html) brings async improvements and notably faster compilation through improved incremental builds.',
-      '## Docker Desktop Optimizes Apple Silicon Performance\n\nDocker released [version 4.28](https://docs.docker.com/desktop/release-notes/) with major container performance improvements on Apple Silicon, reducing memory usage by up to 30%.\n\n## PostgreSQL 17 Beta Unveils Parallel Vacuum\n\nPostgreSQL [announced](https://www.postgresql.org/about/news/postgresql-17-beta-1-released-2853/) parallel vacuum operations and enhanced JSON indexing in the 17 beta release.',
-      '## VS Code Adds AI-Powered Completions\n\nMicrosoft [introduced](https://code.visualstudio.com/updates/) GitHub Copilot-powered debugging and improved multi-cursor editing in the latest VS Code update.\n\n## GitHub Actions Adds Larger Runners\n\nGitHub [announced](https://github.blog/changelog/2024-01-30-github-actions-introducing-the-new-m1-macos-runner/) new M1 macOS runners and improved caching strategies that cut CI/CD times by up to 50%.',
-      '## Claude 3.5 Sonnet Sets New Benchmarks\n\nAnthropic released [Claude 3.5 Sonnet](https://www.anthropic.com/news/claude-3-5-sonnet) with groundbreaking code generation capabilities and vision understanding.\n\n## Bun 1.0.30 Achieves npm Compatibility\n\nThe [latest Bun release](https://bun.sh/blog/bun-v1.0.30) brings near-complete npm compatibility while maintaining 10x faster package installation speeds.'
+      '## TypeScript 5.4 Brings New Type Inference Magic\n\nThe TypeScript team released [version 5.4](https://devblogs.microsoft.com/typescript/announcing-typescript-5-4/) with significant improvements to type inference and better error messages.\n\n## React 19 Beta: Server Components Go Stable\n\nReact announced [version 19 beta](https://react.dev/blog/2024/04/25/react-19) with stable Server Components and new hooks.',
+      '## Python 3.13 JIT Compiler Shows 20% Speed Boost\n\nPython core developers [announced](https://discuss.python.org/t/a-jit-compiler-for-cpython/33092) experimental JIT compilation support in 3.13.\n\n## Rust 1.77 Slashes Compile Times\n\nThe latest [Rust release](https://blog.rust-lang.org/2024/03/21/Rust-1.77.0.html) brings async improvements and notably faster compilation.',
+      '## Docker Desktop Optimizes Apple Silicon Performance\n\nDocker released [version 4.28](https://docs.docker.com/desktop/release-notes/) with major container performance improvements on Apple Silicon.\n\n## PostgreSQL 17 Beta Unveils Parallel Vacuum\n\nPostgreSQL [announced](https://www.postgresql.org/about/news/postgresql-17-beta-1-released-2853/) parallel vacuum operations.',
+      '## VS Code Adds AI-Powered Completions\n\nMicrosoft [introduced](https://code.visualstudio.com/updates/) GitHub Copilot-powered debugging in the latest VS Code update.\n\n## GitHub Actions Adds Larger Runners\n\nGitHub [announced](https://github.blog/changelog/2024-01-30-github-actions-introducing-the-new-m1-macos-runner/) new M1 macOS runners.',
+      '## Claude 3.5 Sonnet Sets New Benchmarks\n\nAnthropic released [Claude 3.5 Sonnet](https://www.anthropic.com/news/claude-3-5-sonnet) with groundbreaking code generation capabilities.\n\n## Bun 1.0.30 Achieves npm Compatibility\n\nThe [latest Bun release](https://bun.sh/blog/bun-v1.0.30) brings near-complete npm compatibility.'
     ];
-
     return topics[daysAgo % topics.length];
   }
 }));

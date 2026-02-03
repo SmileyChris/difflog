@@ -54,9 +54,9 @@ export async function postJson<T>(url: string, body: unknown): Promise<T> {
 }
 
 /**
- * Validate API key against Anthropic
+ * Validate Anthropic API key
  */
-export async function validateApiKey(apiKey: string): Promise<boolean> {
+export async function validateAnthropicKey(apiKey: string): Promise<boolean> {
   try {
     const response = await fetch('https://api.anthropic.com/v1/models', {
       method: 'GET',
@@ -67,6 +67,84 @@ export async function validateApiKey(apiKey: string): Promise<boolean> {
       },
     });
     return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validate Serper.dev API key
+ */
+export async function validateSerperKey(apiKey: string): Promise<boolean> {
+  try {
+    const response = await fetch('https://google.serper.dev/news', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        q: 'test',
+        num: 1,
+      }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validate DeepSeek API key (OpenAI-compatible API)
+ */
+export async function validateDeepSeekKey(apiKey: string): Promise<boolean> {
+  try {
+    const response = await fetch('https://api.deepseek.com/models', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+      },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validate Google Gemini API key
+ */
+export async function validateGeminiKey(apiKey: string): Promise<boolean> {
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`,
+      { method: 'GET' }
+    );
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validate Perplexity API key
+ */
+export async function validatePerplexityKey(apiKey: string): Promise<boolean> {
+  try {
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'sonar',
+        messages: [{ role: 'user', content: 'test' }],
+        max_tokens: 1,
+      }),
+    });
+    // 200 = valid, 401 = invalid key, other errors might be rate limits
+    return response.ok || response.status === 429;
   } catch {
     return false;
   }
