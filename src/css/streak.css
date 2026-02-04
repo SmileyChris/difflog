@@ -7,18 +7,32 @@
   outline: none;
 }
 
+.streak-badge,
 .streak-badge-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  color: var(--streak);
+  gap: 0.15rem;
+  color: var(--streak, #ff6b35);
   font-weight: 600;
   font-size: 0.9em;
-  cursor: help;
+  cursor: pointer;
   transition: opacity 0.2s;
+  background: none;
+  border: none;
+  padding: 0;
 }
 
+.streak-badge:hover,
 .streak-badge-btn:hover {
   opacity: 0.8;
+}
+
+.streak-fire {
+  font-size: 0.9em;
+}
+
+.streak-count {
+  font-variant-numeric: tabular-nums;
 }
 
 .streak-icon {
@@ -72,15 +86,99 @@
 
 .streak-warning {
   color: var(--danger);
-  font-size: 0.8rem;
-  font-weight: normal;
-  margin-bottom: 0.5rem;
-  margin-top: -0.5em;
-  line-height: 1.4;
-  text-align: right;
+  font-size: 0.75em;
+  margin-left: 0.25rem;
 }
 
-/* ... existing styles ... */
+/* Streak Dropdown Header */
+.streak-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.streak-fire-large {
+  font-size: 1.75rem;
+}
+
+.streak-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.streak-count-large {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.streak-expires {
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+}
+
+/* Streak Calendar Grid */
+.streak-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.streak-day-names {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--text-dimmest);
+  margin-bottom: 4px;
+}
+
+.streak-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.streak-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  border-radius: 3px;
+  cursor: default;
+}
+
+.streak-day-outside {
+  opacity: 0.3;
+}
+
+.streak-day-active {
+  color: var(--accent);
+  background: var(--accent-bg);
+  cursor: pointer;
+}
+
+.streak-day-active:hover {
+  background: var(--accent-muted);
+}
+
+.streak-day-gap {
+  color: var(--text-dimmest);
+}
+
+.streak-day-today {
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 3px var(--accent-border);
+}
+
+/* Legacy styles */
 
 .day-today {
   border: 1px solid var(--accent);

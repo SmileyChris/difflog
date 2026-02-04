@@ -77,8 +77,8 @@ bun test src/lib/sync.test.ts      # Run specific test file
 
 ## Styling
 
-Class-based CSS in `src/styles.css` with CSS custom properties. Other styles done as part of the build system.
-Use and update the design language in `_dev/design.html` where appropriate.
+Class-based CSS in `src/app.css` with CSS custom properties.
+Use and update the design system at `/design` (dev-only route, redirects in production).
 
 ## Documentation
 
