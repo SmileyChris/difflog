@@ -7,7 +7,7 @@
 	import { updateProfile, autoSync, getCachedPassword, hasPendingChanges } from '$lib/stores/sync.svelte';
 	import { openSyncDropdown } from '$lib/stores/ui.svelte';
 	import { addDiff, deleteDiff, removeStar } from '$lib/stores/operations.svelte';
-	import { SyncDropdown, ShareDropdown, DiffContent, StreakCalendar, SiteFooter, PageHeader } from '$lib/components';
+	import { HeaderNav, SyncDropdown, ShareDropdown, DiffContent, StreakCalendar, SiteFooter, PageHeader } from '$lib/components';
 	import { SCAN_MESSAGES, DEPTHS, DEPTH_TOKEN_LIMITS, WAIT_TIPS } from '$lib/utils/constants';
 	import { timeAgo, daysSince, getCurrentDateFormatted } from '$lib/utils/time';
 	import { buildPrompt } from '$lib/utils/prompt';
@@ -387,14 +387,7 @@
 					<span class="header-link-icon">&#9733;</span> {getStarCountLabel()}
 				</a>
 			{/if}
-			<a href="/profiles" class="profile-badge">
-				<svg class="profile-badge-icon" viewBox="0 0 24 24" fill="currentColor">
-					<circle cx="12" cy="11" r="4" />
-					<path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8" />
-				</svg>
-				<span>{getProfile()?.name || 'Profile'}</span>
-			</a>
-			<SyncDropdown />
+			<HeaderNav />
 		</div>
 	</PageHeader>
 

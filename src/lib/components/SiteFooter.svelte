@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { browser, dev } from '$app/environment';
 	import { STORAGE_KEYS } from '$lib/utils/constants';
 
@@ -67,13 +68,11 @@
 
 	const hiddenCount = $derived(data ? Math.max(0, data.versions.length - visibleVersions.length) : 0);
 
-	$effect(() => {
-		if (browser) {
-			lastSeen = localStorage.getItem(STORAGE_KEYS.CHANGELOG_SEEN) || '';
-			if (!lastSeen && version) {
-				lastSeen = version;
-				localStorage.setItem(STORAGE_KEYS.CHANGELOG_SEEN, version);
-			}
+	onMount(() => {
+		lastSeen = localStorage.getItem(STORAGE_KEYS.CHANGELOG_SEEN) || '';
+		if (!lastSeen && version) {
+			lastSeen = version;
+			localStorage.setItem(STORAGE_KEYS.CHANGELOG_SEEN, version);
 		}
 	});
 

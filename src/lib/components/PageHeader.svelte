@@ -46,3 +46,134 @@
 		</div>
 	{/if}
 </header>
+
+<style>
+	header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 1rem;
+		flex-wrap: wrap;
+		margin-bottom: 2rem;
+	}
+
+	.header-left {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		flex: 1;
+	}
+
+	.main-title {
+		font-size: 1.25rem;
+		font-weight: 600;
+		letter-spacing: 0.1em;
+		margin: 0;
+		color: var(--text-heading);
+	}
+
+	.main-title-link {
+		text-decoration: none;
+		color: inherit;
+	}
+
+	.main-title-link:hover {
+		color: var(--accent);
+	}
+
+	.title-diamond {
+		font-size: 0.4em;
+		vertical-align: 0.3em;
+		margin: 0 0.05em;
+		opacity: 0.7;
+	}
+
+	.header-date {
+		font-size: 0.75rem;
+		font-family: var(--font-mono);
+		color: var(--text-hint);
+		margin: 0;
+	}
+
+	.logo-mark-header {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		font-size: 1.1rem;
+		color: var(--accent);
+		transform-origin: center center;
+	}
+
+	.logo-mark-header::after {
+		content: '\25C7';
+		position: absolute;
+		font-size: 2rem;
+		color: var(--accent);
+	}
+
+	.logo-mark-star {
+		font-size: 1.2rem;
+	}
+
+	.logo-mark-star::after {
+		content: '\25C7';
+		position: absolute;
+		font-size: 2rem;
+		color: var(--accent);
+	}
+
+	.logo-mark-square {
+		font-size: 0.9rem;
+	}
+
+	.logo-mark-square::after {
+		content: '\25C7';
+		position: absolute;
+		font-size: 2rem;
+		color: var(--accent);
+	}
+
+	.logo-mark-user {
+		font-size: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.logo-mark-user svg {
+		width: 1rem;
+		height: 1rem;
+		margin-top: -0.15rem;
+	}
+
+	.logo-mark-user::after {
+		content: '\25C7';
+		position: absolute;
+		font-size: 2rem;
+		color: var(--accent);
+	}
+
+	.logo-mark-spinning {
+		animation: diamond-spin 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+	}
+
+	@keyframes diamond-spin {
+		0% {
+			transform: rotateY(0deg);
+		}
+		100% {
+			transform: rotateY(360deg);
+		}
+	}
+</style>

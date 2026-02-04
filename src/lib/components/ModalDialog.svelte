@@ -68,3 +68,79 @@
 		</footer>
 	{/if}
 </dialog>
+
+<style>
+	dialog {
+		width: 500px;
+		max-width: calc(100% - 2rem);
+		max-height: 80vh;
+		background: var(--bg-card);
+		border-radius: var(--radius-lg);
+		border: 1px solid var(--border);
+		padding: 0;
+		flex-direction: column;
+		overflow: hidden;
+		color: var(--text-primary);
+	}
+
+	dialog[open] {
+		display: flex;
+	}
+
+	dialog::backdrop {
+		background: rgba(0, 0, 0, 0.8);
+	}
+
+	dialog.sm {
+		max-width: 400px;
+	}
+
+	dialog.lg {
+		width: 800px;
+		max-height: 90vh;
+	}
+
+	dialog.dark {
+		background: var(--bg-surface);
+	}
+
+	.dialog-body {
+		padding: 1.25rem;
+		overflow-y: auto;
+	}
+
+	.dialog-body.padded {
+		padding: 2rem;
+	}
+
+	.unlock-title {
+		font-size: 1.25rem;
+		font-weight: 600;
+		color: var(--text-heading);
+		margin: 0 0 0.25rem 0;
+	}
+
+	.unlock-subtitle {
+		font-size: 0.9rem;
+		color: var(--accent);
+		margin: 0 0 1.5rem 0;
+	}
+
+	.unlock-error {
+		margin-top: 0.75rem;
+		padding: 0.75rem;
+		background: rgba(255, 100, 100, 0.1);
+		border: 1px solid rgba(255, 100, 100, 0.3);
+		border-radius: var(--radius);
+		font-size: 0.85rem;
+		color: var(--danger);
+	}
+
+	footer {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.75rem;
+		padding: 1.25rem 2rem;
+		border-top: 1px solid var(--border);
+	}
+</style>

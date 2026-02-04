@@ -1,6 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
-@import "./css/streak.css";
-@import "./css/provider-config.css";
 
 /* View Transitions - browser default crossfade */
 @view-transition {
@@ -147,57 +145,12 @@ header {
   gap: 1rem;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  flex: 1;
-}
-
+/* Context-specific header styles used outside of PageHeader component */
 .header-profile-group {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-wrap: nowrap;
-}
-
-.main-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  margin: 0;
-  color: var(--text-heading);
-}
-
-.main-title-link {
-  text-decoration: none;
-  color: inherit;
-}
-
-.main-title-link:hover {
-  color: var(--accent);
-}
-
-.title-diamond {
-  font-size: 0.4em;
-  vertical-align: 0.3em;
-  margin: 0 0.05em;
-  opacity: 0.7;
-}
-
-.header-date {
-  font-size: 0.75rem;
-  font-family: var(--font-mono);
-  color: var(--text-hint);
-  margin: 0;
 }
 
 .logo-mark {
@@ -219,75 +172,10 @@ header {
   color: var(--accent);
 }
 
-.logo-mark-header {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  font-size: 1.1rem;
-  color: var(--accent);
-  transform-origin: center center;
-}
-
-.logo-mark-header::after {
-  content: '\25C7';
-  position: absolute;
-  font-size: 2rem;
-  color: var(--accent);
-}
-
-.logo-mark-star {
-  font-size: 1.2rem;
-}
-
-.logo-mark-star::after {
-  content: '\25C7';
-  position: absolute;
-  font-size: 2rem;
-  color: var(--accent);
-}
-
-.logo-mark-square {
-  font-size: 0.9rem;
-}
-
-.logo-mark-square::after {
-  content: '\25C7';
-  position: absolute;
-  font-size: 2rem;
-  color: var(--accent);
-}
-
-.logo-mark-user {
-  font-size: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.logo-mark-user svg {
-  width: 1rem;
-  height: 1rem;
-  margin-top: -0.15rem;
-}
-
-.logo-mark-user::after {
-  content: '\25C7';
-  position: absolute;
-  font-size: 2rem;
-  color: var(--accent);
-}
-
 .diff-title-icon {
   color: var(--accent);
   font-size: 0.75em;
   margin-right: 0.25rem;
-}
-
-.logo-mark-spinning {
-  animation: diamond-spin 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
 }
 
 .profile-badge {
@@ -324,63 +212,7 @@ header {
   transform: rotate(180deg);
 }
 
-/* Sync Status Icon */
-.sync-status {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.5rem;
-  margin-left: 0.25rem;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.sync-status-cloud {
-  font-size: 1.4rem;
-  color: var(--text-hint);
-  line-height: 1;
-}
-
-.sync-status-indicator {
-  position: absolute;
-  font-size: 0.5rem;
-  font-weight: 700;
-  top: 50%;
-  right: -0.1rem;
-  transform: translateY(-50%);
-  line-height: 1;
-}
-
-.sync-status-ok {
-  color: var(--accent);
-}
-
-.sync-status-pending {
-  color: var(--warning);
-}
-
-.sync-status-spinning {
-  color: var(--accent);
-  font-size: 0.6rem;
-  animation: sync-spin 1s linear infinite;
-}
-
-@keyframes sync-spin {
-  from {
-    transform: translateY(-50%) rotate(0deg);
-  }
-
-  to {
-    transform: translateY(-50%) rotate(360deg);
-  }
-}
-
-/* Inline sync dropdown (inside profile cards) */
+/* Inline sync dropdown (inside profile cards) - context-specific overrides */
 .profile-card-id .sync-dropdown-wrapper,
 .profile-card-id .sync-status-static {
   margin-left: 0.5rem;
@@ -398,206 +230,6 @@ header {
   align-items: center;
   position: relative;
   opacity: 0.6;
-}
-
-.sync-status-hover {
-  display: none;
-  color: var(--accent);
-}
-
-.sync-dropdown-wrapper:hover .sync-status-hover,
-.sync-dropdown-wrapper:focus-within .sync-status-hover {
-  display: block;
-}
-
-.sync-dropdown-wrapper:hover .sync-status-ok,
-.sync-dropdown-wrapper:focus-within .sync-status-ok {
-  display: none;
-}
-
-/* Sync Dropdown */
-.sync-dropdown-wrapper {
-  position: relative;
-  display: inline-flex;
-}
-
-.sync-dropdown {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 0.75rem;
-  min-width: min(250px, calc(100vw - 2rem));
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-}
-
-.sync-dropdown-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.sync-dropdown-input-row {
-  display: flex;
-  gap: 0.375rem;
-  align-items: center;
-}
-
-.sync-dropdown-input-row .sync-dropdown-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.sync-dropdown-input {
-  background: var(--bg-input);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  padding: 0.5rem 0.625rem;
-  color: var(--text-primary);
-  font-size: 0.85rem;
-  width: 100%;
-}
-
-.sync-dropdown-input:focus {
-  outline: none;
-  border-color: var(--accent-border);
-}
-
-.sync-dropdown-input::placeholder {
-  color: var(--text-disabled);
-}
-
-.sync-dropdown-btn {
-  background: var(--accent);
-  color: var(--bg-base);
-  border: none;
-  border-radius: var(--radius);
-  padding: 0.5rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.sync-dropdown-btn:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.sync-dropdown-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.sync-dropdown-error {
-  color: var(--danger);
-  font-size: 0.8rem;
-}
-
-.sync-dropdown-result {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--accent);
-  font-size: 0.85rem;
-}
-
-.sync-dropdown-result-icon {
-  font-size: 1rem;
-}
-
-.sync-dropdown-syncing {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--text-subtle);
-  font-size: 0.85rem;
-}
-
-.sync-dropdown-syncing-icon {
-  animation: spin 1s linear infinite;
-}
-
-.sync-dropdown-info {
-  color: var(--text-subtle);
-  font-size: 0.8rem;
-}
-
-.sync-paused {
-  color: var(--warning);
-}
-
-.sync-dropdown-form .sync-dropdown-info {
-  margin-bottom: 0.25rem;
-}
-
-.sync-dropdown-status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.sync-dropdown-status .sync-dropdown-info {
-  flex: 1;
-}
-
-.sync-dropdown-btn-icon {
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  color: var(--text-subtle);
-  width: 1.75rem;
-  height: 1.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.15s;
-}
-
-.sync-dropdown-btn-icon:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.sync-dropdown-forget {
-  font-size: 0.65rem;
-  font-weight: 500;
-  padding: 0.15rem 0.4rem;
-  border-radius: var(--radius-sm);
-  color: var(--text-disabled);
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  cursor: pointer;
-  margin-top: 0.25rem;
-}
-
-.sync-dropdown-forget:hover {
-  color: var(--text-subtle);
-  border-color: var(--border-mid);
-}
-
-.sync-dropdown-remember {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  margin-top: 0.25rem;
-}
-
-.sync-dropdown-remember input[type="checkbox"] {
-  accent-color: var(--accent);
-  width: 14px;
-  height: 14px;
-  cursor: pointer;
-}
-
-.sync-dropdown-remember-text {
-  font-size: 0.75rem;
-  color: var(--text-subtle);
 }
 
 .remember-password {
@@ -1601,92 +1233,6 @@ button:disabled {
   border-color: var(--accent-border);
 }
 
-/* Dialog base styles */
-dialog {
-  width: 500px;
-  max-width: calc(100% - 2rem);
-  max-height: 80vh;
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  padding: 0;
-  flex-direction: column;
-  overflow: hidden;
-  color: var(--text-primary);
-}
-
-dialog[open] {
-  display: flex;
-}
-
-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-dialog.sm {
-  max-width: 400px;
-}
-
-dialog.lg {
-  width: 800px;
-  max-height: 90vh;
-}
-
-dialog.dark {
-  background: var(--bg-surface);
-}
-
-dialog > header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-  flex-wrap: nowrap;
-  gap: 1rem;
-  margin-bottom: 0;
-}
-
-.dialog-title {
-  font-size: 1rem;
-  color: var(--text-heading);
-  margin: 0;
-}
-
-.dialog-title.subtle {
-  font-size: 0.85rem;
-  color: var(--text-subtle);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.dialog-close {
-  background: none;
-  border: none;
-  color: var(--text-subtle);
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0 0.25rem;
-  line-height: 1;
-  transition: color 0.15s;
-}
-
-.dialog-close:hover {
-  color: var(--text-heading);
-}
-
-.dialog-body {
-  padding: 1.25rem;
-  overflow-y: auto;
-}
-
-.dialog-body.padded {
-  padding: 2rem;
-}
-
-.dialog-body.padded {
-  padding: 2rem;
-}
 
 .prompt-text {
   padding: 1.25rem;
@@ -2158,16 +1704,6 @@ dialog > header {
 
   100% {
     left: 100%;
-  }
-}
-
-@keyframes diamond-spin {
-  0% {
-    transform: rotateY(0deg);
-  }
-
-  100% {
-    transform: rotateY(360deg);
   }
 }
 
@@ -3186,36 +2722,6 @@ button.profile-card-action-alt:hover:not(:disabled) {
 }
 
 
-.unlock-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-heading);
-  margin: 0 0 0.25rem 0;
-}
-
-.unlock-subtitle {
-  font-size: 0.9rem;
-  color: var(--accent);
-  margin: 0 0 1.5rem 0;
-}
-
-.unlock-error {
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  background: rgba(255, 100, 100, 0.1);
-  border: 1px solid rgba(255, 100, 100, 0.3);
-  border-radius: var(--radius);
-  font-size: 0.85rem;
-  color: var(--danger);
-}
-
-dialog > footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1.25rem 2rem;
-  border-top: 1px solid var(--border);
-}
 
 /* Share Page */
 .prof-loading {

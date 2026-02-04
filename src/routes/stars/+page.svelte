@@ -3,7 +3,7 @@
 	import { getStars, getStarCountLabel, getStarContent, type Star } from '$lib/stores/stars.svelte';
 	import { removeStar } from '$lib/stores/operations.svelte';
 	import { timeAgo } from '$lib/utils/time';
-	import { SyncDropdown, SiteFooter, PageHeader } from '$lib/components';
+	import { HeaderNav, EmptyState, IconButton, SiteFooter, PageHeader } from '$lib/components';
 
 	function goToStar(star: Star) {
 		sessionStorage.setItem('viewDiffId', star.diff_id);
@@ -19,21 +19,15 @@
 
 <main id="content">
 	<PageHeader pageTitle="stars" subtitle={getStarCountLabel()} icon="star">
-		<a href="/profiles" class="profile-badge">
-			<svg class="profile-badge-icon" viewBox="0 0 24 24" fill="currentColor">
-				<circle cx="12" cy="11" r="4" />
-				<path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8" />
-			</svg>
-			<span>{getProfile()?.name || 'Profile'}</span>
-		</a>
-		<SyncDropdown />
+		<HeaderNav />
 	</PageHeader>
 
 	{#if !stars?.length}
-		<div class="empty-state">
-			<p>No stars yet.</p>
-			<p class="empty-hint">Hover over paragraphs in your diffs and click the star button to save them here.</p>
-		</div>
+		<EmptyState
+			icon="★"
+			message="No stars yet"
+			description="Hover over paragraphs in your diffs and click the star button to save them here."
+		/>
 	{:else}
 		<div class="bookmarks-list">
 			{#each stars as star (star.diff_id + ':' + star.p_index)}
@@ -67,7 +61,12 @@
 							</div>
 							<div class="bookmark-orphan-footer">
 								<span class="bookmark-added">Saved {timeAgo(star.added_at)}</span>
-								<button class="btn-delete" onclick={() => removeStar(star.diff_id, star.p_index)}>Remove</button>
+								<IconButton
+									icon="×"
+									variant="danger"
+									title="Remove star"
+									onclick={() => removeStar(star.diff_id, star.p_index)}
+								/>
 							</div>
 						</div>
 					{/if}

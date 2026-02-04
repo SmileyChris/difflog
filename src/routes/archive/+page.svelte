@@ -4,7 +4,7 @@
 	import { getHistory, type Diff } from '$lib/stores/history.svelte';
 	import { getStars, getStarCountLabel } from '$lib/stores/stars.svelte';
 	import { deleteDiff } from '$lib/stores/operations.svelte';
-	import { SyncDropdown, ShareDropdown, SiteFooter, PageHeader } from '$lib/components';
+	import { HeaderNav, EmptyState, IconButton, ShareDropdown, SiteFooter, PageHeader } from '$lib/components';
 
 	function goToDiff(diffId: string) {
 		sessionStorage.setItem('viewDiffId', diffId);
@@ -46,20 +46,15 @@
 				<span class="header-link-icon">&#9733;</span> {getStarCountLabel()}
 			</a>
 		{/if}
-		<a href="/profiles" class="profile-badge">
-			<svg class="profile-badge-icon" viewBox="0 0 24 24" fill="currentColor">
-				<circle cx="12" cy="11" r="4" />
-				<path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8" />
-			</svg>
-			<span>{getProfile()?.name || 'Profile'}</span>
-		</a>
-		<SyncDropdown />
+		<HeaderNav />
 	</PageHeader>
 
 	{#if history.length === 0}
-		<div class="empty-state">
-			<p>No diffs yet. Generate your first one!</p>
-		</div>
+		<EmptyState icon="◼" message="No diffs yet">
+			{#snippet action()}
+				<a href="/" class="btn-primary">Generate your first diff</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<div class="archive-list">
 			{#each history as diff (diff.id)}
@@ -75,9 +70,12 @@
 					</div>
 					<div class="archive-card-actions">
 						<ShareDropdown {diff} />
-						<button class="btn-delete" onclick={(e) => { e.stopPropagation(); handleDeleteDiff(diff.id); }}>
-							&times;
-						</button>
+						<IconButton
+							icon="×"
+							variant="danger"
+							title="Delete diff"
+							onclick={(e) => { e.stopPropagation(); handleDeleteDiff(diff.id); }}
+						/>
 					</div>
 				</div>
 			{/each}

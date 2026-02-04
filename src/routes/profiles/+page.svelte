@@ -14,7 +14,7 @@
 		checkSyncStatus,
 		updatePasswordSync
 	} from '$lib/stores/sync.svelte';
-	import { SyncDropdown, SiteFooter, PageHeader, ModalDialog, InputField } from '$lib/components';
+	import { DetailRow, IconButton, SyncDropdown, SiteFooter, PageHeader, ModalDialog, InputField } from '$lib/components';
 
 	// Import modal state
 	let showImport = $state(false);
@@ -333,43 +333,33 @@
 									title="Edit profile"
 								>&#9998;</a>
 								{#if profile.syncedAt}
-									<button
-										class="profile-card-password"
-										onclick={(e) => { e.stopPropagation(); startPasswordUpdate(id); }}
+									<IconButton
+										icon="***"
+										variant="subtle"
 										title="Change password"
-									>***</button>
+										onclick={(e) => { e.stopPropagation(); startPasswordUpdate(id); }}
+									/>
 								{/if}
-								<button
-									class="profile-card-remove"
-									onclick={(e) => { e.stopPropagation(); handleDeleteProfile(id); }}
+								<IconButton
+									icon="×"
+									variant="danger"
 									title="Delete profile"
-								>&times;</button>
+									onclick={(e) => { e.stopPropagation(); handleDeleteProfile(id); }}
+								/>
 							</div>
 						</div>
 						<div class="profile-card-full-details" onclick={() => handleSwitchProfile(id)}>
 							{#if profile.languages?.length}
-								<div class="profile-detail-row">
-									<span class="profile-detail-label">Languages</span>
-									<span class="profile-detail-value">{profile.languages.join(', ')}</span>
-								</div>
+								<DetailRow label="Languages" value={profile.languages.join(', ')} />
 							{/if}
 							{#if profile.frameworks?.length}
-								<div class="profile-detail-row">
-									<span class="profile-detail-label">Frameworks</span>
-									<span class="profile-detail-value">{profile.frameworks.join(', ')}</span>
-								</div>
+								<DetailRow label="Frameworks" value={profile.frameworks.join(', ')} />
 							{/if}
 							{#if profile.tools?.length}
-								<div class="profile-detail-row">
-									<span class="profile-detail-label">Tools</span>
-									<span class="profile-detail-value">{profile.tools.join(', ')}</span>
-								</div>
+								<DetailRow label="Tools" value={profile.tools.join(', ')} />
 							{/if}
 							{#if profile.topics?.length}
-								<div class="profile-detail-row">
-									<span class="profile-detail-label">Topics</span>
-									<span class="profile-detail-value">{profile.topics.join(', ')}</span>
-								</div>
+								<DetailRow label="Topics" value={profile.topics.join(', ')} />
 							{/if}
 							<div class="profile-detail-row profile-detail-counts">
 								<a href="/archive" class="profile-count profile-count-link" onclick={(e) => { e.stopPropagation(); if (activeProfileId.value !== id) switchProfileWithSync(id); }}>
