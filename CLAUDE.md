@@ -4,81 +4,101 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**difflog** — A multi-page app that generates personalized developer intelligence diffs using the Anthropic Claude API. Shows you what's changed in the dev ecosystem since you last checked in. Uses Alpine.js for client-side reactivity, CSS View Transitions for smooth page navigation, and Bun for bundling/dev server.
+**difflog** — A SvelteKit app that generates personalized developer intelligence diffs using the Anthropic Claude API. Shows you what's changed in the dev ecosystem since you last checked in.
 
 ## Commands
 
 ```bash
 bun install          # Install dependencies
-bun run dev          # Full dev with wrangler (D1 database, functions)
-bun run dev:static   # Quick dev server (no D1)
+bun run dev          # Dev server with Vite (includes D1 via wrangler)
 bun test             # Run tests
-bun run build        # Build to dist/ (also verifies TypeScript compiles)
+bun run build        # Production build
 bun run cleanup      # List stale profiles (--days, --remote, --confirm flags)
 bun run db:migrate   # Apply D1 migrations
-bun run docs         # Serve architecture documentation locally
 ```
-
-**Note:** This project has no tsconfig.json. Do not use `npx tsc`. Do not build after changes, the development server rebuilds and makes you doing this redundant.
 
 ## Architecture
 
-**Multi-page with View Transitions** — each page is a full HTML document in `public/`. CSS View Transitions provide smooth cross-document animations. Each page works standalone on direct load.
+**SvelteKit SPA** with file-based routing. Uses Svelte 5 runes for reactivity.
 
-### Pages (in `public/`)
-- `index.html` (`/`) — Dashboard: profile summary, generate button, diff display
-- `welcome.html` (`/welcome`) — Landing page for new users
-- `setup.html` (`/setup`) — 7-step profile setup wizard
-- `profiles.html` (`/profiles`) — Profile management, sync, sharing
-- `archive.html` (`/archive`) — Past diffs list
-- `stars.html` (`/stars`) — Bookmarked paragraphs
+### Routes (in `src/routes/`)
+- `/` — Dashboard: profile summary, generate button, diff display
+- `/about` — Landing/about pages (with `/privacy`, `/terms` sub-routes)
+- `/setup` — Profile setup wizard
+- `/profiles` — Profile management, sync, sharing
+- `/archive` — Past diffs list
+- `/stars` — Bookmarked paragraphs
+- `/api/*` — Server endpoints for D1 database
+
+### Store Architecture (in `src/lib/stores/`)
+
+Domain-driven store modules using Svelte 5 `$state()` runes:
+
+- `persist.svelte.ts` — Shared persistence helpers (localStorage/sessionStorage)
+- `profiles.svelte.ts` — Profile state and CRUD operations
+- `history.svelte.ts` — Diff history and streak calculations
+- `stars.svelte.ts` — Bookmarks management
+- `sync.svelte.ts` — Cloud sync state and operations
+- `ui.svelte.ts` — Transient UI state (dropdowns, modals)
+- `operations.svelte.ts` — Cross-domain composite operations
+
+**Pattern:** State is exposed via accessor objects with `get/set value()`. Derived state uses functions. Actions are plain functions that mutate state.
+
+```typescript
+// Reading state
+const profile = getProfile();
+const history = getHistory();
+
+// Mutating state
+addDiff(entry);
+updateProfile({ name: 'New Name' });
+```
 
 ### Client-Side State
-Alpine.js with `$persist` plugin for localStorage persistence. Keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-active-profile`.
+
+localStorage keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-active-profile`, `difflog-pending-sync`.
 
 ### API Flow
 1. User clicks Generate → fetches `/api/feeds` for context
-2. Builds prompt with `src/lib/prompt.ts`
+2. Builds prompt with `src/lib/utils/prompt.ts`
 3. Calls Anthropic API directly from browser (API key in localStorage)
-4. Stores markdown in history, renders with `src/lib/markdown.ts`
+4. Stores markdown in history, renders with `src/lib/utils/markdown.ts`
 
 ### Sync System
-Local-first with optional password-protected cloud sync via Cloudflare D1. All data encrypted client-side (AES-GCM) before upload. See `src/lib/sync.ts` and `src/lib/crypto.ts`.
+Local-first with optional password-protected cloud sync via Cloudflare D1. All data encrypted client-side (AES-GCM) before upload. See `src/lib/utils/sync.ts` and `src/lib/utils/crypto.ts`.
 
 ## Key Directories
 
-- `src/` — TypeScript source (components, lib utilities, styles)
-- `public/` — HTML pages served directly
-- `partials/` — HTML snippets inlined at build time via `<!-- @include partials/filename.html -->`
-- `functions/` — Cloudflare Pages Functions (D1 API endpoints)
-- `dist/` — Built output, do not edit (generated from src/ and public/)
+- `src/routes/` — SvelteKit pages and API endpoints
+- `src/lib/stores/` — Svelte 5 state management modules
+- `src/lib/components/` — Reusable Svelte components
+- `src/lib/utils/` — Utility functions (API, crypto, markdown, etc.)
+- `static/` — Static assets (favicon, changelog.json)
 - `docs/` — Architecture documentation (Zensical/MkDocs format)
 
 ## Key Files
 
-- `server.ts` — Bun.serve() for local dev
-- `build.ts` — Build script (bundles JS, processes HTML includes)
-- `src/app.ts` — Entry point, Alpine plugin registration
-- `src/store.ts` — Central Alpine store (profiles, histories, bookmarks, sync state)
-- `src/components/dashboard.ts` — Main diff generation and display logic
-- `src/components/setup.ts` — Profile setup wizard
-- `src/lib/prompt.ts` — Prompt construction for Claude API
-- `src/lib/sync.ts` — Sync service (upload, download, change tracking)
-- `src/lib/crypto.ts` — Client-side encryption (AES-GCM, PBKDF2)
-- `src/lib/markdown.ts` — Markdown-to-HTML renderer with `data-p` indices for bookmarking
-- `functions/api/profile/` — D1 endpoints for profile sync
+- `src/routes/+page.svelte` — Main dashboard with diff generation
+- `src/routes/+layout.svelte` — Root layout with global styles
+- `src/lib/stores/operations.svelte.ts` — Composite operations (addDiff, deleteDiff, etc.)
+- `src/lib/utils/prompt.ts` — Prompt construction for Claude API
+- `src/lib/utils/sync.ts` — Sync utilities (encryption, API calls)
+- `src/lib/utils/crypto.ts` — Client-side encryption (AES-GCM, PBKDF2)
+- `src/lib/utils/markdown.ts` — Markdown-to-HTML renderer with `data-p` indices for bookmarking
+- `svelte.config.js` — SvelteKit configuration (Cloudflare adapter)
+- `vite.config.ts` — Vite configuration
 
 ## Testing
 
 ```bash
-bun test                           # Run all tests
-bun test src/lib/sync.test.ts      # Run specific test file
+bun test                                # Run all tests
+bun test src/lib/utils/sync.test.ts     # Run specific test file
 ```
 
 ## Styling
 
 Class-based CSS in `src/app.css` with CSS custom properties.
-Use and update the design system at `/design` (dev-only route, redirects in production).
+Use and update the design system at `/design` (dev-only route).
 
 ## Documentation
 
@@ -92,7 +112,7 @@ Docs use [Zensical](https://zensical.com/) (MkDocs-based). Config in `zensical.t
 When ready to cut a release:
 
 1. **Bump version** in `package.json` (patch for fixes, minor for features)
-2. **Update changelog** in `public/changelog.json`:
+2. **Update changelog** in `static/changelog.json`:
    - For patches: add entries to existing version's `changes` array with `"in": "x.y.z"`
    - For minor: add new version object at top of `versions` array
 3. **Commit**: `release: vX.Y.Z`
