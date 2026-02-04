@@ -4,7 +4,7 @@
 	import { getHistory, type Diff } from '$lib/stores/history.svelte';
 	import { getStars, getStarCountLabel } from '$lib/stores/stars.svelte';
 	import { deleteDiff } from '$lib/stores/operations.svelte';
-	import { HeaderNav, EmptyState, IconButton, ShareDropdown, SiteFooter, PageHeader } from '$lib/components';
+	import { Card, HeaderNav, EmptyState, IconButton, ShareDropdown, SiteFooter, PageHeader } from '$lib/components';
 
 	function goToDiff(diffId: string) {
 		sessionStorage.setItem('viewDiffId', diffId);
@@ -58,17 +58,15 @@
 	{:else}
 		<div class="archive-list">
 			{#each history as diff (diff.id)}
-				<div class="archive-card">
-					<div class="archive-card-content" onclick={() => goToDiff(diff.id)}>
-						<div class="archive-date">
-							<span>{formatDate(diff.generated_at)}</span>
-							{#if diff.cost}
-								<span class="archive-cost">${diff.cost.toFixed(3)}</span>
-							{/if}
-						</div>
-						<div class="archive-preview">{getPreview(diff)}</div>
+				<Card clickable={true} onclick={() => goToDiff(diff.id)}>
+					<div class="archive-date">
+						<span>{formatDate(diff.generated_at)}</span>
+						{#if diff.cost}
+							<span class="archive-cost">${diff.cost.toFixed(3)}</span>
+						{/if}
 					</div>
-					<div class="archive-card-actions">
+					<div class="archive-preview">{getPreview(diff)}</div>
+					{#snippet actions()}
 						<ShareDropdown {diff} />
 						<IconButton
 							icon="×"
@@ -76,8 +74,8 @@
 							title="Delete diff"
 							onclick={(e) => { e.stopPropagation(); handleDeleteDiff(diff.id); }}
 						/>
-					</div>
-				</div>
+					{/snippet}
+				</Card>
 			{/each}
 		</div>
 	{/if}

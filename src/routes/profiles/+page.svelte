@@ -14,7 +14,7 @@
 		checkSyncStatus,
 		updatePasswordSync
 	} from '$lib/stores/sync.svelte';
-	import { DetailRow, IconButton, SyncDropdown, SiteFooter, PageHeader, ModalDialog, InputField } from '$lib/components';
+	import { Card, DetailRow, IconButton, SyncDropdown, SiteFooter, PageHeader, ModalDialog, InputField } from '$lib/components';
 
 	// Import modal state
 	let showImport = $state(false);
@@ -288,8 +288,8 @@
 
 			<div class="profiles-list">
 				{#each Object.entries(profiles.value) as [id, profile] (id)}
-					<div class="profile-card-full" class:profile-card-full-active={id === activeProfileId.value}>
-						<div class="profile-card-full-header" onclick={() => handleSwitchProfile(id)}>
+					<Card clickable={true} active={id === activeProfileId.value} onclick={() => handleSwitchProfile(id)}>
+						{#snippet header()}
 							<div class="profile-card-icon">
 								<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
 									<circle cx="12" cy="11" r="4" />
@@ -347,8 +347,9 @@
 									onclick={(e) => { e.stopPropagation(); handleDeleteProfile(id); }}
 								/>
 							</div>
-						</div>
-						<div class="profile-card-full-details" onclick={() => handleSwitchProfile(id)}>
+						{/snippet}
+
+						{#snippet details()}
 							{#if profile.languages?.length}
 								<DetailRow label="Languages" value={profile.languages.join(', ')} />
 							{/if}
@@ -373,8 +374,8 @@
 									</span>
 								{/if}
 							</div>
-						</div>
-					</div>
+						{/snippet}
+					</Card>
 				{/each}
 			</div>
 		</div>
@@ -382,17 +383,19 @@
 
 	<!-- Action Cards -->
 	<div class="profiles-actions">
-		<a href="/setup" class="profile-card profile-card-action">
-			<div class="profile-card-action-icon">+</div>
-			<div class="profile-card-name">Create New</div>
-			<div class="profile-card-id">Configure your personalized diff</div>
+		<a href="/setup" style="text-decoration: none;">
+			<Card variant="action" clickable={true}>
+				<div class="profile-card-action-icon">+</div>
+				<div class="profile-card-name">Create New</div>
+				<div class="profile-card-id">Configure your personalized diff</div>
+			</Card>
 		</a>
 
-		<button class="profile-card profile-card-action profile-card-action-alt" onclick={() => (showImport = true)}>
+		<Card variant="action" clickable={true} onclick={() => (showImport = true)}>
 			<div class="profile-card-action-icon">&#8595;</div>
 			<div class="profile-card-name">Import Existing</div>
 			<div class="profile-card-id">Add from another device</div>
-		</button>
+		</Card>
 	</div>
 
 	<!-- Import Modal -->
