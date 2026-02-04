@@ -9,6 +9,8 @@
 
 	let { data: pageData } = $props();
 
+	const totalSteps = 7;
+
 	type ValidationStatus = 'idle' | 'validating' | 'valid' | 'invalid';
 
 	interface ProviderState {

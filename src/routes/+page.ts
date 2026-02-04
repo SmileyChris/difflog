@@ -1,15 +1,12 @@
 import { redirect } from '@sveltejs/kit';
 import { profiles, isUnlocked, getProfile } from '$lib/stores/profiles.svelte';
 import { getHistory, type Diff } from '$lib/stores/history.svelte';
-import { initApp } from '$lib/stores/operations.svelte';
 
 export function load() {
 	if (!isUnlocked()) {
 		const ids = Object.keys(profiles.value);
 		redirect(302, ids.length > 0 ? '/profiles' : '/about');
 	}
-
-	initApp();
 
 	// Handle deep-link from stars/archive
 	const viewId = sessionStorage.getItem('viewDiffId');

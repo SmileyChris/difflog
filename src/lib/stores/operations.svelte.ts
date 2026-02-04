@@ -236,9 +236,12 @@ function migrateToReferenceStars(): void {
 	}
 }
 
-// Initialize app
+// Initialize app (runs once per session)
+let initialized = false;
 export function initApp(): void {
-	if (!browser) return;
+	if (!browser || initialized) return;
+	initialized = true;
+
 	migrateOldData();
 	migrateToReferenceStars();
 	checkSyncStatus();
