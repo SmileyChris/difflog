@@ -48,12 +48,14 @@
 	<h2 class="step-title">{title}</h2>
 	<p class="step-desc">{description}</p>
 
-	<div class="chip-grid">
+	<div class="chip-grid" role="group" aria-label={title}>
 		{#each options as item}
 			<button
 				class="chip"
 				class:chip-selected={selected.includes(item)}
 				onclick={() => toggle(item)}
+				aria-pressed={selected.includes(item)}
+				type="button"
 			>
 				{item}
 			</button>
@@ -61,11 +63,18 @@
 	</div>
 
 	{#if customItems.length > 0}
-		<div class="custom-items">
+		<div class="custom-items" role="group" aria-label="Custom {title.toLowerCase()}">
 			{#each customItems as item}
-				<span class="chip chip-selected">
+				<span class="chip chip-selected chip-custom">
 					{item}
-					<button class="chip-remove" onclick={() => removeCustom(item)}>&times;</button>
+					<button
+						class="chip-remove"
+						onclick={() => removeCustom(item)}
+						aria-label="Remove {item}"
+						type="button"
+					>
+						&times;
+					</button>
 				</span>
 			{/each}
 		</div>
@@ -78,11 +87,39 @@
 			{placeholder}
 			bind:value={customInput}
 			onkeydown={(e) => e.key === 'Enter' && addCustom()}
+			aria-label="Add custom {title.toLowerCase()}"
 		/>
 	</div>
 </div>
 
 <style>
+	.chip-grid {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.chip {
+		padding: 0.5rem 1rem;
+		font-size: 0.85rem;
+		background: var(--bg-chip);
+		border: 1px solid var(--border-subtle);
+		border-radius: 9999px;
+		color: var(--text-muted);
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.chip:hover {
+		border-color: var(--text-disabled);
+	}
+
+	.chip-selected {
+		background: var(--accent-bg);
+		border-color: var(--accent);
+		color: var(--accent);
+	}
+
 	.custom-items {
 		display: flex;
 		flex-wrap: wrap;
@@ -90,18 +127,26 @@
 		margin: 1rem 0;
 	}
 
+	.chip-custom {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding-right: 0.5rem;
+	}
+
 	.chip-remove {
 		background: none;
 		border: none;
-		color: currentColor;
+		color: var(--accent);
+		font-size: 1.1rem;
+		line-height: 1;
 		cursor: pointer;
 		padding: 0;
-		margin-left: 0.25rem;
-		font-size: 1rem;
-		line-height: 1;
+		opacity: 0.7;
 	}
 
 	.chip-remove:hover {
+		opacity: 1;
 		color: var(--danger);
 	}
 </style>

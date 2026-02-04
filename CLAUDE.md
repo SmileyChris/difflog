@@ -97,7 +97,25 @@ bun test src/lib/utils/sync.test.ts     # Run specific test file
 
 ## Styling
 
-Class-based CSS in `src/app.css` with CSS custom properties.
+**Hybrid CSS architecture**: Global CSS in `src/app.css` + scoped styles in component `<style>` blocks.
+
+### Global Styles (`src/app.css`)
+- Design system variables (CSS custom properties)
+- Base element styles (html, body, buttons, links)
+- Input styles (`.text-input`, `.input-group`, `.input-label`)
+- Chip styles (`.chip`, `.chip-selected`, `.chip-grid`)
+- Markdown rendering (`.md-h1`, `.md-p`, etc.) — dynamically generated
+- Animations and keyframes
+
+### Scoped Styles (Component `<style>` blocks)
+- Component-specific styles that don't need to be shared
+- Prefer scoped styles for new components
+- Use `:global()` sparingly for dynamic content styling
+
+### Actions (`src/lib/actions/`)
+- `clickOutside.ts` — Svelte action for click-outside detection (dropdowns, modals)
+- `generateDiff.ts` — Diff generation orchestration logic
+
 Use and update the design system at `/design` (dev-only route).
 
 ## Documentation

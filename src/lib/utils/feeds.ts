@@ -35,6 +35,39 @@ interface FeedResults {
   devto: FeedItem[];
 }
 
+// External API response types (partial, only fields we use)
+interface LobstersStory {
+  title?: string;
+  url?: string;
+  comments_url?: string;
+  short_id?: string;
+  score?: number;
+  created_at?: string;
+}
+
+interface RedditPost {
+  data: {
+    title?: string;
+    url?: string;
+    permalink?: string;
+    score?: number;
+    created_utc?: number;
+  };
+}
+
+interface GitHubRepo {
+  full_name?: string;
+  description?: string;
+  html_url?: string;
+  stargazers_count?: number;
+}
+
+interface DevToArticle {
+  title?: string;
+  url?: string;
+  positive_reactions_count?: number;
+}
+
 const FETCH_TIMEOUT = 5000;
 
 const LANGUAGE_SUBREDDITS: Record<string, string[]> = {
@@ -222,7 +255,7 @@ async function fetchLobsters(extraTags?: string[]): Promise<FeedItem[]> {
   const results = await Promise.allSettled(
     urls.map(async (url) => {
       const res = await fetchWithTimeout(url);
-      const stories: any[] = await res.json();
+      const stories: LobstersStory[] = await res.json();
       return stories.slice(0, 40).map(story => ({
         title: story.title || '',
         url: story.url || story.comments_url || `https://lobste.rs/s/${story.short_id}`,
@@ -259,8 +292,8 @@ async function fetchReddit(profile: Profile, extraSubs?: string[]): Promise<Feed
         headers: { 'User-Agent': 'Difflog/1.0' },
       });
       const data = await res.json();
-      const posts = (data?.data?.children || []).slice(0, perSub);
-      return posts.map((post: any) => ({
+      const posts: RedditPost[] = (data?.data?.children || []).slice(0, perSub);
+      return posts.map((post) => ({
         title: post.data.title || '',
         url: post.data.url || `https://reddit.com${post.data.permalink}`,
         score: post.data.score,
@@ -293,8 +326,8 @@ async function fetchGitHubTrending(profile: Profile, days: number = 7): Promise<
         { headers: { 'Accept': 'application/vnd.github.v3+json' } }
       );
       const data = await res.json();
-      const repos = data?.items || [];
-      return repos.map((repo: any) => ({
+      const repos: GitHubRepo[] = data?.items || [];
+      return repos.map((repo) => ({
         title: `${repo.full_name}: ${repo.description || 'No description'}`,
         url: repo.html_url,
         score: repo.stargazers_count,
@@ -322,9 +355,9 @@ async function fetchDevTo(profile: Profile, days: number = 7, extraTags?: string
       const res = await fetchWithTimeout(
         `https://dev.to/api/articles?tag=${tag}&top=${days}&per_page=${perTag}`
       );
-      const articles = await res.json();
+      const articles: DevToArticle[] = await res.json();
       if (!Array.isArray(articles)) return [];
-      return articles.map((article: any) => ({
+      return articles.map((article) => ({
         title: article.title || '',
         url: article.url,
         score: article.positive_reactions_count,

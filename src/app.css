@@ -385,31 +385,6 @@ main.narrow > header {
   border-color: var(--accent);
 }
 
-.input-with-status {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-with-status .text-input {
-  padding-right: 2.5rem;
-}
-
-.input-status {
-  position: absolute;
-  right: 0.875rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.input-status-valid {
-  color: var(--accent);
-}
-
-.input-status-invalid {
-  color: var(--danger);
-}
-
 /* API Key Choice */
 .api-key-choice {
   display: flex;

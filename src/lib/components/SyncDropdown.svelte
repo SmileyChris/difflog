@@ -19,8 +19,7 @@
 		closeSyncDropdown
 	} from '$lib/stores/ui.svelte';
 	import { doSyncFromDropdown } from '$lib/stores/operations.svelte';
-
-	let wrapperEl = $state<HTMLElement | null>(null);
+	import { clickOutside } from '$lib/actions/clickOutside';
 
 	onMount(() => {
 		function handleKeydown(e: KeyboardEvent) {
@@ -31,13 +30,6 @@
 		window.addEventListener('keydown', handleKeydown);
 		return () => window.removeEventListener('keydown', handleKeydown);
 	});
-
-	function handleClickOutside(event: MouseEvent) {
-		const target = event.target as HTMLElement;
-		if (wrapperEl && !wrapperEl.contains(target)) {
-			closeSyncDropdown();
-		}
-	}
 
 	function handleMouseEnter() {
 		openSyncDropdown();
@@ -61,18 +53,18 @@
 	const lastSyncedAgo = $derived(getLastSyncedAgo());
 </script>
 
-<svelte:window onclick={handleClickOutside} />
-
 {#if show}
 	<div
 		class="sync-dropdown-wrapper"
-		bind:this={wrapperEl}
+		use:clickOutside={closeSyncDropdown}
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
 	>
 		<button
 			class="sync-status"
 			title={state === 'syncing' ? 'Syncing...' : 'Sync status'}
+			aria-haspopup="true"
+			aria-expanded={syncDropdownOpen.value}
 			disabled={syncing.value}
 		>
 			<span class="sync-status-cloud">&#9729;</span>
@@ -87,7 +79,7 @@
 		</button>
 
 		{#if syncDropdownOpen.value}
-			<div class="sync-dropdown" onclick={(e) => e.stopPropagation()}>
+			<div class="sync-dropdown" role="menu" onclick={(e) => e.stopPropagation()}>
 				{#if syncing.value}
 					<div class="sync-dropdown-syncing">
 						<span class="sync-dropdown-syncing-icon">&#8635;</span>

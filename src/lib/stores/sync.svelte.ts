@@ -170,52 +170,36 @@ export function trackProfileModified(): void {
 	scheduleAutoSync();
 }
 
-export function trackModifiedDiff(id: string): void {
+/**
+ * Track a change to a diff or star for sync.
+ * Consolidates the four tracking functions into one parameterized function.
+ */
+function trackItemChange(type: 'diff' | 'star', action: 'modified' | 'deleted', id: string): void {
 	const profile = getProfile();
 	if (!activeProfileId.value || !profile?.syncedAt) return;
 	const pending = getPendingSync();
 	if (!pending) return;
 	_pendingSync.value = {
 		..._pendingSync.value,
-		[activeProfileId.value]: trackChange(pending, 'diff', 'modified', id)
+		[activeProfileId.value]: trackChange(pending, type, action, id)
 	};
 	scheduleAutoSync();
+}
+
+export function trackModifiedDiff(id: string): void {
+	trackItemChange('diff', 'modified', id);
 }
 
 export function trackDeletedDiff(id: string): void {
-	const profile = getProfile();
-	if (!activeProfileId.value || !profile?.syncedAt) return;
-	const pending = getPendingSync();
-	if (!pending) return;
-	_pendingSync.value = {
-		..._pendingSync.value,
-		[activeProfileId.value]: trackChange(pending, 'diff', 'deleted', id)
-	};
-	scheduleAutoSync();
+	trackItemChange('diff', 'deleted', id);
 }
 
 export function trackModifiedStar(id: string): void {
-	const profile = getProfile();
-	if (!activeProfileId.value || !profile?.syncedAt) return;
-	const pending = getPendingSync();
-	if (!pending) return;
-	_pendingSync.value = {
-		..._pendingSync.value,
-		[activeProfileId.value]: trackChange(pending, 'star', 'modified', id)
-	};
-	scheduleAutoSync();
+	trackItemChange('star', 'modified', id);
 }
 
 export function trackDeletedStar(id: string): void {
-	const profile = getProfile();
-	if (!activeProfileId.value || !profile?.syncedAt) return;
-	const pending = getPendingSync();
-	if (!pending) return;
-	_pendingSync.value = {
-		..._pendingSync.value,
-		[activeProfileId.value]: trackChange(pending, 'star', 'deleted', id)
-	};
-	scheduleAutoSync();
+	trackItemChange('star', 'deleted', id);
 }
 
 // Update profile with sync tracking

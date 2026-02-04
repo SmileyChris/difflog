@@ -188,13 +188,28 @@ function migrateOldData(): void {
 	}
 }
 
+/** Type guard to check for legacy star with content field */
+function hasLegacyContent(star: Star): star is Star & { content: string } {
+	return 'content' in star && star.content !== undefined;
+}
+
+/** Type guard to check for legacy diff with html field */
+function hasLegacyHtml(diff: Diff): diff is Diff & { html: string } {
+	return 'html' in diff && diff.html !== undefined;
+}
+
+/** Type guard to check for legacy star with id field */
+function hasLegacyId(star: Star): star is Star & { id: string } {
+	return 'id' in star && star.id !== undefined;
+}
+
 function migrateToReferenceStars(): void {
 	if (!browser) return;
 	const stars = getStars();
 	const history = getHistory();
 
 	if (activeProfileId.value && stars.length > 0) {
-		const hasLegacyStars = stars.some((s: Star) => (s as any).content !== undefined);
+		const hasLegacyStars = stars.some(hasLegacyContent);
 		if (hasLegacyStars) {
 			bookmarks.value = { ...bookmarks.value, [activeProfileId.value]: [] };
 			console.log('[Migration] Cleared legacy content-based stars');
@@ -202,13 +217,16 @@ function migrateToReferenceStars(): void {
 	}
 
 	if (activeProfileId.value && history.length > 0) {
-		const hasStoredHtml = history.some((d: Diff) => (d as any).html !== undefined);
+		const hasStoredHtml = history.some(hasLegacyHtml);
 		if (hasStoredHtml) {
 			histories.value = {
 				...histories.value,
 				[activeProfileId.value]: history.map((d: Diff) => {
-					const { html, ...rest } = d as any;
-					return rest;
+					if (hasLegacyHtml(d)) {
+						const { html, ...rest } = d;
+						return rest;
+					}
+					return d;
 				})
 			};
 			console.log('[Migration] Removed stored HTML from diffs');
@@ -216,7 +234,7 @@ function migrateToReferenceStars(): void {
 	}
 
 	if (activeProfileId.value && stars.length > 0) {
-		const hasIdField = stars.some((s: Star) => (s as any).id !== undefined);
+		const hasIdField = stars.some(hasLegacyId);
 		if (hasIdField) {
 			const seen = new Set<string>();
 			const filtered = stars
@@ -227,8 +245,11 @@ function migrateToReferenceStars(): void {
 					return true;
 				})
 				.map((s: Star) => {
-					const { id, ...rest } = s as any;
-					return rest as Star;
+					if (hasLegacyId(s)) {
+						const { id, ...rest } = s;
+						return rest as Star;
+					}
+					return s;
 				});
 			bookmarks.value = { ...bookmarks.value, [activeProfileId.value]: filtered };
 			console.log('[Migration] Removed id field from stars');

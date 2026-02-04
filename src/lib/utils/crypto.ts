@@ -173,7 +173,7 @@ export async function verifyPassword(
  * Encrypt arbitrary data (JSON-serializable) using a password and existing salt
  * Used for encrypting diffs and stars for sync
  */
-export async function encryptData(data: any, password: string, salt: string): Promise<string> {
+export async function encryptData(data: unknown, password: string, salt: string): Promise<string> {
   const saltBytes = base64ToUint8(salt);
   const key = await deriveKey(password, saltBytes);
   const iv = crypto.getRandomValues(new Uint8Array(12));

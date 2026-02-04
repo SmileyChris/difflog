@@ -15,6 +15,29 @@ interface CompletionOptions {
   maxTokens?: number;
 }
 
+// Anthropic API response types
+interface AnthropicContentBlock {
+  type: string;
+  text?: string;
+  input?: unknown;
+}
+
+interface AnthropicToolUseBlock extends AnthropicContentBlock {
+  type: 'tool_use';
+  input: unknown;
+}
+
+interface AnthropicUsage {
+  input_tokens: number;
+  output_tokens: number;
+}
+
+interface AnthropicResponse {
+  content?: AnthropicContentBlock[];
+  stop_reason?: string;
+  usage?: AnthropicUsage;
+}
+
 /**
  * Get a JSON completion from the cheapest available LLM
  * Priority: DeepSeek > Gemini > Anthropic Haiku
@@ -171,8 +194,8 @@ async function completeWithAnthropic<T>(
       return null;
     }
 
-    const data = await res.json();
-    const toolUse = data.content?.find((b: any) => b.type === 'tool_use');
+    const data: AnthropicResponse = await res.json();
+    const toolUse = data.content?.find((b): b is AnthropicToolUseBlock => b.type === 'tool_use');
     if (!toolUse?.input) return null;
 
     return toolUse.input as T;
@@ -282,14 +305,15 @@ async function synthesizeWithAnthropic(
     throw new Error(err.error?.message || `Anthropic API error: ${res.status}`);
   }
 
-  const result = await res.json();
+  const result: AnthropicResponse = await res.json();
 
   if (result.stop_reason === 'max_tokens') {
     throw new Error('Response truncated: the diff exceeded the token limit. Try a shallower depth setting.');
   }
 
-  const toolUse = result.content?.find((b: any) => b.type === 'tool_use');
-  if (!toolUse?.input?.content) {
+  const toolUse = result.content?.find((b): b is AnthropicToolUseBlock => b.type === 'tool_use');
+  const input = toolUse?.input as { title?: string; content?: string } | undefined;
+  if (!input?.content) {
     throw new Error('No content returned from Anthropic API');
   }
 
@@ -300,8 +324,8 @@ async function synthesizeWithAnthropic(
     : undefined;
 
   return {
-    title: toolUse.input.title || '',
-    content: toolUse.input.content,
+    title: input.title || '',
+    content: input.content,
     cost,
   };
 }

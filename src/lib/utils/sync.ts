@@ -173,41 +173,35 @@ export function createEmptyPending(): PendingChanges {
   };
 }
 
+/** Configuration for change tracking by type and action */
+const CHANGE_HANDLERS = {
+  diff: {
+    modified: { addTo: 'modifiedDiffs', removeFrom: 'deletedDiffs' },
+    deleted: { addTo: 'deletedDiffs', removeFrom: 'modifiedDiffs' }
+  },
+  star: {
+    modified: { addTo: 'modifiedStars', removeFrom: 'deletedStars' },
+    deleted: { addTo: 'deletedStars', removeFrom: 'modifiedStars' }
+  }
+} as const;
+
+type ArrayKeys = 'modifiedDiffs' | 'modifiedStars' | 'deletedDiffs' | 'deletedStars';
+
 export function trackChange(
   pending: PendingChanges,
   type: 'diff' | 'star',
   action: 'modified' | 'deleted',
   id: string
 ): PendingChanges {
+  const { addTo, removeFrom } = CHANGE_HANDLERS[type][action];
   const result = { ...pending };
 
-  if (type === 'diff') {
-    if (action === 'modified') {
-      // Remove from deleted if present (re-adding a deleted item)
-      result.deletedDiffs = result.deletedDiffs.filter(d => d !== id);
-      if (!result.modifiedDiffs.includes(id)) {
-        result.modifiedDiffs = [...result.modifiedDiffs, id];
-      }
-    } else {
-      // Remove from modified if present
-      result.modifiedDiffs = result.modifiedDiffs.filter(d => d !== id);
-      if (!result.deletedDiffs.includes(id)) {
-        result.deletedDiffs = [...result.deletedDiffs, id];
-      }
-    }
-  } else {
-    if (action === 'modified') {
-      // Remove from deleted if present (re-adding a deleted item)
-      result.deletedStars = result.deletedStars.filter(s => s !== id);
-      if (!result.modifiedStars.includes(id)) {
-        result.modifiedStars = [...result.modifiedStars, id];
-      }
-    } else {
-      result.modifiedStars = result.modifiedStars.filter(s => s !== id);
-      if (!result.deletedStars.includes(id)) {
-        result.deletedStars = [...result.deletedStars, id];
-      }
-    }
+  // Remove from opposite list (e.g., remove from deleted when modifying)
+  result[removeFrom as ArrayKeys] = result[removeFrom as ArrayKeys].filter(i => i !== id);
+
+  // Add to target list if not already present
+  if (!result[addTo as ArrayKeys].includes(id)) {
+    result[addTo as ArrayKeys] = [...result[addTo as ArrayKeys], id];
   }
 
   return result;

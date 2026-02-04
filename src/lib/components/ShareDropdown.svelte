@@ -3,6 +3,7 @@
 	import { getCachedPassword, autoSync } from '$lib/stores/sync.svelte';
 	import { shareDiff, unshareDiff, getPublicDiffUrl } from '$lib/stores/operations.svelte';
 	import { type Diff } from '$lib/stores/history.svelte';
+	import { clickOutside } from '$lib/actions/clickOutside';
 
 	interface Props {
 		diff: Diff;
@@ -12,7 +13,6 @@
 
 	let isOpen = $state(false);
 	let copied = $state(false);
-	let wrapperEl = $state<HTMLElement | null>(null);
 
 	const canShare = $derived(!!getProfile()?.syncedAt);
 	const canModify = $derived(!!getCachedPassword());
@@ -51,23 +51,16 @@
 			copied = false;
 		}, 2000);
 	}
-
-	function handleClickOutside(event: MouseEvent) {
-		const target = event.target as HTMLElement;
-		if (wrapperEl && !wrapperEl.contains(target)) {
-			close();
-		}
-	}
 </script>
 
-<svelte:window onclick={handleClickOutside} />
-
 {#if canShare}
-	<div class="visibility-menu-wrapper" bind:this={wrapperEl}>
+	<div class="visibility-menu-wrapper" use:clickOutside={close}>
 		<button
 			class="visibility-status"
 			onclick={toggle}
 			title={isPublic ? 'Shared publicly' : 'Private diff'}
+			aria-haspopup="true"
+			aria-expanded={isOpen}
 		>
 			<span class="visibility-status-icon" class:visibility-status-public={isPublic}>
 				{#if isPublic}
@@ -87,7 +80,7 @@
 		</button>
 
 		{#if isOpen}
-			<div class="visibility-menu" onclick={(e) => e.stopPropagation()}>
+			<div class="visibility-menu" role="menu" onclick={(e) => e.stopPropagation()}>
 				{#if !isPublic}
 					<div class="visibility-menu-content">
 						{#if canModify}

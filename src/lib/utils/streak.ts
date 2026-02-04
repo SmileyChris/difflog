@@ -1,3 +1,9 @@
+/** Number of days without activity before a streak is considered broken */
+export const STREAK_TOLERANCE_DAYS = 8;
+
+/** Milliseconds in a day (24 * 60 * 60 * 1000) */
+export const MS_PER_DAY = 86400000;
+
 export interface StreakResult {
     streak: number;
     expiresInDays: number;
@@ -46,10 +52,10 @@ export function calculateStreak(dates: Date[]): StreakResult {
     const now = new Date();
     const midnightNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    const daysSinceLatest = Math.floor((midnightNow.getTime() - latest.getTime()) / 86400000);
+    const daysSinceLatest = Math.floor((midnightNow.getTime() - latest.getTime()) / MS_PER_DAY);
 
-    // If > 8 days since latest, streak is broken immediately.
-    if (daysSinceLatest > 8) {
+    // If > tolerance days since latest, streak is broken immediately.
+    if (daysSinceLatest > STREAK_TOLERANCE_DAYS) {
         return { streak: 0, expiresInDays: 0, startDate: null, activeDates: [] };
     }
 
@@ -64,9 +70,9 @@ export function calculateStreak(dates: Date[]): StreakResult {
     for (let i = 0; i < uniqueDays.length - 1; i++) {
         const next = uniqueDays[i + 1];
         const diffTime = currentDay.getTime() - next.getTime();
-        const diffDays = Math.round(diffTime / 86400000);
+        const diffDays = Math.round(diffTime / MS_PER_DAY);
 
-        if (diffDays <= 8) {
+        if (diffDays <= STREAK_TOLERANCE_DAYS) {
             activeDayTimes.add(next.getTime());
             currentDay = next;
         } else {
@@ -87,7 +93,7 @@ export function calculateStreak(dates: Date[]): StreakResult {
 
     return {
         streak,
-        expiresInDays: 8 - daysSinceLatest,
+        expiresInDays: STREAK_TOLERANCE_DAYS - daysSinceLatest,
         startDate: startDate.toISOString(),
         // activeDates as YYYY-MM-DD in local timezone
         activeDates: Array.from(activeDayTimes).map(t => {

@@ -8,12 +8,9 @@
 	import { openSyncDropdown } from '$lib/stores/ui.svelte';
 	import { addDiff, deleteDiff, removeStar } from '$lib/stores/operations.svelte';
 	import { HeaderNav, SyncDropdown, ShareDropdown, DiffContent, StreakCalendar, SiteFooter, PageHeader } from '$lib/components';
-	import { SCAN_MESSAGES, DEPTHS, DEPTH_TOKEN_LIMITS, WAIT_TIPS } from '$lib/utils/constants';
+	import { SCAN_MESSAGES, DEPTHS, WAIT_TIPS } from '$lib/utils/constants';
 	import { timeAgo, daysSince, getCurrentDateFormatted } from '$lib/utils/time';
-	import { buildPrompt } from '$lib/utils/prompt';
-	import { getUnmappedItems, resolveSourcesForItem, curateGeneralFeeds, formatItemsForPrompt, formatWebSearchForPrompt, type FeedItem } from '$lib/utils/feeds';
-	import { searchWeb } from '$lib/utils/search';
-	import { synthesizeDiff } from '$lib/utils/llm';
+	import { generateDiffContent } from '$lib/actions/generateDiff';
 
 	let { data } = $props();
 
@@ -178,13 +175,18 @@
 			return;
 		}
 
+		const profile = getProfile();
+		if (!profile) {
+			error = 'No profile found';
+			return;
+		}
+
 		generating = true;
 		error = null;
 		diff = null;
 		scanIndex = 0;
 		scanMessages = [...SCAN_MESSAGES].sort(() => Math.random() - 0.5);
 		waitTip = WAIT_TIPS[Math.floor(Math.random() * WAIT_TIPS.length)];
-		const startTime = Date.now();
 
 		if (browser) {
 			window.onbeforeunload = (e) => {
@@ -199,111 +201,20 @@
 		}, 4400);
 
 		try {
-			let profile = getProfile();
-			if (!profile) throw new Error('No profile');
-
 			const lastDiff = getHistory()[0];
 
-			const keys = {
-				anthropic: apiKey || undefined,
-				serper: profile.apiKeys?.serper,
-				perplexity: profile.apiKeys?.perplexity,
-				deepseek: profile.apiKeys?.deepseek,
-				gemini: profile.apiKeys?.gemini
-			};
+			const result = await generateDiffContent({
+				profile,
+				apiKey: apiKey || '',
+				selectedDepth,
+				lastDiffDate: getLastDiffDate() ?? null,
+				lastDiffContent: lastDiff?.content,
+				onMappingsResolved: (mappings) => updateProfile({ resolvedMappings: mappings })
+			});
 
-			// Resolve unmapped custom items
-			const unmapped = getUnmappedItems(profile);
-			if (unmapped.length > 0 && apiKey) {
-				console.log(`Resolving ${unmapped.length} custom item(s):`, unmapped.map((u) => u.item));
-				const newMappings = { ...profile.resolvedMappings };
-				for (const { item, category } of unmapped) {
-					const mapping = await resolveSourcesForItem(keys, item, category);
-					newMappings[item] = mapping;
-					console.log(`Resolved "${item}":`, mapping);
-				}
-				updateProfile({ resolvedMappings: newMappings });
-				profile = getProfile()!;
-			}
+			diff = result.diff;
 
-			const lastDiffDate = getLastDiffDate();
-			const windowDays = lastDiffDate
-				? Math.min(Math.max(Math.ceil((Date.now() - new Date(lastDiffDate).getTime()) / 86400000), 1), 7)
-				: 7;
-
-			const [webSearchResults, feedRes] = await Promise.all([
-				searchWeb(keys, profile, windowDays).catch(() => []),
-				fetch('/api/feeds', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						languages: profile.languages || [],
-						frameworks: profile.frameworks || [],
-						tools: profile.tools || [],
-						topics: profile.topics || [],
-						resolvedMappings: profile.resolvedMappings || {}
-					})
-				}).catch(() => null)
-			]);
-
-			let feedContext = '';
-			let webContext = '';
-
-			if (feedRes?.ok) {
-				try {
-					const feedData = await feedRes.json();
-					const feeds = feedData.feeds || {};
-
-					const generalItems: FeedItem[] = [...(feeds.hn || []), ...(feeds.lobsters || [])];
-					let curatedGeneral: FeedItem[] = generalItems;
-					if (generalItems.length > 0) {
-						curatedGeneral = await curateGeneralFeeds(keys, generalItems, profile);
-					}
-
-					const allItems: FeedItem[] = [...curatedGeneral, ...(feeds.reddit || []), ...(feeds.github || []), ...(feeds.devto || [])];
-
-					feedContext = formatItemsForPrompt(allItems);
-				} catch {
-					// Feed processing failed
-				}
-			}
-
-			if (webSearchResults.length > 0) {
-				webContext = formatWebSearchForPrompt(webSearchResults);
-			}
-
-			const prompt = buildPrompt({ ...profile, depth: selectedDepth }, feedContext, getLastDiffDate(), lastDiff?.content, webContext);
-
-			const synthesisProvider = profile.providerSelections?.synthesis || 'anthropic';
-			const maxTokens = DEPTH_TOKEN_LIMITS[selectedDepth] || 8192;
-
-			const { title, content: rawContent, cost } = await synthesizeDiff(keys, synthesisProvider, prompt, maxTokens);
-
-			let cleanedContent = rawContent;
-			const dateStart = cleanedContent.indexOf('Intelligence Window');
-			const sectionStart = cleanedContent.indexOf('## ');
-			let diffStart = -1;
-			if (dateStart >= 0) {
-				diffStart = cleanedContent.lastIndexOf('\n', dateStart);
-				diffStart = diffStart >= 0 ? diffStart + 1 : 0;
-			} else if (sectionStart >= 0) {
-				diffStart = sectionStart;
-			}
-			if (diffStart > 0) {
-				cleanedContent = cleanedContent.slice(diffStart);
-			}
-
-			const entry: Diff = {
-				id: Date.now().toString(),
-				title: title || '',
-				content: cleanedContent,
-				generated_at: new Date().toISOString(),
-				duration_seconds: Math.round((Date.now() - startTime) / 1000),
-				cost
-			};
-
-			diff = entry;
-
+			// Handle replacing today's existing diff (unless Ctrl held)
 			const today = new Date().toDateString();
 			const history = getHistory();
 			if (!forceNew && history.length > 0 && new Date(history[0].generated_at).toDateString() === today) {
@@ -314,7 +225,7 @@
 				}
 				deleteDiff(oldDiffId);
 			}
-			addDiff(entry);
+			addDiff(result.diff);
 			autoSync();
 		} catch (e: unknown) {
 			error = `Failed to generate diff: ${e instanceof Error ? e.message : 'Unknown error'}`;
