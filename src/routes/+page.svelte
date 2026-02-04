@@ -7,7 +7,8 @@
 	import { updateProfile, autoSync, getCachedPassword, hasPendingChanges } from '$lib/stores/sync.svelte';
 	import { openSyncDropdown } from '$lib/stores/ui.svelte';
 	import { addDiff, deleteDiff, removeStar } from '$lib/stores/operations.svelte';
-	import { HeaderNav, SyncDropdown, ShareDropdown, DiffContent, StreakCalendar, SiteFooter, PageHeader } from '$lib/components';
+	import { HeaderNav, SyncDropdown, ShareDropdown, DiffContent, SiteFooter, PageHeader } from '$lib/components';
+	import StreakCalendar from './StreakCalendar.svelte';
 	import { SCAN_MESSAGES, DEPTHS, WAIT_TIPS } from '$lib/utils/constants';
 	import { timeAgo, daysSince, getCurrentDateFormatted } from '$lib/utils/time';
 	import { generateDiffContent } from '$lib/actions/generateDiff';

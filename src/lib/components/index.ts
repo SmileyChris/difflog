@@ -1,6 +1,5 @@
 export { default as Card } from './Card.svelte';
 export { default as ChipSelector } from './ChipSelector.svelte';
-export { default as DetailRow } from './DetailRow.svelte';
 export { default as DiffContent } from './DiffContent.svelte';
 export { default as EmptyState } from './EmptyState.svelte';
 export { default as HeaderNav } from './HeaderNav.svelte';
@@ -10,5 +9,4 @@ export { default as ModalDialog } from './ModalDialog.svelte';
 export { default as PageHeader } from './PageHeader.svelte';
 export { default as ShareDropdown } from './ShareDropdown.svelte';
 export { default as SiteFooter } from './SiteFooter.svelte';
-export { default as StreakCalendar } from './StreakCalendar.svelte';
 export { default as SyncDropdown } from './SyncDropdown.svelte';

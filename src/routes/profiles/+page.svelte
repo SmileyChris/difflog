@@ -9,7 +9,8 @@
 		deleteProfileWithSync,
 		hasRememberedPasswordFor
 	} from '$lib/stores/sync.svelte';
-	import { Card, DetailRow, IconButton, SyncDropdown, SiteFooter, PageHeader } from '$lib/components';
+	import { Card, IconButton, SyncDropdown, SiteFooter, PageHeader } from '$lib/components';
+	import DetailRow from './DetailRow.svelte';
 	import {
 		ImportProfileModal,
 		ShareProfileModal,
