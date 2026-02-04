@@ -1,85 +1,36 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { profiles, activeProfileId, type Profile } from '$lib/stores/profiles.svelte';
+	import { profiles, activeProfileId } from '$lib/stores/profiles.svelte';
 	import { histories } from '$lib/stores/history.svelte';
 	import { bookmarks } from '$lib/stores/stars.svelte';
 	import {
 		switchProfileWithSync,
 		deleteProfileWithSync,
-		importProfile as importProfileApi,
-		shareProfile as shareProfileApi,
-		rememberPassword,
-		hasRememberedPasswordFor,
-		checkSyncStatus,
-		updatePasswordSync
+		hasRememberedPasswordFor
 	} from '$lib/stores/sync.svelte';
-	import { Card, DetailRow, IconButton, SyncDropdown, SiteFooter, PageHeader, ModalDialog, InputField } from '$lib/components';
+	import { Card, DetailRow, IconButton, SyncDropdown, SiteFooter, PageHeader } from '$lib/components';
+	import {
+		ImportProfileModal,
+		ShareProfileModal,
+		ShareInfoModal,
+		PasswordUpdateModal
+	} from './modals';
 
-	// Import modal state
+	// Modal visibility state
 	let showImport = $state(false);
-	let importProfileId = $state('');
-	let importPassword = $state('');
-	let importRemember = $state(true);
-	let importError = $state('');
-	let importing = $state(false);
-
-	// Share modal state
 	let showShare = $state(false);
-	let shareProfileId = $state('');
-	let sharePassword = $state('');
-	let sharePasswordConfirm = $state('');
-	let shareRemember = $state(true);
-	let shareError = $state('');
-	let sharing = $state(false);
-
-	// Share info modal state
 	let showInfo = $state(false);
-	let infoProfileId = $state('');
-	let qrDataUrl = $state('');
-	let copied = $state(false);
-
-	// Password update modal state
 	let showPasswordUpdate = $state(false);
-	let passwordUpdateProfileId = $state('');
-	let currentPassword = $state('');
-	let newPassword = $state('');
-	let newPasswordConfirm = $state('');
-	let passwordUpdateError = $state('');
-	let passwordUpdating = $state(false);
-	let passwordUpdateSuccess = $state(false);
 
-	// Dialog refs
-	let importDialog: { open: () => void; close: () => void };
-	let shareDialog: { open: () => void; close: () => void };
-	let infoDialog: { open: () => void; close: () => void };
-	let passwordDialog: { open: () => void; close: () => void };
+	// Modal context (which profile the modal is operating on)
+	let modalProfileId = $state('');
 
 	onMount(() => {
 		if (sessionStorage.getItem('openImport')) {
 			sessionStorage.removeItem('openImport');
 			showImport = true;
 		}
-	});
-
-	$effect(() => {
-		if (showImport && importDialog) importDialog.open();
-		else if (importDialog) importDialog.close();
-	});
-
-	$effect(() => {
-		if (showShare && shareDialog) shareDialog.open();
-		else if (shareDialog) shareDialog.close();
-	});
-
-	$effect(() => {
-		if (showInfo && infoDialog) infoDialog.open();
-		else if (infoDialog) infoDialog.close();
-	});
-
-	$effect(() => {
-		if (showPasswordUpdate && passwordDialog) passwordDialog.open();
-		else if (passwordDialog) passwordDialog.close();
 	});
 
 	function handleSwitchProfile(id: string) {
@@ -94,143 +45,19 @@
 		}
 	}
 
-	async function handleImportProfile() {
-		const id = importProfileId.trim();
-		if (!id || !importPassword) return;
-
-		importError = '';
-
-		if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-			importError = 'Invalid profile ID format';
-			return;
-		}
-
-		importing = true;
-		try {
-			await importProfileApi(id, importPassword);
-			if (importRemember) {
-				rememberPassword(importPassword);
-			}
-			goto('/');
-		} catch (e: unknown) {
-			importError = e instanceof Error ? e.message : 'Failed to import profile';
-		} finally {
-			importing = false;
-		}
-	}
-
 	function startShare(id: string) {
-		shareProfileId = id;
-		sharePassword = '';
-		sharePasswordConfirm = '';
-		shareError = '';
+		modalProfileId = id;
 		showShare = true;
 	}
 
-	async function doShareProfile() {
-		if (!sharePassword || sharePassword !== sharePasswordConfirm) return;
-
-		shareError = '';
-		sharing = true;
-
-		try {
-			switchProfileWithSync(shareProfileId);
-			await shareProfileApi(sharePassword);
-			const profile = profiles.value[shareProfileId];
-			profiles.value = {
-				...profiles.value,
-				[shareProfileId]: { ...profile, syncedAt: new Date().toISOString() }
-			};
-			if (shareRemember) {
-				rememberPassword(sharePassword);
-			}
-			showShare = false;
-			checkSyncStatus();
-		} catch (e: unknown) {
-			shareError = e instanceof Error ? e.message : 'Failed to share profile';
-		} finally {
-			sharing = false;
-		}
-	}
-
-	async function showShareInfo(id: string) {
-		infoProfileId = id;
-		copied = false;
-		qrDataUrl = '';
+	function showShareInfo(id: string) {
+		modalProfileId = id;
 		showInfo = true;
-
-		try {
-			if (!(window as any).qrcode) {
-				await new Promise<void>((resolve, reject) => {
-					const script = document.createElement('script');
-					script.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
-					script.onload = () => resolve();
-					script.onerror = () => reject();
-					document.head.appendChild(script);
-				});
-			}
-			const qr = (window as any).qrcode(0, 'M');
-			qr.addData(id);
-			qr.make();
-			qrDataUrl = qr.createDataURL(6, 4);
-		} catch {
-			// QR generation failed
-		}
-	}
-
-	async function copyId() {
-		try {
-			await navigator.clipboard.writeText(infoProfileId);
-			copied = true;
-			setTimeout(() => (copied = false), 2000);
-		} catch {
-			// Fallback
-		}
 	}
 
 	function startPasswordUpdate(id: string) {
-		passwordUpdateProfileId = id;
-		currentPassword = '';
-		newPassword = '';
-		newPasswordConfirm = '';
-		passwordUpdateError = '';
-		passwordUpdateSuccess = false;
+		modalProfileId = id;
 		showPasswordUpdate = true;
-	}
-
-	async function doPasswordUpdate() {
-		if (!currentPassword || !newPassword) return;
-		if (newPassword !== newPasswordConfirm) {
-			passwordUpdateError = 'Passwords do not match';
-			return;
-		}
-		if (newPassword.length < 8) {
-			passwordUpdateError = 'Password must be at least 8 characters';
-			return;
-		}
-
-		passwordUpdateError = '';
-		passwordUpdating = true;
-
-		try {
-			if (passwordUpdateProfileId !== activeProfileId.value) {
-				switchProfileWithSync(passwordUpdateProfileId);
-			}
-
-			await updatePasswordSync(currentPassword, newPassword);
-			passwordUpdateSuccess = true;
-
-			setTimeout(() => {
-				if (passwordUpdateSuccess) {
-					showPasswordUpdate = false;
-					passwordUpdateSuccess = false;
-				}
-			}, 2000);
-		} catch (e: unknown) {
-			passwordUpdateError = e instanceof Error ? e.message : 'Failed to update password';
-		} finally {
-			passwordUpdating = false;
-		}
 	}
 
 	function formatSyncDate(dateStr: string): string {
@@ -249,26 +76,6 @@
 
 	function getStarCount(id: string): number {
 		return (bookmarks.value[id] || []).length;
-	}
-
-	function handleImportClose() {
-		showImport = false;
-		importError = '';
-	}
-
-	function handleShareClose() {
-		showShare = false;
-		shareError = '';
-	}
-
-	function handleInfoClose() {
-		showInfo = false;
-	}
-
-	function handlePasswordClose() {
-		showPasswordUpdate = false;
-		passwordUpdateError = '';
-		passwordUpdateSuccess = false;
 	}
 </script>
 
@@ -398,205 +205,29 @@
 		</Card>
 	</div>
 
-	<!-- Import Modal -->
-	<ModalDialog
-		bind:this={importDialog}
-		title="Import Shared Profile"
-		subtitle="Sync a profile that's been uploaded to the server from another device."
-		error={importError}
-		size="sm"
-		dark={true}
-		onclose={handleImportClose}
-	>
-		<InputField
-			label="Profile ID"
-			placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-			bind:value={importProfileId}
-		/>
+	<!-- Modals -->
+	<ImportProfileModal
+		bind:open={showImport}
+		onclose={() => {}}
+	/>
 
-		<InputField
-			label="Password"
-			type="password"
-			placeholder="Enter the share password"
-			bind:value={importPassword}
-			onkeydown={(e) => e.key === 'Enter' && handleImportProfile()}
-		/>
+	<ShareProfileModal
+		bind:open={showShare}
+		profileId={modalProfileId}
+		onclose={() => {}}
+	/>
 
-		<label class="remember-password">
-			<input type="checkbox" bind:checked={importRemember} />
-			<span>Remember password</span>
-		</label>
+	<ShareInfoModal
+		bind:open={showInfo}
+		profileId={modalProfileId}
+		onclose={() => {}}
+	/>
 
-		{#snippet footer()}
-			<button class="btn-secondary" onclick={() => (showImport = false)}>Cancel</button>
-			<button
-				class="btn-primary"
-				onclick={handleImportProfile}
-				disabled={!importProfileId.trim() || !importPassword || importing}
-			>
-				{importing ? 'Importing...' : 'Import'}
-			</button>
-		{/snippet}
-	</ModalDialog>
-
-	<!-- Share Modal -->
-	<ModalDialog
-		bind:this={shareDialog}
-		title="Upload Profile"
-		subtitle="Your profile data and API key will be encrypted with your password, then uploaded securely."
-		error={shareError}
-		size="sm"
-		dark={true}
-		onclose={handleShareClose}
-	>
-		<div class="prof-info">
-			<div class="prof-info-item">
-				<span class="prof-info-icon">&#128274;</span>
-				<span>Password encrypts your API key locally</span>
-			</div>
-			<div class="prof-info-item">
-				<span class="prof-info-icon">&#9729;</span>
-				<span>Encrypted data stored on server</span>
-			</div>
-			<div class="prof-info-item">
-				<span class="prof-info-icon">&#128273;</span>
-				<span>Only someone with the password can decrypt</span>
-			</div>
-		</div>
-
-		<InputField
-			label="Choose a password"
-			type="password"
-			placeholder="Enter a secure password"
-			bind:value={sharePassword}
-		/>
-
-		<InputField
-			label="Confirm password"
-			type="password"
-			placeholder="Re-enter password"
-			bind:value={sharePasswordConfirm}
-			onkeydown={(e) => e.key === 'Enter' && doShareProfile()}
-		/>
-
-		<label class="remember-password">
-			<input type="checkbox" bind:checked={shareRemember} />
-			<span>Remember password</span>
-		</label>
-
-		{#snippet footer()}
-			<button class="btn-secondary" onclick={() => (showShare = false)}>Cancel</button>
-			<button
-				class="btn-primary"
-				onclick={doShareProfile}
-				disabled={!sharePassword || sharePassword !== sharePasswordConfirm || sharing}
-			>
-				{sharing ? 'Uploading...' : 'Upload'}
-			</button>
-		{/snippet}
-	</ModalDialog>
-
-	<!-- Share Info Modal -->
-	<ModalDialog
-		bind:this={infoDialog}
-		title="Share Profile"
-		subtitle="Share this profile with another device or person"
-		size="sm"
-		dark={true}
-		onclose={handleInfoClose}
-	>
-		{#if qrDataUrl}
-			<div class="share-qr-container">
-				<img src={qrDataUrl} alt="QR Code" class="share-qr" />
-			</div>
-		{/if}
-
-		<div class="share-id-box">
-			<label class="input-label">Profile ID</label>
-			<div class="share-id-row">
-				<code class="share-id-code">{infoProfileId}</code>
-				<button class="btn-copy" onclick={copyId}>
-					{copied ? 'Copied!' : 'Copy'}
-				</button>
-			</div>
-		</div>
-
-		<p class="share-note">The recipient will need this ID and your password to import the profile.</p>
-
-		{#snippet footer()}
-			<button class="btn-secondary" onclick={() => (showInfo = false)}>Close</button>
-		{/snippet}
-	</ModalDialog>
-
-	<!-- Password Update Modal -->
-	<ModalDialog
-		bind:this={passwordDialog}
-		title="Change Password"
-		subtitle={passwordUpdateSuccess ? undefined : "Update your sync password. All data will be re-encrypted with the new password."}
-		error={passwordUpdateError}
-		size="sm"
-		dark={true}
-		onclose={handlePasswordClose}
-	>
-		{#if !passwordUpdateSuccess}
-			<div class="share-info">
-				<div class="share-info-item">
-					<span class="share-info-icon">&#128274;</span>
-					<span>Your API key and data will be re-encrypted</span>
-				</div>
-				<div class="share-info-item">
-					<span class="share-info-icon">&#9729;</span>
-					<span>Server data updated atomically</span>
-				</div>
-				<div class="share-info-item">
-					<span class="share-info-icon">&#128273;</span>
-					<span>Old password will no longer work</span>
-				</div>
-			</div>
-
-			<InputField
-				label="Current password"
-				type="password"
-				placeholder="Enter your current password"
-				bind:value={currentPassword}
-			/>
-
-			<InputField
-				label="New password"
-				type="password"
-				placeholder="At least 8 characters"
-				bind:value={newPassword}
-			/>
-
-			<InputField
-				label="Confirm new password"
-				type="password"
-				placeholder="Re-enter new password"
-				bind:value={newPasswordConfirm}
-				onkeydown={(e) => e.key === 'Enter' && doPasswordUpdate()}
-			/>
-		{:else}
-			<div class="sync-result">
-				<div class="sync-result-icon">&#10003;</div>
-				<p class="sync-result-text">Password updated successfully!</p>
-			</div>
-		{/if}
-
-		{#snippet footer()}
-			{#if !passwordUpdateSuccess}
-				<button class="btn-secondary" onclick={() => (showPasswordUpdate = false)}>Cancel</button>
-				<button
-					class="btn-primary"
-					onclick={doPasswordUpdate}
-					disabled={!currentPassword || !newPassword || newPassword !== newPasswordConfirm || passwordUpdating}
-				>
-					{passwordUpdating ? 'Updating...' : 'Update Password'}
-				</button>
-			{:else}
-				<button class="btn-primary" onclick={() => (showPasswordUpdate = false)}>Done</button>
-			{/if}
-		{/snippet}
-	</ModalDialog>
+	<PasswordUpdateModal
+		bind:open={showPasswordUpdate}
+		profileId={modalProfileId}
+		onclose={() => {}}
+	/>
 </main>
 
 <SiteFooter version="2.0.4" />
