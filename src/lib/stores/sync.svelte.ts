@@ -37,8 +37,9 @@ let _syncing = $state(false);
 let _syncError = $state<string | null>(null);
 let _autoSyncTimeout: ReturnType<typeof setTimeout> | null = null;
 
-// Password state - uses direct session/localStorage access for compatibility
-let _passwordVersion = $state(0);
+// Password state - reactive wrapper around session/localStorage
+let _sessionPassword = $state<string | null>(browser ? getSyncPassword() : null);
+let _rememberedVersion = $state(0); // Signals changes to localStorage remembered passwords
 
 // State accessors
 export const pendingSync = {
@@ -76,26 +77,28 @@ export function getLastSyncedAgo(): string {
 }
 
 export function getHasRememberedPassword(): boolean {
-	void _passwordVersion; // Touch for reactivity
+	void _rememberedVersion; // Subscribe to remembered password changes
 	return activeProfileId.value ? hasRememberedPassword(activeProfileId.value) : false;
 }
 
 export function hasRememberedPasswordFor(profileId: string): boolean {
-	void _passwordVersion;
+	void _rememberedVersion;
 	return hasRememberedPassword(profileId);
 }
 
 // Password management
 export function getCachedPassword(): string | null {
-	void _passwordVersion; // Touch for reactivity
 	if (!browser) return null;
 
-	const sessionPwd = getSyncPassword();
-	if (sessionPwd) return sessionPwd;
+	// Check reactive session state first
+	if (_sessionPassword) return _sessionPassword;
 
+	// Fall back to remembered password for active profile
 	if (activeProfileId.value) {
+		void _rememberedVersion; // Subscribe to remembered password changes
 		const remembered = getRememberedPassword(activeProfileId.value);
 		if (remembered) {
+			_sessionPassword = remembered;
 			setSyncPassword(remembered);
 			return remembered;
 		}
@@ -104,25 +107,28 @@ export function getCachedPassword(): string | null {
 }
 
 export function setCachedPassword(val: string | null): void {
+	_sessionPassword = val;
 	if (browser) {
 		setSyncPassword(val);
 	}
-	_passwordVersion++;
 }
 
 export function rememberPassword(password: string): void {
 	if (activeProfileId.value) {
 		setRememberedPassword(activeProfileId.value, password);
-		_passwordVersion++;
+		_rememberedVersion++;
 	}
 }
 
 export function forgetPassword(): void {
-	setSyncPassword(null);
+	_sessionPassword = null;
+	if (browser) {
+		setSyncPassword(null);
+	}
 	if (activeProfileId.value) {
 		clearRememberedPassword(activeProfileId.value);
 	}
-	_passwordVersion++;
+	_rememberedVersion++;
 }
 
 // Pending sync management
@@ -527,11 +533,14 @@ export async function updatePasswordSync(oldPassword: string, newPassword: strin
 function handleSyncError(e: unknown): void {
 	console.error('Sync error:', e);
 	if (e instanceof ApiError && e.status === 401) {
-		setSyncPassword(null);
+		_sessionPassword = null;
+		if (browser) {
+			setSyncPassword(null);
+		}
 		if (activeProfileId.value) {
 			clearRememberedPassword(activeProfileId.value);
 		}
-		_passwordVersion++;
+		_rememberedVersion++;
 		_syncError = 'Invalid password';
 	} else if (e instanceof ApiError && e.status === 429) {
 		_syncError = e.message;

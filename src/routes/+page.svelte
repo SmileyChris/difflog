@@ -1,13 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
-	import { profiles, getProfile, getApiKey, isUnlocked } from '$lib/stores/profiles.svelte';
+	import { getProfile, getApiKey } from '$lib/stores/profiles.svelte';
 	import { getHistory, type Diff } from '$lib/stores/history.svelte';
 	import { getStars, getStarCountLabel } from '$lib/stores/stars.svelte';
 	import { updateProfile, autoSync, getCachedPassword, hasPendingChanges } from '$lib/stores/sync.svelte';
 	import { openSyncDropdown } from '$lib/stores/ui.svelte';
-	import { initApp, addDiff, deleteDiff, removeStar } from '$lib/stores/operations.svelte';
+	import { addDiff, deleteDiff, removeStar } from '$lib/stores/operations.svelte';
 	import { SyncDropdown, ShareDropdown, DiffContent, StreakCalendar, SiteFooter, PageHeader } from '$lib/components';
 	import { SCAN_MESSAGES, DEPTHS, DEPTH_TOKEN_LIMITS, WAIT_TIPS } from '$lib/utils/constants';
 	import { timeAgo, daysSince, getCurrentDateFormatted } from '$lib/utils/time';
@@ -16,34 +15,33 @@
 	import { searchWeb } from '$lib/utils/search';
 	import { synthesizeDiff } from '$lib/utils/llm';
 
+	let { data } = $props();
+
 	let generating = $state(false);
-	let showProfile = $state(false);
-	let showPrompt = $state(false);
-	let promptText = $state('');
 	let ctrlHeld = $state(false);
 	let error = $state<string | null>(null);
 	let waitTip = $state('');
 	let diff = $state<Diff | null>(null);
 	let scanIndex = $state(0);
-	let selectedDepth = $state('standard');
+	let selectedDepth = $state<string>('standard');
+
+	// Initialize from page data (reactive to data changes from navigation)
+	$effect.pre(() => {
+		diff = data.initialDiff ?? null;
+		selectedDepth = data.selectedDepth ?? 'standard';
+	});
 	let scanMessages = $state([...SCAN_MESSAGES]);
 	let scanInterval: ReturnType<typeof setInterval> | null = null;
 	let currentDate = getCurrentDateFormatted();
 	let syncBannerDismissed = $state(false);
 
 	onMount(() => {
-		if (!isUnlocked()) {
-			const ids = Object.keys(profiles.value);
-			if (ids.length > 0) {
-				goto('/profiles');
-			} else {
-				goto('/about');
-			}
-			return;
+		// Handle scroll-to from deep link
+		if (data.scrollToPIndex !== null) {
+			scrollToAndHighlight(data.scrollToPIndex);
 		}
 
-		initApp();
-
+		// Keyboard listeners for Ctrl key tracking
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.key === 'Control') ctrlHeld = true;
 		};
@@ -58,28 +56,6 @@
 		window.addEventListener('keyup', handleKeyUp);
 		window.addEventListener('blur', handleBlur);
 
-		// Check for view diff from session storage
-		const viewId = sessionStorage.getItem('viewDiffId');
-		const scrollToPIndex = sessionStorage.getItem('scrollToPIndex');
-		if (viewId) {
-			sessionStorage.removeItem('viewDiffId');
-			sessionStorage.removeItem('scrollToPIndex');
-			const foundDiff = getHistory().find((d) => d.id === viewId);
-			if (foundDiff) {
-				diff = foundDiff;
-				if (scrollToPIndex !== null) {
-					scrollToAndHighlight(parseInt(scrollToPIndex, 10));
-				}
-				return () => {
-					window.removeEventListener('keydown', handleKeyDown);
-					window.removeEventListener('keyup', handleKeyUp);
-					window.removeEventListener('blur', handleBlur);
-				};
-			}
-		}
-
-		loadLatestDiff();
-
 		return () => {
 			window.removeEventListener('keydown', handleKeyDown);
 			window.removeEventListener('keyup', handleKeyUp);
@@ -87,32 +63,18 @@
 		};
 	});
 
-	function loadLatestDiff() {
-		diff = null;
-		selectedDepth = getProfile()?.depth || 'standard';
-		const history = getHistory();
-		if (history.length > 0) {
-			const mostRecent = history[0];
-			const generatedTime = new Date(mostRecent.generated_at).getTime();
-			const fiveDaysAgo = Date.now() - 5 * 24 * 60 * 60 * 1000;
-			if (generatedTime > fiveDaysAgo) {
-				diff = mostRecent;
-			}
-		}
-	}
-
-	function trackingText(): string {
+	const trackingText = $derived.by(() => {
 		const p = getProfile();
 		if (!p) return '';
 		return [...(p.languages || []), ...(p.frameworks || []), ...(p.tools || [])].join(' · ');
-	}
+	});
 
-	function depthLabel(): string {
+	const depthLabel = $derived.by(() => {
 		const p = getProfile();
 		if (!p) return '';
 		const d = DEPTHS.find((d) => d.id === p.depth);
 		return d ? d.label : 'Standard Brief';
-	}
+	});
 
 	function showLastDiff() {
 		const history = getHistory();
@@ -131,23 +93,23 @@
 		return idx > 0 ? history[idx - 1] : null;
 	}
 
-	function diffPosition(): string {
+	const diffPosition = $derived.by(() => {
 		const history = getHistory();
 		if (!diff || history.length === 0) return '';
 		const idx = history.findIndex((d) => d.id === diff?.id);
 		if (idx < 0) return '';
 		return `${idx + 1} of ${history.length}`;
-	}
+	});
 
 	const lastDiffDays = $derived(getHistory().length > 0 ? daysSince(getHistory()[0].generated_at) : Infinity);
 
-	function isTodayDiff(): boolean {
+	const isTodayDiff = $derived.by(() => {
 		const history = getHistory();
 		if (history.length === 0) return false;
 		return new Date(history[0].generated_at).toDateString() === new Date().toDateString();
-	}
+	});
 
-	function welcomeHeading(): string {
+	const welcomeHeading = $derived.by(() => {
 		const name = getProfile()?.name || 'Developer';
 		const history = getHistory();
 
@@ -166,14 +128,14 @@
 		if (days <= 7) return `Welcome back, ${name}`;
 		if (days <= 14) return `Missed you, ${name}`;
 		return `Long time no see, ${name}`;
-	}
+	});
 
-	function welcomeText(): string {
+	const welcomeText = $derived.by(() => {
 		const history = getHistory();
 		if (history.length === 0)
 			return "A diff is your personalized changelog for the developer ecosystem — releases, announcements, and developments filtered to what you care about.<br><br>Hit the button to generate your first one.";
 
-		if (isTodayDiff())
+		if (isTodayDiff)
 			return 'Your diff is current. Regenerate to get the latest <small>(or hold <kbd>Ctrl</kbd> to generate another)</small>';
 		const days = lastDiffDays;
 		if (days <= 1) return 'A lot can change overnight. Ready to catch you up.';
@@ -181,7 +143,7 @@
 		if (days <= 7) return "The dev world moves fast — time to catch up.";
 		if (days <= 14) return "Quite a bit has happened. Let's get you back up to speed.";
 		return "You've got weeks of ecosystem changes to unpack.";
-	}
+	});
 
 	function getLastDiffDate(): string | undefined {
 		const history = getHistory();
@@ -457,7 +419,7 @@
 		</div>
 	{:else if diff}
 		<div class="welcome-bar">
-			<h2 class="welcome-heading-lg">{welcomeHeading()}</h2>
+			<h2 class="welcome-heading-lg">{welcomeHeading}</h2>
 			<div class="diff-info-bar">
 				<div class="diff-info-left">
 					<span class="diff-label">Here's your latest diff</span>
@@ -476,7 +438,7 @@
 					>
 						&#8249;
 					</button>
-					<a href="/archive" class="diff-position-link">{diffPosition()}</a>
+					<a href="/archive" class="diff-position-link">{diffPosition}</a>
 					<button
 						class="diff-nav-btn"
 						class:diff-nav-btn-disabled={!nextDiff()}
@@ -505,13 +467,13 @@
 	{:else}
 		<div class="welcome-area">
 			<div class="logo-mark">&#9670;</div>
-			<h2 class="welcome-heading-lg">{welcomeHeading()}</h2>
-			<p class="welcome-text">{@html welcomeText()}</p>
+			<h2 class="welcome-heading-lg">{welcomeHeading}</h2>
+			<p class="welcome-text">{@html welcomeText}</p>
 
-			{#if trackingText()}
+			{#if trackingText}
 				<div class="first-time-tracking">
 					<span class="first-time-tracking-label">Tracking</span>
-					<span class="first-time-tracking-items">{trackingText()}</span>
+					<span class="first-time-tracking-items">{trackingText}</span>
 					<a href="/profiles" class="first-time-tracking-edit">Edit</a>
 				</div>
 			{/if}

@@ -12,7 +12,7 @@
 
 	let isOpen = $state(false);
 	let copied = $state(false);
-	let wrapperEl: HTMLElement;
+	let wrapperEl = $state<HTMLElement | null>(null);
 
 	const canShare = $derived(!!getProfile()?.syncedAt);
 	const canModify = $derived(!!getCachedPassword());

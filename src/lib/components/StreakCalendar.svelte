@@ -3,7 +3,7 @@
 	import type { CalendarMonth, CalendarDay } from '$lib/utils/streak';
 
 	let isOpen = $state(false);
-	let wrapperEl: HTMLElement;
+	let wrapperEl = $state<HTMLElement | null>(null);
 
 	const streak = $derived(getStreak());
 	const calendar = $derived(getStreakCalendarData());

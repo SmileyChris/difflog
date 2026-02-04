@@ -19,7 +19,7 @@
 	} from '$lib/stores/ui.svelte';
 	import { doSyncFromDropdown } from '$lib/stores/operations.svelte';
 
-	let wrapperEl: HTMLElement;
+	let wrapperEl = $state<HTMLElement | null>(null);
 
 	$effect(() => {
 		function handleKeydown(e: KeyboardEvent) {

@@ -1,15 +1,13 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { browser } from '$app/environment';
-	import { profiles, getProfile } from '$lib/stores/profiles.svelte';
 	import { updateProfile } from '$lib/stores/sync.svelte';
 	import { createProfile } from '$lib/stores/operations.svelte';
 	import { SiteFooter, ChipSelector, InputField } from '$lib/components';
-	import { LANGUAGES, FRAMEWORKS, TOOLS, TOPICS, DEPTHS } from '$lib/utils/constants';
+	import { DEPTHS } from '$lib/utils/constants';
 	import { validateAnthropicKey } from '$lib/utils/api';
-	import { PROVIDERS, STEPS, type ProviderStep, type ProviderConfig } from '$lib/utils/providers';
+	import { PROVIDERS, type ProviderStep } from '$lib/utils/providers';
+
+	let { data: pageData } = $props();
 
 	type ValidationStatus = 'idle' | 'validating' | 'valid' | 'invalid';
 
@@ -19,96 +17,52 @@
 		masked: boolean;
 	}
 
-	let step = $state(0);
+	// Initialize state from load function data
+	let step = $state(pageData.initialStep ?? 0);
 	let saving = $state(false);
 	let setupError = $state('');
-	let isEditing = $state(false);
-	let hasExistingProfiles = $state(false);
+	const isEditing = pageData.isEditing ?? false;
+	const hasExistingProfiles = pageData.hasExistingProfiles ?? false;
 
-	let data = $state({
-		name: '',
-		languages: [] as string[],
-		frameworks: [] as string[],
-		tools: [] as string[],
-		topics: [] as string[],
-		depth: 'standard',
-		customFocus: ''
-	});
-
-	// Custom items for each category (not in predefined options)
-	let customLanguages = $state<string[]>([]);
-	let customFrameworks = $state<string[]>([]);
-	let customTools = $state<string[]>([]);
-	let customTopics = $state<string[]>([]);
-
-	let providers = $state<Record<string, ProviderState>>(
-		Object.fromEntries(
-			Object.keys(PROVIDERS).map((id) => [
-				id,
-				{
-					key: '',
-					status: 'idle' as ValidationStatus,
-					masked: true
-				}
-			])
-		)
+	let formData = $state(
+		pageData.initialData ?? {
+			name: '',
+			languages: [] as string[],
+			frameworks: [] as string[],
+			tools: [] as string[],
+			topics: [] as string[],
+			depth: 'standard',
+			customFocus: ''
+		}
 	);
 
-	let selections = $state<{ search: string | null; curation: string | null; synthesis: string | null }>({
-		search: null,
-		curation: null,
-		synthesis: null
-	});
+	// Custom items for each category (not in predefined options)
+	let customLanguages = $state<string[]>(pageData.customItems?.languages ?? []);
+	let customFrameworks = $state<string[]>(pageData.customItems?.frameworks ?? []);
+	let customTools = $state<string[]>(pageData.customItems?.tools ?? []);
+	let customTopics = $state<string[]>(pageData.customItems?.topics ?? []);
 
-	const totalSteps = 7;
-
-	onMount(() => {
-		if (!browser) return;
-
-		hasExistingProfiles = Object.keys(profiles.value).length > 0;
-
-		const params = new URLSearchParams(window.location.search);
-		const editStep = params.get('edit');
-		const currentProfile = getProfile();
-
-		if (editStep && currentProfile) {
-			isEditing = true;
-			step = parseInt(editStep);
-			const p = currentProfile;
-			data = {
-				name: p.name,
-				languages: [...(p.languages || [])],
-				frameworks: [...(p.frameworks || [])],
-				tools: [...(p.tools || [])],
-				topics: [...(p.topics || [])],
-				depth: p.depth || 'standard',
-				customFocus: p.customFocus || ''
-			};
-
-			// Initialize custom items (items not in predefined options)
-			customLanguages = (p.languages || []).filter((i: string) => !LANGUAGES.includes(i));
-			customFrameworks = (p.frameworks || []).filter((i: string) => !FRAMEWORKS.includes(i));
-			customTools = (p.tools || []).filter((i: string) => !TOOLS.includes(i));
-			customTopics = (p.topics || []).filter((i: string) => !TOPICS.includes(i));
-
-			// Load existing keys
-			if (p.apiKey) {
-				providers.anthropic.key = p.apiKey;
-				providers.anthropic.status = 'valid';
-			}
-			if (p.apiKeys) {
-				for (const [id, key] of Object.entries(p.apiKeys)) {
-					if (key && providers[id]) {
-						providers[id].key = key as string;
-						providers[id].status = 'valid';
+	let providers = $state<Record<string, ProviderState>>(
+		pageData.providerStates ??
+			Object.fromEntries(
+				Object.keys(PROVIDERS).map((id) => [
+					id,
+					{
+						key: '',
+						status: 'idle' as ValidationStatus,
+						masked: true
 					}
-				}
-			}
-			if (p.providerSelections) {
-				selections = { ...selections, ...p.providerSelections };
-			}
+				])
+			)
+	);
+
+	let selections = $state<{ search: string | null; curation: string | null; synthesis: string | null }>(
+		pageData.selections ?? {
+			search: null,
+			curation: null,
+			synthesis: null
 		}
-	});
+	);
 
 	function hasCapability(providerId: string, capStep: ProviderStep): boolean {
 		return PROVIDERS[providerId]?.capabilities.includes(capStep) ?? false;
@@ -171,7 +125,7 @@
 	async function saveProfile() {
 		setupError = '';
 
-		if (!data.name.trim()) {
+		if (!formData.name.trim()) {
 			setupError = 'Name is required';
 			return;
 		}
@@ -202,13 +156,13 @@
 
 			if (isEditing) {
 				updateProfile({
-					...data,
+					...formData,
 					...keys,
 					providerSelections: selections
 				});
 			} else {
 				createProfile({
-					...data,
+					...formData,
 					...keys,
 					providerSelections: selections
 				});
@@ -271,7 +225,7 @@
 				<InputField
 					label="Your name"
 					placeholder="e.g., Alex"
-					bind:value={data.name}
+					bind:value={formData.name}
 					onkeydown={(e) => e.key === 'Enter' && nextStep()}
 				/>
 
@@ -316,7 +270,7 @@
 				title="Languages you work with"
 				description="Select programming languages to track updates, releases, and discussions."
 				options={LANGUAGES}
-				bind:selected={data.languages}
+				bind:selected={formData.languages}
 				bind:customItems={customLanguages}
 				placeholder="Add custom language..."
 			/>
@@ -328,7 +282,7 @@
 				title="Frameworks & runtimes"
 				description="Track framework releases, breaking changes, and ecosystem news."
 				options={FRAMEWORKS}
-				bind:selected={data.frameworks}
+				bind:selected={formData.frameworks}
 				bind:customItems={customFrameworks}
 				placeholder="Add custom framework..."
 			/>
@@ -340,7 +294,7 @@
 				title="Tools & platforms"
 				description="Stay updated on infrastructure and development tools."
 				options={TOOLS}
-				bind:selected={data.tools}
+				bind:selected={formData.tools}
 				bind:customItems={customTools}
 				placeholder="Add custom tool..."
 			/>
@@ -352,7 +306,7 @@
 				title="Topics of interest"
 				description="Choose broader topics to include in your diff coverage."
 				options={TOPICS}
-				bind:selected={data.topics}
+				bind:selected={formData.topics}
 				bind:customItems={customTopics}
 				placeholder="Add custom topic..."
 			/>
@@ -360,7 +314,7 @@
 			<InputField
 				label="Custom focus (optional)"
 				placeholder="Any specific things you'd like covered..."
-				bind:value={data.customFocus}
+				bind:value={formData.customFocus}
 				rows={2}
 			/>
 		{/if}
@@ -375,8 +329,8 @@
 					{#each DEPTHS as depth}
 						<button
 							class="depth-card"
-							class:depth-card-selected={data.depth === depth.id}
-							onclick={() => (data.depth = depth.id)}
+							class:depth-card-selected={formData.depth === depth.id}
+							onclick={() => (formData.depth = depth.id)}
 						>
 							<span class="depth-icon">{depth.icon}</span>
 							<span class="depth-label">{depth.label}</span>

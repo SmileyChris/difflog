@@ -14,9 +14,9 @@
 	let { diff, showBookmarks = true, titleRow }: Props = $props();
 
 	const html = $derived(diff?.content ? renderMarkdown(diff.content) : '');
-
-	// Track stars to trigger reactivity
 	const stars = $derived(getStars());
+
+	let contentElement: HTMLElement | null = $state(null);
 
 	function toggleStar(pIndex: number) {
 		if (isStarred(diff.id, pIndex)) {
@@ -30,49 +30,39 @@
 		}
 	}
 
-	// Svelte action to inject bookmark buttons
-	function bookmarkable(node: HTMLElement) {
-		function injectButtons() {
-			if (!showBookmarks) return;
+	// Reactively inject bookmark buttons when html, stars, or diff changes
+	$effect(() => {
+		if (!contentElement || !showBookmarks) return;
 
-			node.querySelectorAll('[data-p]').forEach((el) => {
-				el.querySelector('.bookmark-btn')?.remove();
+		// Subscribe to stars changes
+		void stars;
 
-				const pIndex = parseInt(el.getAttribute('data-p') || '0', 10);
-				const starred = isStarred(diff.id, pIndex);
+		// Clean up existing buttons first
+		contentElement.querySelectorAll('.bookmark-btn').forEach((btn) => btn.remove());
 
-				const btn = document.createElement('button');
-				btn.className = `bookmark-btn${isStarred ? ' bookmark-btn-existing' : ''}`;
-				btn.title = isStarred ? 'Remove star' : 'Star this';
-				btn.addEventListener('click', (e) => {
-					e.preventDefault();
-					e.stopPropagation();
-					toggleStar(pIndex);
-				});
+		contentElement.querySelectorAll('[data-p]').forEach((el) => {
+			const pIndex = parseInt(el.getAttribute('data-p') || '0', 10);
+			const starred = isStarred(diff.id, pIndex);
 
-				el.appendChild(btn);
+			const btn = document.createElement('button');
+			btn.className = `bookmark-btn${starred ? ' bookmark-btn-existing' : ''}`;
+			btn.title = starred ? 'Remove star' : 'Star this';
+			btn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				toggleStar(pIndex);
 			});
-		}
 
-		// Initial injection
-		injectButtons();
-
-		return {
-			update() {
-				injectButtons();
-			},
-			destroy() {
-				node.querySelectorAll('.bookmark-btn').forEach((btn) => btn.remove());
-			}
-		};
-	}
+			el.appendChild(btn);
+		});
+	});
 </script>
 
 <div class="diff-container">
 	{#if titleRow}
 		{@render titleRow()}
 	{/if}
-	<div class="diff-content" use:bookmarkable={{ html, stars }}>
+	<div class="diff-content" bind:this={contentElement}>
 		{@html html}
 	</div>
 </div>
