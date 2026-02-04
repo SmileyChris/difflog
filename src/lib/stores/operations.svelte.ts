@@ -45,7 +45,8 @@ import {
 	trackDeletedStar,
 	checkSyncStatus,
 	syncContent,
-	syncIfStale
+	syncIfStale,
+	restoreSessionPassword
 } from './sync.svelte';
 
 import {
@@ -265,6 +266,7 @@ export function initApp(): void {
 
 	migrateOldData();
 	migrateToReferenceStars();
+	restoreSessionPassword();
 	checkSyncStatus();
 
 	document.addEventListener('visibilitychange', () => {

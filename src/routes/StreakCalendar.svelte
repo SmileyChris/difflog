@@ -2,8 +2,21 @@
 	import { getStreak, getStreakCalendarData } from '$lib/stores/history.svelte';
 	import type { CalendarDay } from '$lib/utils/streak';
 
+	interface Props {
+		onDayClick?: (isoDate: string) => void;
+	}
+
+	let { onDayClick }: Props = $props();
+
 	const streak = $derived(getStreak());
 	const calendar = $derived(getStreakCalendarData());
+
+	function getFireIconClass(count: number): string {
+		if (count >= 20) return 'streak-fire-full';
+		if (count >= 10) return 'streak-fire-med';
+		if (count >= 5) return 'streak-fire-sm';
+		return 'streak-fire-tiny';
+	}
 
 	function getDayClass(day: CalendarDay): string {
 		const classes = ['streak-day'];
@@ -13,12 +26,18 @@
 		if (day.isOutside) classes.push('streak-day-outside');
 		return classes.join(' ');
 	}
+
+	function handleDayClick(day: CalendarDay) {
+		if (day.isActive && onDayClick) {
+			onDayClick(day.iso);
+		}
+	}
 </script>
 
 {#if streak.streak > 0}
 	<div class="streak-wrapper">
 		<button class="streak-badge" title="View streak calendar">
-			<span class="streak-fire">&#128293;</span>
+			<span class="streak-fire {getFireIconClass(streak.streak)}">&#128293;</span>
 			<span class="streak-count">{streak.streak}</span>
 			{#if streak.expiresInDays <= 2}
 				<span class="streak-warning" title="Streak expires soon!">!</span>
@@ -49,12 +68,18 @@
 							{#each month.weeks as week}
 								<div class="streak-week">
 									{#each week as day (day.iso)}
-										<span
+										<button
 											class={getDayClass(day)}
 											title={day.diffCount > 0 ? `${day.diffCount} diff${day.diffCount > 1 ? 's' : ''}` : ''}
+											onclick={() => handleDayClick(day)}
+											disabled={!day.isActive}
 										>
-											{day.label}
-										</span>
+											{#if day.isActive}
+												<span class="day-diamond" class:has-multi={day.diffCount > 1}>&#9670;</span>
+											{:else}
+												<span class="day-number">{day.label}</span>
+											{/if}
+										</button>
 									{/each}
 								</div>
 							{/each}
@@ -95,6 +120,22 @@
 
 	.streak-fire {
 		font-size: 0.9em;
+	}
+
+	.streak-fire-tiny {
+		font-size: 0.7em;
+	}
+
+	.streak-fire-sm {
+		font-size: 0.9em;
+	}
+
+	.streak-fire-med {
+		font-size: 1.1em;
+	}
+
+	.streak-fire-full {
+		font-size: 1.3em;
 	}
 
 	.streak-count {
@@ -221,9 +262,16 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 0.75rem;
-		color: var(--text-dim);
-		border-radius: 3px;
+		font-size: 0.85rem;
+		color: var(--text-dimmest);
+		border-radius: 4px;
+		cursor: default;
+		background: none;
+		border: none;
+		padding: 0;
+	}
+
+	.streak-day:disabled {
 		cursor: default;
 	}
 
@@ -232,21 +280,50 @@
 	}
 
 	.streak-day-active {
-		color: var(--accent);
-		background: var(--accent-bg);
+		color: var(--success);
 		cursor: pointer;
 	}
 
 	.streak-day-active:hover {
-		background: var(--accent-muted);
+		background: var(--bg-hover);
 	}
 
 	.streak-day-gap {
-		color: var(--text-dimmest);
+		color: var(--text-dim);
 	}
 
 	.streak-day-today {
 		border: 1px solid var(--accent);
-		box-shadow: 0 0 3px var(--accent-border);
+		box-shadow: 0 0 4px var(--accent-border);
+	}
+
+	.day-diamond {
+		position: relative;
+		filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.3));
+	}
+
+	.day-diamond.has-multi {
+		transform: translateX(-0.3em);
+	}
+
+	.day-diamond.has-multi::before,
+	.day-diamond.has-multi::after {
+		content: '◆';
+		position: absolute;
+		left: 0;
+	}
+
+	.day-diamond.has-multi::before {
+		opacity: 0.7;
+		transform: translateX(0.3em);
+	}
+
+	.day-diamond.has-multi::after {
+		opacity: 0.4;
+		transform: translateX(0.6em);
+	}
+
+	.day-number {
+		font-size: 0.7em;
 	}
 </style>

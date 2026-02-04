@@ -79,6 +79,27 @@
 		if (history.length > 0) diff = history[0];
 	}
 
+	function goToDiffOnDate(isoDate: string) {
+		const history = getHistory();
+		// Find all diffs that match this date (YYYY-MM-DD)
+		const matches = history.filter((d) => {
+			const diffDate = new Date(d.generated_at);
+			const diffIso = `${diffDate.getFullYear()}-${String(diffDate.getMonth() + 1).padStart(2, '0')}-${String(diffDate.getDate()).padStart(2, '0')}`;
+			return diffIso === isoDate;
+		});
+		if (matches.length === 0) return;
+
+		// If current diff is one of the matches, cycle to the next one
+		const currentIdx = matches.findIndex((d) => d.id === diff?.id);
+		if (currentIdx >= 0) {
+			// Cycle to next diff on this day
+			diff = matches[(currentIdx + 1) % matches.length];
+		} else {
+			// Show first diff on this day
+			diff = matches[0];
+		}
+	}
+
 	function prevDiff(): Diff | null {
 		const history = getHistory();
 		const idx = history.findIndex((d) => d.id === diff?.id);
@@ -268,23 +289,6 @@
 		if (getCachedPassword()) return false;
 		return hasPendingChanges();
 	}
-
-	function goToDiffOnDate(isoDate: string) {
-		const history = getHistory();
-		const matches = history.filter((d) => {
-			const diffDate = new Date(d.generated_at);
-			const diffIso = `${diffDate.getFullYear()}-${String(diffDate.getMonth() + 1).padStart(2, '0')}-${String(diffDate.getDate()).padStart(2, '0')}`;
-			return diffIso === isoDate;
-		});
-		if (matches.length === 0) return;
-
-		const currentIdx = matches.findIndex((d) => d.id === diff?.id);
-		if (currentIdx >= 0) {
-			diff = matches[(currentIdx + 1) % matches.length];
-		} else {
-			diff = matches[0];
-		}
-	}
 </script>
 
 <svelte:head>
@@ -329,7 +333,7 @@
 				<div class="diff-info-left">
 					<span class="diff-label">Here's your latest diff</span>
 					<span class="diff-time">{timeAgo(diff.generated_at)}</span>
-					<StreakCalendar />
+					<StreakCalendar onDayClick={goToDiffOnDate} />
 					<button class="btn-generate-inline" onclick={generate}>
 						<span class="btn-generate-diamond">&#9670;</span> New Diff
 					</button>

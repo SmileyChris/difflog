@@ -93,17 +93,24 @@ export function getCachedPassword(): string | null {
 	// Check reactive session state first
 	if (_sessionPassword) return _sessionPassword;
 
-	// Fall back to remembered password for active profile
+	// Fall back to remembered password for active profile (read-only)
 	if (activeProfileId.value) {
 		void _rememberedVersion; // Subscribe to remembered password changes
+		return getRememberedPassword(activeProfileId.value);
+	}
+	return null;
+}
+
+// Restore session password from remembered (call from effects/actions, not derived)
+export function restoreSessionPassword(): void {
+	if (!browser || _sessionPassword) return;
+	if (activeProfileId.value) {
 		const remembered = getRememberedPassword(activeProfileId.value);
 		if (remembered) {
 			_sessionPassword = remembered;
 			setSyncPassword(remembered);
-			return remembered;
 		}
 	}
-	return null;
 }
 
 export function setCachedPassword(val: string | null): void {
@@ -533,11 +540,12 @@ function handleSyncError(e: unknown): void {
 	}
 }
 
-// Switch profile (clears password)
+// Switch profile (clears password, then restores from remembered if available)
 export function switchProfileWithSync(id: string): void {
 	if (profiles.value[id]) {
 		setCachedPassword(null);
 		activeProfileId.value = id;
+		restoreSessionPassword();
 		checkSyncStatus();
 	}
 }
