@@ -3,7 +3,7 @@
 	import { updateProfile } from '$lib/stores/sync.svelte';
 	import { createProfile } from '$lib/stores/operations.svelte';
 	import { SiteFooter, ChipSelector, InputField } from '$lib/components';
-	import { DEPTHS } from '$lib/utils/constants';
+	import { DEPTHS, LANGUAGES, FRAMEWORKS, TOOLS, TOPICS } from '$lib/utils/constants';
 	import { validateAnthropicKey } from '$lib/utils/api';
 	import { PROVIDERS, type ProviderStep } from '$lib/utils/providers';
 

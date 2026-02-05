@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { profiles, activeProfileId } from '$lib/stores/profiles.svelte';
 	import { histories } from '$lib/stores/history.svelte';
@@ -44,6 +44,12 @@
 		if (confirm(`Delete "${profile?.name || 'this profile'}"? This cannot be undone.`)) {
 			deleteProfileWithSync(id);
 		}
+	}
+
+	async function handleEditProfile(id: string, step = 0) {
+		switchProfileWithSync(id);
+		await tick();
+		goto(`/setup?edit=${step}`);
 	}
 
 	function startShare(id: string) {
@@ -134,12 +140,11 @@
 								</div>
 							</div>
 							<div class="profile-card-full-actions">
-								<a
+								<button
 									class="profile-card-edit"
-									href="/setup?edit=0"
-									onclick={(e) => { e.stopPropagation(); switchProfileWithSync(id); }}
 									title="Edit profile"
-								>&#9998;</a>
+									onclick={(e) => { e.stopPropagation(); handleEditProfile(id); }}
+								>&#9998;</button>
 								{#if profile.syncedAt}
 									<IconButton
 										icon="***"
@@ -159,16 +164,16 @@
 
 						{#snippet details()}
 							{#if profile.languages?.length}
-								<DetailRow label="Languages" value={profile.languages.join(', ')} />
+								<DetailRow label="Languages" value={profile.languages.join(', ')} onedit={() => handleEditProfile(id, 2)} />
 							{/if}
 							{#if profile.frameworks?.length}
-								<DetailRow label="Frameworks" value={profile.frameworks.join(', ')} />
+								<DetailRow label="Frameworks" value={profile.frameworks.join(', ')} onedit={() => handleEditProfile(id, 3)} />
 							{/if}
 							{#if profile.tools?.length}
-								<DetailRow label="Tools" value={profile.tools.join(', ')} />
+								<DetailRow label="Tools" value={profile.tools.join(', ')} onedit={() => handleEditProfile(id, 4)} />
 							{/if}
 							{#if profile.topics?.length}
-								<DetailRow label="Topics" value={profile.topics.join(', ')} />
+								<DetailRow label="Topics" value={profile.topics.join(', ')} onedit={() => handleEditProfile(id, 5)} />
 							{/if}
 							<div class="profile-detail-row profile-detail-counts">
 								<a href="/archive" class="profile-count profile-count-link" onclick={(e) => { e.stopPropagation(); if (activeProfileId.value !== id) switchProfileWithSync(id); }}>
@@ -176,10 +181,10 @@
 									<span class="link-secondary">{getDiffCount(id)} {getDiffCount(id) === 1 ? 'diff' : 'diffs'}</span>
 								</a>
 								{#if getStarCount(id) > 0}
-									<span class="profile-count profile-count-stars">
+									<a href="/stars" class="profile-count profile-count-link" onclick={(e) => { e.stopPropagation(); if (activeProfileId.value !== id) switchProfileWithSync(id); }}>
 										<span class="profile-count-icon">★</span>
-										<span>{getStarCount(id)} {getStarCount(id) === 1 ? 'star' : 'stars'}</span>
-									</span>
+										<span class="link-secondary">{getStarCount(id)} {getStarCount(id) === 1 ? 'star' : 'stars'}</span>
+									</a>
 								{/if}
 							</div>
 						{/snippet}

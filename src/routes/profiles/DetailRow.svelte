@@ -3,22 +3,21 @@
 		label: string;
 		value?: string;
 		icon?: string;
+		onedit?: () => void;
 		children?: any;
 	}
 
-	let { label, value, icon, children }: Props = $props();
+	let { label, value, icon, onedit, children }: Props = $props();
 </script>
 
-<div class="detail-row">
+<div class="detail-row" class:detail-row-editable={onedit}>
 	{#if icon}
 		<span class="detail-icon">{icon}</span>
 	{/if}
 	<span class="detail-label">{label}</span>
-	{#if value}
-		<span class="detail-value">{value}</span>
-	{:else if children}
-		<span class="detail-value">{children}</span>
-	{/if}
+	<span class="detail-value">
+		{#if value}{value}{:else if children}{children}{/if}{#if onedit}<button class="detail-edit" onclick={(e) => { e.stopPropagation(); onedit(); }}>&#9998;</button>{/if}
+	</span>
 </div>
 
 <style>
@@ -45,7 +44,26 @@
 	.detail-value {
 		color: var(--text-secondary);
 		flex: 1;
-		overflow: hidden;
-		text-overflow: ellipsis;
+	}
+
+	.detail-edit {
+		background: none;
+		border: none;
+		color: var(--text-subtle);
+		cursor: pointer;
+		padding: 0 0.25rem;
+		margin-left: 0.5rem;
+		font-size: 0.85rem;
+		opacity: 0;
+		transition: opacity 0.15s, color 0.15s;
+		vertical-align: middle;
+	}
+
+	.detail-row-editable:hover .detail-edit {
+		opacity: 1;
+	}
+
+	.detail-edit:hover {
+		color: var(--accent);
 	}
 </style>

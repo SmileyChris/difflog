@@ -212,13 +212,6 @@ header {
   transform: rotate(180deg);
 }
 
-/* Inline sync dropdown (inside profile cards) - context-specific overrides */
-.profile-card-id .sync-dropdown-wrapper,
-.profile-card-id .sync-status-static {
-  margin-left: 0.5rem;
-  vertical-align: middle;
-}
-
 .profile-card-id .sync-dropdown {
   right: auto;
   left: 0;
@@ -230,6 +223,22 @@ header {
   align-items: center;
   position: relative;
   opacity: 0.6;
+}
+
+.sync-status-static .sync-status-cloud {
+  font-size: 1.4rem;
+  color: var(--text-hint);
+  line-height: 1;
+}
+
+.sync-status-static .sync-status-indicator {
+  position: absolute;
+  font-size: 0.5rem;
+  font-weight: 700;
+  top: 50%;
+  right: -0.1rem;
+  transform: translateY(-50%);
+  line-height: 1;
 }
 
 .remember-password {
@@ -2251,6 +2260,11 @@ kbd {
 }
 
 .profile-card-id {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  line-height: 1.5rem;
+  margin-bottom: -0.5rem;
   font-size: 0.75rem;
   color: var(--text-disabled);
   font-family: var(--font-mono);
@@ -2288,46 +2302,11 @@ kbd {
   color: var(--danger);
 }
 
-/* Full Profile Card (with details) */
+/* Profile Cards */
 .profiles-list {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
-
-.profile-card-full {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.profile-card-full:hover {
-  border-color: var(--accent-border);
-}
-
-.profile-card-full-active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent-border);
-}
-
-.profile-card-full-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-}
-
-.profile-card-full .profile-card-icon {
-  font-size: 1.5rem;
-  color: var(--accent);
-  margin-bottom: 0;
-}
-
-.profile-card-full-active .profile-card-icon {
-  color: var(--accent-glow);
 }
 
 .profile-card-full-title {
@@ -2345,7 +2324,7 @@ kbd {
   transition: opacity 0.15s;
 }
 
-.profile-card-full:hover .profile-card-full-actions {
+.card:hover .profile-card-full-actions {
   opacity: 1;
 }
 
@@ -2362,19 +2341,6 @@ kbd {
 
 .profile-card-edit:hover {
   color: var(--accent);
-}
-
-.profile-card-full .profile-card-remove {
-  position: static;
-  opacity: 1;
-  padding: 0.25rem 0.5rem;
-}
-
-.profile-card-full-details {
-  padding: 0 1.25rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
 }
 
 .profile-detail-row {
