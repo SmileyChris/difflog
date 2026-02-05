@@ -2,6 +2,7 @@
   import { dev } from '$app/environment';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+  import { PageHeader } from '$lib/components';
 
   // Redirect to home in production
   onMount(() => {
@@ -155,10 +156,7 @@
 
 <div class="design-page">
   <main class="narrow">
-    <header>
-      <h1 class="main-title"><a href="/" class="main-title-link">diff<span class="title-diamond">&#9670;</span>log</a></h1>
-      <p class="page-subtitle" style="font-family: var(--font-mono);">Design System</p>
-    </header>
+    <PageHeader subtitle="Design System" />
 
     <!-- Colors -->
     <section id="colors" class="design-section">
