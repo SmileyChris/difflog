@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { beforeNavigate } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { getProfile, getApiKey } from '$lib/stores/profiles.svelte';
 	import { getHistory, type Diff } from '$lib/stores/history.svelte';
@@ -32,6 +33,13 @@
 	let scanInterval: ReturnType<typeof setInterval> | null = null;
 	let currentDate = getCurrentDateFormatted();
 	let syncBannerDismissed = $state(false);
+
+	// Prevent navigation while generating
+	beforeNavigate(({ cancel }) => {
+		if (generating && !confirm('Generation in progress. Leave anyway?')) {
+			cancel();
+		}
+	});
 
 	onMount(() => {
 		// Handle scroll-to from deep link
