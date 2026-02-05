@@ -24,6 +24,12 @@
 	let syncBannerDismissed = $state(false);
 
 	onMount(() => {
+		// If generation is active and we're not viewing a diff, go to /generate
+		if (generating.value && !diff) {
+			goto('/generate');
+			return;
+		}
+
 		// Handle scroll-to from deep link
 		if (data.scrollToPIndex !== null) {
 			scrollToAndHighlight(data.scrollToPIndex);
