@@ -19,7 +19,7 @@
 <header>
 	<div class="header-left">
 		{#if isGenerating()}
-			<button class="logo-mark-header logo-mark-spinning logo-mark-clickable" onclick={() => goto('/')} title="View generation progress">
+			<button class="logo-mark-header logo-mark-spinning logo-mark-clickable" onclick={() => goto('/generate')} title="View generation progress">
 				&#9670;
 			</button>
 		{:else if icon === 'diamond'}

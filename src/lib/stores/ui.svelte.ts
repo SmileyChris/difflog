@@ -1,7 +1,14 @@
 // Transient UI state - not persisted
 
+import type { Diff } from './history.svelte';
+import { generateDiffContent, type GenerateOptions, type GenerateResult } from '$lib/actions/generateDiff';
+
+// Track the active generation promise at module level so it survives navigation
+let _activeGeneration: Promise<GenerateResult> | null = null;
+
 let _generating = $state(false);
 let _generationError = $state<string | null>(null);
+let _generationResult = $state<Diff | null>(null);
 let _syncDropdownOpen = $state(false);
 let _syncDropdownPassword = $state('');
 let _syncDropdownRemember = $state(false);
@@ -22,6 +29,51 @@ export const generationError = {
 	get value() { return _generationError; },
 	set value(val: string | null) { _generationError = val; }
 };
+
+export const generationResult = {
+	get value() { return _generationResult; },
+	set value(val: Diff | null) { _generationResult = val; }
+};
+
+export function clearGenerationState(): void {
+	_generationError = null;
+	_generationResult = null;
+}
+
+export function hasActiveGeneration(): boolean {
+	return _activeGeneration !== null;
+}
+
+/**
+ * Run generation at module level so it survives navigation.
+ * Returns the result or throws an error.
+ */
+export async function runGeneration(options: GenerateOptions): Promise<GenerateResult> {
+	// Don't start if already generating
+	if (_generating) {
+		throw new Error('Generation already in progress');
+	}
+
+	_generating = true;
+	_generationError = null;
+	_generationResult = null;
+
+	// Create the promise at module level
+	_activeGeneration = generateDiffContent(options);
+
+	try {
+		const result = await _activeGeneration;
+		_generationResult = result.diff;
+		return result;
+	} catch (e: unknown) {
+		const message = e instanceof Error ? e.message : 'Unknown error';
+		_generationError = `Generation failed: ${message}`;
+		throw e;
+	} finally {
+		_generating = false;
+		_activeGeneration = null;
+	}
+}
 
 export const syncDropdownOpen = {
 	get value() { return _syncDropdownOpen; },

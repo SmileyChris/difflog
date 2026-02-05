@@ -172,6 +172,14 @@ header {
   color: var(--accent);
 }
 
+.logo-mark-error {
+  color: var(--error, #dc3545);
+}
+
+.logo-mark-error::after {
+  color: var(--error, #dc3545);
+}
+
 .diff-title-icon {
   color: var(--accent);
   font-size: 0.75em;
@@ -1071,6 +1079,11 @@ button:disabled {
   border-radius: var(--radius);
   cursor: pointer;
   transition: background 0.15s ease;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
 }
 
 .recent-archive-item:hover {

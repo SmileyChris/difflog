@@ -1,36 +1,25 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { get } from 'svelte/store';
-	import { browser } from '$app/environment';
-	import { getProfile, getApiKey } from '$lib/stores/profiles.svelte';
+	import { getProfile } from '$lib/stores/profiles.svelte';
 	import { getHistory, type Diff } from '$lib/stores/history.svelte';
 	import { getStars, getStarCountLabel } from '$lib/stores/stars.svelte';
-	import { updateProfile, autoSync, getCachedPassword, hasPendingChanges } from '$lib/stores/sync.svelte';
-	import { openSyncDropdown, generating, generationError } from '$lib/stores/ui.svelte';
-	import { addDiff, deleteDiff, removeStar } from '$lib/stores/operations.svelte';
-	import { HeaderNav, SyncDropdown, ShareDropdown, DiffContent, SiteFooter, PageHeader } from '$lib/components';
+	import { getCachedPassword, hasPendingChanges } from '$lib/stores/sync.svelte';
+	import { openSyncDropdown, generating } from '$lib/stores/ui.svelte';
+	import { HeaderNav, ShareDropdown, DiffContent, SiteFooter, PageHeader } from '$lib/components';
 	import StreakCalendar from './StreakCalendar.svelte';
-	import { SCAN_MESSAGES, DEPTHS, WAIT_TIPS } from '$lib/utils/constants';
 	import { timeAgo, daysSince, getCurrentDateFormatted } from '$lib/utils/time';
-	import { generateDiffContent } from '$lib/actions/generateDiff';
 
 	let { data } = $props();
 
 	let ctrlHeld = $state(false);
-	let waitTip = $state('');
 	let diff = $state<Diff | null>(null);
-	let scanIndex = $state(0);
-	let selectedDepth = $state<string>('standard');
 
 	// Initialize from page data (reactive to data changes from navigation)
 	$effect.pre(() => {
 		diff = data.initialDiff ?? null;
-		selectedDepth = data.selectedDepth ?? 'standard';
 	});
-	let scanMessages = $state([...SCAN_MESSAGES]);
-	let scanInterval: ReturnType<typeof setInterval> | null = null;
+
 	let currentDate = getCurrentDateFormatted();
 	let syncBannerDismissed = $state(false);
 
@@ -68,21 +57,8 @@
 		return [...(p.languages || []), ...(p.frameworks || []), ...(p.tools || [])].join(' · ');
 	});
 
-	const depthLabel = $derived.by(() => {
-		const p = getProfile();
-		if (!p) return '';
-		const d = DEPTHS.find((d) => d.id === p.depth);
-		return d ? d.label : 'Standard Brief';
-	});
-
-	function showLastDiff() {
-		const history = getHistory();
-		if (history.length > 0) diff = history[0];
-	}
-
 	function goToDiffOnDate(isoDate: string) {
 		const history = getHistory();
-		// Find all diffs that match this date (YYYY-MM-DD)
 		const matches = history.filter((d) => {
 			const diffDate = new Date(d.generated_at);
 			const diffIso = `${diffDate.getFullYear()}-${String(diffDate.getMonth() + 1).padStart(2, '0')}-${String(diffDate.getDate()).padStart(2, '0')}`;
@@ -90,13 +66,10 @@
 		});
 		if (matches.length === 0) return;
 
-		// If current diff is one of the matches, cycle to the next one
 		const currentIdx = matches.findIndex((d) => d.id === diff?.id);
 		if (currentIdx >= 0) {
-			// Cycle to next diff on this day
 			diff = matches[(currentIdx + 1) % matches.length];
 		} else {
-			// Show first diff on this day
 			diff = matches[0];
 		}
 	}
@@ -165,107 +138,9 @@
 		return "You've got weeks of ecosystem changes to unpack.";
 	});
 
-	function getLastDiffDate(): string | undefined {
-		const history = getHistory();
-		return history.length > 0 ? history[0].generated_at : undefined;
-	}
-
-	function estimatedTime(): string {
-		const history = getHistory();
-		const durations = history.map((h) => h.duration_seconds).filter((d) => d && d > 0);
-		let timeStr: string;
-		if (durations.length === 0) {
-			timeStr = 'This usually takes 30–60 seconds...';
-		} else {
-			const avg = Math.round(durations.reduce((a, b) => (a || 0) + (b || 0), 0) / durations.length);
-			if (avg < 60) {
-				timeStr = `Usually takes about ${avg} seconds...`;
-			} else {
-				const mins = Math.floor(avg / 60);
-				const secs = avg % 60;
-				timeStr = secs > 0 ? `Usually takes about ${mins}m ${secs}s...` : `Usually takes about ${mins} minute${mins > 1 ? 's' : ''}...`;
-			}
-		}
-		return waitTip ? `${timeStr} ${waitTip}` : timeStr;
-	}
-
-	async function generate() {
+	function generate() {
 		const forceNew = ctrlHeld;
-		const apiKey = getApiKey();
-
-		if (apiKey === 'demo-key-placeholder') {
-			generationError.value = 'This is a demo profile. To generate real diffs, go to Profiles and add your Anthropic API key, or create a new profile with a valid key.';
-			return;
-		}
-
-		const profile = getProfile();
-		if (!profile) {
-			generationError.value = 'No profile found';
-			return;
-		}
-
-		generating.value = true;
-		generationError.value = null;
-		diff = null;
-		scanIndex = 0;
-		scanMessages = [...SCAN_MESSAGES].sort(() => Math.random() - 0.5);
-		waitTip = WAIT_TIPS[Math.floor(Math.random() * WAIT_TIPS.length)];
-
-		if (browser) {
-			window.onbeforeunload = (e) => {
-				e.preventDefault();
-				e.returnValue = '';
-				return '';
-			};
-		}
-
-		scanInterval = setInterval(() => {
-			scanIndex = (scanIndex + 1) % scanMessages.length;
-		}, 4400);
-
-		try {
-			const lastDiff = getHistory()[0];
-
-			const result = await generateDiffContent({
-				profile,
-				apiKey: apiKey || '',
-				selectedDepth,
-				lastDiffDate: getLastDiffDate() ?? null,
-				lastDiffContent: lastDiff?.content,
-				onMappingsResolved: (mappings) => updateProfile({ resolvedMappings: mappings })
-			});
-
-			diff = result.diff;
-
-			// Handle replacing today's existing diff (unless Ctrl held)
-			const today = new Date().toDateString();
-			const history = getHistory();
-			if (!forceNew && history.length > 0 && new Date(history[0].generated_at).toDateString() === today) {
-				const oldDiffId = history[0].id;
-				const starsToRemove = getStars().filter((s) => s.diff_id === oldDiffId);
-				for (const star of starsToRemove) {
-					removeStar(star.diff_id, star.p_index);
-				}
-				deleteDiff(oldDiffId);
-			}
-			addDiff(result.diff);
-			autoSync();
-		} catch (e: unknown) {
-			generationError.value = `Failed to generate diff: ${e instanceof Error ? e.message : 'Unknown error'}`;
-		} finally {
-			generating.value = false;
-			if (scanInterval) {
-				clearInterval(scanInterval);
-				scanInterval = null;
-			}
-			if (browser) {
-				window.onbeforeunload = null;
-				// If user navigated away during generation, return to home to show result
-				if (get(page).url.pathname !== '/') {
-					goto('/');
-				}
-			}
-		}
+		goto(forceNew ? '/generate?force=1' : '/generate');
 	}
 
 	function scrollToAndHighlight(pIndex: number) {
@@ -320,28 +195,7 @@
 		</div>
 	{/if}
 
-	{#if generating.value}
-		<div class="generating-state">
-			<div class="scan-animation">
-				<div class="scan-line"></div>
-			</div>
-			<div class="scan-message-container">
-				<span class="scan-icon">{scanMessages[scanIndex].icon}</span>
-				<p class="generating-text">{scanMessages[scanIndex].text}</p>
-			</div>
-			<div class="scan-progress">
-				{#each Array(8) as _, i}
-					<div class="progress-dot" class:progress-dot-active={i <= scanIndex % 8}></div>
-				{/each}
-			</div>
-			<p class="generating-subtext">{estimatedTime()}</p>
-		</div>
-	{:else if generationError.value}
-		<div class="error-state">
-			<p class="error-message">{generationError.value}</p>
-			<button class="btn-retry" onclick={generate}>Try Again</button>
-		</div>
-	{:else if diff}
+	{#if diff}
 		<div class="welcome-bar">
 			<h2 class="welcome-heading-lg">{welcomeHeading}</h2>
 			<div class="diff-info-bar">
@@ -409,10 +263,10 @@
 			{#if getHistory().length > 0}
 				<div class="recent-archive">
 					{#each getHistory().slice(0, 3) as h (h.id)}
-						<div class="recent-archive-item" onclick={() => (diff = h)}>
+						<button class="recent-archive-item" onclick={() => (diff = h)}>
 							<span class="recent-archive-date">{timeAgo(h.generated_at)}</span>
 							<span class="recent-archive-preview">{h.title || h.content.slice(0, 60).replace(/[#*\[\]]/g, '') + '...'}</span>
-						</div>
+						</button>
 					{/each}
 					{#if getHistory().length > 3}
 						<a href="/archive" class="recent-archive-more">View all {getHistory().length} diffs</a>
