@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { isGenerating } from '$lib/stores/ui.svelte';
 
 	interface Props {
 		pageTitle?: string;
@@ -10,12 +12,18 @@
 	}
 
 	let { pageTitle, subtitle, icon = 'diamond', iconSpinning = false, children }: Props = $props();
+
+	const spinning = $derived(isGenerating() || iconSpinning);
 </script>
 
 <header>
 	<div class="header-left">
-		{#if icon === 'diamond'}
-			<div class="logo-mark-header" class:logo-mark-spinning={iconSpinning}>&#9670;</div>
+		{#if isGenerating()}
+			<button class="logo-mark-header logo-mark-spinning logo-mark-clickable" onclick={() => goto('/')} title="View generation progress">
+				&#9670;
+			</button>
+		{:else if icon === 'diamond'}
+			<div class="logo-mark-header" class:logo-mark-spinning={spinning}>&#9670;</div>
 		{:else if icon === 'user'}
 			<div class="logo-mark-header logo-mark-user">
 				<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
@@ -166,6 +174,18 @@
 
 	.logo-mark-spinning {
 		animation: diamond-spin 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+	}
+
+	.logo-mark-clickable {
+		cursor: pointer;
+		background: none;
+		border: none;
+		padding: 0;
+		font-family: inherit;
+	}
+
+	.logo-mark-clickable:hover::after {
+		color: var(--accent-hover, var(--accent));
 	}
 
 	@keyframes diamond-spin {

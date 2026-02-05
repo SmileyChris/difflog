@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { beforeNavigate } from '$app/navigation';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+	import { get } from 'svelte/store';
 	import { browser } from '$app/environment';
 	import { getProfile, getApiKey } from '$lib/stores/profiles.svelte';
 	import { getHistory, type Diff } from '$lib/stores/history.svelte';
 	import { getStars, getStarCountLabel } from '$lib/stores/stars.svelte';
 	import { updateProfile, autoSync, getCachedPassword, hasPendingChanges } from '$lib/stores/sync.svelte';
-	import { openSyncDropdown } from '$lib/stores/ui.svelte';
+	import { openSyncDropdown, generating, generationError } from '$lib/stores/ui.svelte';
 	import { addDiff, deleteDiff, removeStar } from '$lib/stores/operations.svelte';
 	import { HeaderNav, SyncDropdown, ShareDropdown, DiffContent, SiteFooter, PageHeader } from '$lib/components';
 	import StreakCalendar from './StreakCalendar.svelte';
@@ -16,9 +18,7 @@
 
 	let { data } = $props();
 
-	let generating = $state(false);
 	let ctrlHeld = $state(false);
-	let error = $state<string | null>(null);
 	let waitTip = $state('');
 	let diff = $state<Diff | null>(null);
 	let scanIndex = $state(0);
@@ -33,13 +33,6 @@
 	let scanInterval: ReturnType<typeof setInterval> | null = null;
 	let currentDate = getCurrentDateFormatted();
 	let syncBannerDismissed = $state(false);
-
-	// Prevent navigation while generating
-	beforeNavigate(({ cancel }) => {
-		if (generating && !confirm('Generation in progress. Leave anyway?')) {
-			cancel();
-		}
-	});
 
 	onMount(() => {
 		// Handle scroll-to from deep link
@@ -201,18 +194,18 @@
 		const apiKey = getApiKey();
 
 		if (apiKey === 'demo-key-placeholder') {
-			error = 'This is a demo profile. To generate real diffs, go to Profiles and add your Anthropic API key, or create a new profile with a valid key.';
+			generationError.value = 'This is a demo profile. To generate real diffs, go to Profiles and add your Anthropic API key, or create a new profile with a valid key.';
 			return;
 		}
 
 		const profile = getProfile();
 		if (!profile) {
-			error = 'No profile found';
+			generationError.value = 'No profile found';
 			return;
 		}
 
-		generating = true;
-		error = null;
+		generating.value = true;
+		generationError.value = null;
 		diff = null;
 		scanIndex = 0;
 		scanMessages = [...SCAN_MESSAGES].sort(() => Math.random() - 0.5);
@@ -258,15 +251,19 @@
 			addDiff(result.diff);
 			autoSync();
 		} catch (e: unknown) {
-			error = `Failed to generate diff: ${e instanceof Error ? e.message : 'Unknown error'}`;
+			generationError.value = `Failed to generate diff: ${e instanceof Error ? e.message : 'Unknown error'}`;
 		} finally {
-			generating = false;
+			generating.value = false;
 			if (scanInterval) {
 				clearInterval(scanInterval);
 				scanInterval = null;
 			}
 			if (browser) {
 				window.onbeforeunload = null;
+				// If user navigated away during generation, return to home to show result
+				if (get(page).url.pathname !== '/') {
+					goto('/');
+				}
 			}
 		}
 	}
@@ -304,7 +301,7 @@
 </svelte:head>
 
 <main id="content">
-	<PageHeader subtitle={currentDate} iconSpinning={generating}>
+	<PageHeader subtitle={currentDate} iconSpinning={generating.value}>
 		<div class="header-profile-group">
 			{#if getStars()?.length > 0}
 				<a href="/stars" class="header-link">
@@ -323,7 +320,7 @@
 		</div>
 	{/if}
 
-	{#if generating}
+	{#if generating.value}
 		<div class="generating-state">
 			<div class="scan-animation">
 				<div class="scan-line"></div>
@@ -339,9 +336,9 @@
 			</div>
 			<p class="generating-subtext">{estimatedTime()}</p>
 		</div>
-	{:else if error}
+	{:else if generationError.value}
 		<div class="error-state">
-			<p class="error-message">{error}</p>
+			<p class="error-message">{generationError.value}</p>
 			<button class="btn-retry" onclick={generate}>Try Again</button>
 		</div>
 	{:else if diff}
@@ -405,7 +402,7 @@
 				</div>
 			{/if}
 
-			<button class="btn-generate" onclick={generate} disabled={generating}>
+			<button class="btn-generate" onclick={generate} disabled={generating.value}>
 				<span>&#9670;</span> Generate your diff
 			</button>
 

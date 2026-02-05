@@ -1,5 +1,7 @@
 // Transient UI state - not persisted
 
+let _generating = $state(false);
+let _generationError = $state<string | null>(null);
 let _syncDropdownOpen = $state(false);
 let _syncDropdownPassword = $state('');
 let _syncDropdownRemember = $state(false);
@@ -7,6 +9,20 @@ let _syncResult = $state<{ uploaded: number; downloaded: number } | null>(null);
 let _syncResultTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // State accessors
+export const generating = {
+	get value() { return _generating; },
+	set value(val: boolean) { _generating = val; }
+};
+
+export function isGenerating(): boolean {
+	return _generating;
+}
+
+export const generationError = {
+	get value() { return _generationError; },
+	set value(val: string | null) { _generationError = val; }
+};
+
 export const syncDropdownOpen = {
 	get value() { return _syncDropdownOpen; },
 	set value(val: boolean) { _syncDropdownOpen = val; }
