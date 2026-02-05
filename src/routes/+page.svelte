@@ -317,9 +317,19 @@
 
 	{#if generating}
 		<div class="generating-state">
-			<div class="logo-mark logo-mark-spinning">&#9670;</div>
-			<p class="generating-message">{scanMessages[scanIndex].icon} {scanMessages[scanIndex].text}</p>
-			<p class="generating-time">{estimatedTime()}</p>
+			<div class="scan-animation">
+				<div class="scan-line"></div>
+			</div>
+			<div class="scan-message-container">
+				<span class="scan-icon">{scanMessages[scanIndex].icon}</span>
+				<p class="generating-text">{scanMessages[scanIndex].text}</p>
+			</div>
+			<div class="scan-progress">
+				{#each Array(8) as _, i}
+					<div class="progress-dot" class:progress-dot-active={i <= scanIndex % 8}></div>
+				{/each}
+			</div>
+			<p class="generating-subtext">{estimatedTime()}</p>
 		</div>
 	{:else if error}
 		<div class="error-state">
@@ -334,7 +344,7 @@
 					<span class="diff-label">Here's your latest diff</span>
 					<span class="diff-time">{timeAgo(diff.generated_at)}</span>
 					<StreakCalendar onDayClick={goToDiffOnDate} />
-					<button class="btn-generate-inline" onclick={generate}>
+					<button class="btn-generate-inline" onclick={() => (diff = null)}>
 						<span class="btn-generate-diamond">&#9670;</span> New Diff
 					</button>
 				</div>
