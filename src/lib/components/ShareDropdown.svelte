@@ -19,7 +19,8 @@
 	const isPublic = $derived(diff?.isPublic === true);
 	const publicUrl = $derived(diff ? getPublicDiffUrl(diff.id) : '');
 
-	function toggle() {
+	function toggle(e: MouseEvent) {
+		e.stopPropagation();
 		isOpen = !isOpen;
 		copied = false;
 	}

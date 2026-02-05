@@ -21,8 +21,18 @@
 		});
 	}
 
-	function getPreview(diff: Diff): string {
-		return diff.title || diff.content.slice(0, 120).replace(/[#*\[\]]/g, '') + '...';
+	function getTitle(diff: Diff): string {
+		return diff.title || 'Untitled diff';
+	}
+
+	function getCategories(diff: Diff): string[] {
+		const matches = diff.content.match(/^## (.+)$/gm);
+		if (!matches) return [];
+		return matches.map(m => m
+			.replace(/^## /, '')
+			.replace(/^[\p{Emoji}\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, '')
+			.trim()
+		);
 	}
 
 	function handleDeleteDiff(id: string) {
@@ -59,22 +69,25 @@
 		<div class="archive-list">
 			{#each history as diff (diff.id)}
 				<Card clickable={true} onclick={() => goToDiff(diff.id)}>
-					<div class="archive-date">
-						<span>{formatDate(diff.generated_at)}</span>
+					{#snippet header()}
+						<span class="archive-date">{formatDate(diff.generated_at)}</span>
 						{#if diff.cost}
 							<span class="archive-cost">${diff.cost.toFixed(3)}</span>
 						{/if}
-					</div>
-					<div class="archive-preview">{getPreview(diff)}</div>
-					{#snippet actions()}
-						<ShareDropdown {diff} />
-						<IconButton
-							icon="×"
-							variant="danger"
-							title="Delete diff"
-							onclick={(e) => { e.stopPropagation(); handleDeleteDiff(diff.id); }}
-						/>
+						<div class="archive-actions">
+							<ShareDropdown {diff} />
+							<IconButton
+								icon="×"
+								variant="danger"
+								title="Delete diff"
+								onclick={(e) => { e.stopPropagation(); handleDeleteDiff(diff.id); }}
+							/>
+						</div>
 					{/snippet}
+					<div class="archive-title">{getTitle(diff)}</div>
+					{#if getCategories(diff).length > 0}
+						<div class="archive-categories">{getCategories(diff).join(', ')}</div>
+					{/if}
 				</Card>
 			{/each}
 		</div>
