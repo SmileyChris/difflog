@@ -60,35 +60,32 @@
 				{item}
 			</button>
 		{/each}
-	</div>
 
-	{#if customItems.length > 0}
-		<div class="custom-items" role="group" aria-label="Custom {title.toLowerCase()}">
-			{#each customItems as item}
-				<span class="chip chip-selected chip-custom">
-					{item}
-					<button
-						class="chip-remove"
-						onclick={() => removeCustom(item)}
-						aria-label="Remove {item}"
-						type="button"
-					>
-						&times;
-					</button>
-				</span>
-			{/each}
-		</div>
-	{/if}
+		{#each customItems as item}
+			<span class="chip chip-selected chip-custom">
+				{item}
+				<button
+					class="chip-remove"
+					onclick={() => removeCustom(item)}
+					aria-label="Remove {item}"
+					type="button"
+				>
+					&times;
+				</button>
+			</span>
+		{/each}
 
-	<div class="input-group">
-		<input
-			type="text"
-			class="text-input"
-			{placeholder}
-			bind:value={customInput}
-			onkeydown={(e) => e.key === 'Enter' && addCustom()}
-			aria-label="Add custom {title.toLowerCase()}"
-		/>
+		<span class="chip-add-inline">
+			<input
+				type="text"
+				class="chip-add-input"
+				class:chip-add-input-active={customInput.length > 0}
+				placeholder="+ custom"
+				bind:value={customInput}
+				onkeydown={(e) => e.key === 'Enter' && addCustom()}
+				aria-label="Add custom {title.toLowerCase()}"
+			/>
+		</span>
 	</div>
 </div>
 
@@ -120,13 +117,6 @@
 		color: var(--accent);
 	}
 
-	.custom-items {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-		margin: 1rem 0;
-	}
-
 	.chip-custom {
 		display: inline-flex;
 		align-items: center;
@@ -148,5 +138,33 @@
 	.chip-remove:hover {
 		opacity: 1;
 		color: var(--danger);
+	}
+
+	.chip-add-inline {
+		display: inline-flex;
+	}
+
+	.chip-add-input {
+		padding: 0.5rem 1rem;
+		font-size: 0.85rem;
+		background: var(--bg-chip);
+		border: 1px dashed var(--border-subtle);
+		border-radius: 9999px;
+		color: var(--text-muted);
+		font-family: inherit;
+		width: 7em;
+		outline: none;
+		transition: width 0.15s ease, border-color 0.15s ease;
+	}
+
+	.chip-add-input:focus,
+	.chip-add-input-active {
+		width: 10em;
+		border-color: var(--accent);
+		color: var(--text-primary);
+	}
+
+	.chip-add-input::placeholder {
+		color: var(--text-disabled);
 	}
 </style>

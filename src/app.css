@@ -317,12 +317,18 @@ main.narrow > header {
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   padding: 2rem;
-  min-height: 320px;
-  display: grid;
+  view-transition-name: setup-step;
 }
 
-.setup-content>div {
-  grid-area: 1 / 1;
+::view-transition-old(setup-step),
+::view-transition-new(setup-step) {
+  animation-duration: 0.25s;
+  height: 100%;
+  overflow: hidden;
+}
+
+::view-transition-group(setup-step) {
+  animation-duration: 0.25s;
 }
 
 .step-title {
@@ -330,6 +336,7 @@ main.narrow > header {
   font-weight: 600;
   margin: 0 0 0.5rem 0;
   color: var(--text-heading);
+  view-transition-name: step-title;
 }
 
 .step-desc {
@@ -337,6 +344,19 @@ main.narrow > header {
   color: var(--text-subtle);
   margin-bottom: 1.5rem;
   line-height: 1.5;
+  view-transition-name: step-desc;
+}
+
+.step-desc-link {
+  font-size: 0.9rem;
+  color: var(--text-subtle);
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+::view-transition-group(step-title),
+::view-transition-group(step-desc) {
+  animation-duration: 0.2s;
 }
 
 .input-group {
@@ -549,6 +569,11 @@ main.narrow > header {
   align-items: center;
   margin-top: 1.5rem;
   gap: 1rem;
+  view-transition-name: setup-footer;
+}
+
+::view-transition-group(setup-footer) {
+  animation-duration: 0.2s;
 }
 
 .setup-footer-spacer {
