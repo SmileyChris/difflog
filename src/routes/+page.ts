@@ -17,12 +17,9 @@ export function load() {
 	const history = getHistory();
 	let initialDiff: Diff | null = viewId ? (history.find((d) => d.id === viewId) ?? null) : null;
 
-	// Fall back to latest diff if within 5 days
+	// Fall back to latest diff
 	if (!initialDiff && history.length > 0) {
-		const fiveDaysAgo = Date.now() - 5 * 24 * 60 * 60 * 1000;
-		if (new Date(history[0].generated_at).getTime() > fiveDaysAgo) {
-			initialDiff = history[0];
-		}
+		initialDiff = history[0];
 	}
 
 	return {

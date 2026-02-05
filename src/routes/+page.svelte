@@ -22,6 +22,7 @@
 
 	let currentDate = getCurrentDateFormatted();
 	let syncBannerDismissed = $state(false);
+	let staleBannerDismissed = $state(false);
 
 	onMount(() => {
 		// If generation is active and we're not viewing a diff, go to /generate
@@ -144,6 +145,15 @@
 		return "You've got weeks of ecosystem changes to unpack.";
 	});
 
+	const isStale = $derived(lastDiffDays > 5);
+
+	const staleText = $derived.by(() => {
+		const days = lastDiffDays;
+		if (days <= 7) return "The dev world moves fast — time to catch up.";
+		if (days <= 14) return "Quite a bit has happened. Let's get you back up to speed.";
+		return "You've got weeks of ecosystem changes to unpack.";
+	});
+
 	function generate() {
 		const forceNew = ctrlHeld;
 		goto(forceNew ? '/generate?force=1' : '/generate');
@@ -209,7 +219,7 @@
 					<span class="diff-label">Here's your latest diff</span>
 					<span class="diff-time">{timeAgo(diff.generated_at)}</span>
 					<StreakCalendar onDayClick={goToDiffOnDate} />
-					<button class="btn-generate-inline" onclick={() => (diff = null)}>
+					<button class="btn-generate-inline" onclick={() => goto('/generate')}>
 						<span class="btn-generate-diamond">&#9670;</span> New Diff
 					</button>
 				</div>
@@ -234,6 +244,14 @@
 				</div>
 			</div>
 		</div>
+
+		{#if isStale && !staleBannerDismissed}
+			<div class="sync-banner">
+				<span>{staleText}</span>
+				<a href="/generate" class="sync-banner-btn">Generate new diff</a>
+				<button class="sync-banner-dismiss" onclick={() => (staleBannerDismissed = true)}>&times;</button>
+			</div>
+		{/if}
 
 		<DiffContent {diff}>
 			{#snippet titleRow()}

@@ -20,15 +20,18 @@
 
 	const currentDate = getCurrentDateFormatted();
 
+	const trackingText = $derived.by(() => {
+		const p = getProfile();
+		if (!p) return '';
+		return [...(p.languages || []), ...(p.frameworks || []), ...(p.tools || [])].join(' · ');
+	});
+
 	onMount(() => {
 		// Check URL params for force new
 		const params = new URLSearchParams(window.location.search);
 		forceNew = params.get('force') === '1';
 
-		// If not already generating, start generation
-		if (!generating.value) {
-			startGeneration();
-		} else {
+		if (generating.value) {
 			// Pick up existing generation animation
 			startScanAnimation();
 		}
@@ -147,7 +150,7 @@
 </script>
 
 <svelte:head>
-	<title>Generating... | diff·log</title>
+	<title>{generating.value ? 'Generating...' : 'Generate'} | diff·log</title>
 </svelte:head>
 
 <main id="content">
@@ -184,11 +187,28 @@
 			{/if}
 		</div>
 	{:else}
-		<!-- Generation completed but we haven't redirected yet -->
 		<div class="welcome-area">
 			<div class="logo-mark">&#9670;</div>
-			<h2 class="welcome-heading-lg">Generation complete</h2>
-			<p class="welcome-text">Redirecting...</p>
+			<h2 class="welcome-heading-lg">Ready to generate</h2>
+			<p class="welcome-text">Generate a personalized diff of what's changed in your dev ecosystem.</p>
+
+			{#if trackingText}
+				<div class="first-time-tracking">
+					<span class="first-time-tracking-label">Tracking</span>
+					<span class="first-time-tracking-items">{trackingText}</span>
+					<a href="/profiles" class="first-time-tracking-edit">Edit</a>
+				</div>
+			{/if}
+
+			<button class="btn-generate" onclick={startGeneration}>
+				<span>&#9670;</span> Generate your diff
+			</button>
+
+			{#if getHistory().length > 0}
+				<button class="btn-secondary" onclick={goHome}>
+					Back to dashboard
+				</button>
+			{/if}
 		</div>
 	{/if}
 </main>
