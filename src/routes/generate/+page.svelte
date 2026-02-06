@@ -9,7 +9,6 @@
 	import {
 		generating,
 		generationError,
-		generationResult,
 		runGeneration,
 		clearGenerationState,
 		hasStageCache,
@@ -20,8 +19,9 @@
 		deleteDiff,
 		removeStar,
 	} from "$lib/stores/operations.svelte";
-	import { PageHeader, SiteFooter } from "$lib/components";
+	import { PageHeader, HeaderNav, SiteFooter } from "$lib/components";
 	import {
+		DEPTHS,
 		SCAN_MESSAGES,
 		WAIT_TIPS,
 		type GenerationDepth,
@@ -38,8 +38,18 @@
 	);
 	let scanInterval: ReturnType<typeof setInterval> | null = null;
 	let forceNew = $state(false);
+	let ctrlHeld = $state(false);
+	let selectedDepthOverride = $state<GenerationDepth | null>(null);
 
 	const currentDate = getCurrentDateFormatted();
+
+	const isFirstTime = $derived(getHistory().length === 0);
+
+	const isTodayDiff = $derived.by(() => {
+		const history = getHistory();
+		if (history.length === 0) return false;
+		return new Date(history[0].generated_at).toDateString() === new Date().toDateString();
+	});
 
 	const trackingText = $derived.by(() => {
 		const p = getProfile();
@@ -61,8 +71,11 @@
 			startScanAnimation();
 		}
 
-		// Warn on browser close/refresh
+		// Warn on browser close/refresh, track Ctrl key
 		if (browser) {
+			window.addEventListener("keydown", onKeyDown);
+			window.addEventListener("keyup", onKeyUp);
+			window.addEventListener("blur", onBlur);
 			window.onbeforeunload = (e) => {
 				if (generating.value) {
 					e.preventDefault();
@@ -78,7 +91,16 @@
 			clearInterval(scanInterval);
 			scanInterval = null;
 		}
+		if (browser) {
+			window.removeEventListener("keydown", onKeyDown);
+			window.removeEventListener("keyup", onKeyUp);
+			window.removeEventListener("blur", onBlur);
+		}
 	});
+
+	function onKeyDown(e: KeyboardEvent) { if (e.key === "Control") ctrlHeld = true; }
+	function onKeyUp(e: KeyboardEvent) { if (e.key === "Control") ctrlHeld = false; }
+	function onBlur() { ctrlHeld = false; }
 
 	function startScanAnimation() {
 		scanInterval = setInterval(() => {
@@ -101,6 +123,9 @@
 			return;
 		}
 
+		// Ctrl held at click time means force new
+		if (ctrlHeld) forceNew = true;
+
 		// Reset UI state
 		scanIndex = 0;
 		scanMessages = [...SCAN_MESSAGES].sort(() => Math.random() - 0.5);
@@ -108,7 +133,7 @@
 		startScanAnimation();
 
 		const lastDiff = getHistory()[0];
-		const selectedDepth = profile.depth || "standard";
+		const selectedDepth = selectedDepthOverride || profile.depth || "standard";
 
 		try {
 			const result = await runGeneration({
@@ -207,11 +232,13 @@
 </script>
 
 <svelte:head>
-	<title>{generating.value ? "Generating..." : "Generate"} | diff·log</title>
+	<title>{generating.value ? "Generating..." : isTodayDiff ? "Regenerate" : "Generate"} | diff·log</title>
 </svelte:head>
 
 <main id="content">
-	<PageHeader subtitle={currentDate} iconSpinning={generating.value} />
+	<PageHeader subtitle={currentDate} iconSpinning={generating.value}>
+		<HeaderNav />
+	</PageHeader>
 
 	{#if generating.value}
 		<div class="generating-state">
@@ -269,19 +296,49 @@
 	{:else}
 		<div class="welcome-area">
 			<div class="logo-mark">&#9670;</div>
-			<h2 class="welcome-heading-lg">Ready to generate</h2>
-			<p class="welcome-text">
-				Generate a personalized diff of what's changed in your dev
-				ecosystem.
-			</p>
+			<h2 class="welcome-heading-lg">{isFirstTime ? `Welcome, ${getProfile()?.name || "Developer"}` : isTodayDiff ? "Ready to regenerate" : "Ready to generate"}</h2>
+			{#if isFirstTime}
+				<p class="welcome-text">
+					A diff is your personalized changelog for the developer ecosystem — releases,
+					announcements, and developments filtered to what you care about.
+				</p>
+				<p class="welcome-text-sub">
+					Hit generate and we'll scan what's new across your stack.
+				</p>
+			{:else if isTodayDiff}
+				<p class="welcome-text">
+					Your diff is current. Regenerate to get the latest.
+					{#if !ctrlHeld}<small class="ctrl-hint">(hold <kbd>Ctrl</kbd> to generate another)</small>{/if}
+				</p>
+			{:else}
+				<p class="welcome-text">
+					Generate a personalized diff of what's changed in your dev
+					ecosystem.
+				</p>
+			{/if}
 
-			{#if trackingText}
-				<div class="first-time-tracking">
-					<span class="first-time-tracking-label">Tracking</span>
-					<span class="first-time-tracking-items">{trackingText}</span
-					>
-					<a href="/profiles" class="first-time-tracking-edit">Edit</a
-					>
+			{#if !isFirstTime}
+				<div class="gen-options">
+					{#if trackingText}
+						<div class="gen-options-row">
+							<span class="first-time-tracking-label">Tracking</span>
+							<span class="first-time-tracking-items">{trackingText}</span>
+							<a href="/profiles" class="first-time-tracking-edit">Edit</a>
+						</div>
+					{/if}
+					<div class="gen-options-row">
+						<span class="first-time-tracking-label">Depth</span>
+						{#each DEPTHS as d, i}
+							{#if i > 0}<span class="middot">&middot;</span>{/if}
+							<button
+								class="depth-option"
+								class:depth-option-active={(selectedDepthOverride || getProfile()?.depth || "standard") === d.id}
+								onclick={() => { selectedDepthOverride = d.id; }}
+							>
+								{d.label}
+							</button>
+						{/each}
+					</div>
 				</div>
 			{/if}
 
@@ -289,7 +346,7 @@
 				class="btn-primary btn-lg btn-branded"
 				onclick={startGeneration}
 			>
-				Generate your diff
+				{isTodayDiff && !ctrlHeld ? "Regenerate Diff" : "Generate Diff"}
 			</button>
 
 			{#if getHistory().length > 0}
@@ -302,3 +359,51 @@
 </main>
 
 <SiteFooter version="2.0.4" />
+
+<style>
+	.depth-option {
+		font-size: 0.85rem;
+		font-family: inherit;
+		color: var(--text-hint);
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+	}
+	.depth-option:hover {
+		color: var(--text-secondary);
+	}
+	.depth-option-active {
+		color: var(--text-primary);
+		font-weight: 600;
+	}
+	.gen-options {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		margin-bottom: 2rem;
+		padding: 0.75rem 1rem;
+		background: var(--bg-chip);
+		border-radius: var(--radius-md);
+		max-width: 500px;
+		margin-left: auto;
+		margin-right: auto;
+	}
+	.gen-options-row {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+	}
+	.gen-options-row :global(.first-time-tracking-label) {
+		margin-right: 0.2rem;
+	}
+	.middot {
+		color: var(--text-hint);
+		font-size: 0.75rem;
+	}
+	.welcome-text-sub {
+		color: var(--text-hint);
+		font-size: 0.9rem;
+		margin-top: -0.25rem;
+	}
+</style>

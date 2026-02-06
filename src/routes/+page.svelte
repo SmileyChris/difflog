@@ -12,7 +12,6 @@
 
 	let { data } = $props();
 
-	let ctrlHeld = $state(false);
 	let diff = $state<Diff | null>(null);
 
 	// Initialize from page data (reactive to data changes from navigation)
@@ -35,33 +34,6 @@
 		if (data.scrollToPIndex !== null) {
 			scrollToAndHighlight(data.scrollToPIndex);
 		}
-
-		// Keyboard listeners for Ctrl key tracking
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === 'Control') ctrlHeld = true;
-		};
-		const handleKeyUp = (e: KeyboardEvent) => {
-			if (e.key === 'Control') ctrlHeld = false;
-		};
-		const handleBlur = () => {
-			ctrlHeld = false;
-		};
-
-		window.addEventListener('keydown', handleKeyDown);
-		window.addEventListener('keyup', handleKeyUp);
-		window.addEventListener('blur', handleBlur);
-
-		return () => {
-			window.removeEventListener('keydown', handleKeyDown);
-			window.removeEventListener('keyup', handleKeyUp);
-			window.removeEventListener('blur', handleBlur);
-		};
-	});
-
-	const trackingText = $derived.by(() => {
-		const p = getProfile();
-		if (!p) return '';
-		return [...(p.languages || []), ...(p.frameworks || []), ...(p.tools || [])].join(' · ');
 	});
 
 	function goToDiffOnDate(isoDate: string) {
@@ -117,8 +89,6 @@
 			return `From the archives, ${name}`;
 		}
 
-		if (history.length === 0) return `Welcome, ${name}`;
-
 		const days = lastDiffDays;
 		const hour = new Date().getHours();
 		const timeGreeting = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
@@ -128,21 +98,6 @@
 		if (days <= 7) return `Welcome back, ${name}`;
 		if (days <= 14) return `Missed you, ${name}`;
 		return `Long time no see, ${name}`;
-	});
-
-	const welcomeText = $derived.by(() => {
-		const history = getHistory();
-		if (history.length === 0)
-			return "A diff is your personalized changelog for the developer ecosystem — releases, announcements, and developments filtered to what you care about.<br><br>Hit the button to generate your first one.";
-
-		if (isTodayDiff)
-			return 'Your diff is current. Regenerate to get the latest <small>(or hold <kbd>Ctrl</kbd> to generate another)</small>';
-		const days = lastDiffDays;
-		if (days <= 1) return 'A lot can change overnight. Ready to catch you up.';
-		if (days <= 3) return 'A few days of updates are waiting for you.';
-		if (days <= 7) return "The dev world moves fast — time to catch up.";
-		if (days <= 14) return "Quite a bit has happened. Let's get you back up to speed.";
-		return "You've got weeks of ecosystem changes to unpack.";
 	});
 
 	const isArchive = $derived(diff != null && getHistory().length > 0 && diff.id !== getHistory()[0].id);
@@ -155,11 +110,6 @@
 		if (days <= 14) return "Quite a bit has happened. Let's get you back up to speed.";
 		return "You've got weeks of ecosystem changes to unpack.";
 	});
-
-	function generate() {
-		const forceNew = ctrlHeld;
-		goto(forceNew ? '/generate?force=1' : '/generate');
-	}
 
 	function scrollToAndHighlight(pIndex: number) {
 		setTimeout(() => {
@@ -307,38 +257,6 @@
 				<button class="btn-primary btn-sm btn-branded" onclick={() => goto('/generate')} aria-busy={generating.value || undefined}>
 					{generating.value ? 'Generating…' : isTodayDiff ? 'Regenerate' : 'Generate'}
 				</button>
-			{/if}
-		</div>
-	{:else}
-		<div class="welcome-area">
-			<div class="logo-mark">&#9670;</div>
-			<h2 class="welcome-heading-lg">{welcomeHeading}</h2>
-			<p class="welcome-text">{@html welcomeText}</p>
-
-			{#if trackingText}
-				<div class="first-time-tracking">
-					<span class="first-time-tracking-label">Tracking</span>
-					<span class="first-time-tracking-items">{trackingText}</span>
-					<a href="/profiles" class="first-time-tracking-edit">Edit</a>
-				</div>
-			{/if}
-
-			<button class="btn-primary btn-lg btn-branded" onclick={generate} disabled={generating.value}>
-				{isTodayDiff && !ctrlHeld ? 'Regenerate Diff' : 'Generate Diff'}
-			</button>
-
-			{#if getHistory().length > 0}
-				<div class="recent-archive">
-					{#each getHistory().slice(0, 3) as h (h.id)}
-						<button class="recent-archive-item" onclick={() => (diff = h)}>
-							<span class="recent-archive-date">{timeAgo(h.generated_at)}</span>
-							<span class="recent-archive-preview">{h.title || h.content.slice(0, 60).replace(/[#*\[\]]/g, '') + '...'}</span>
-						</button>
-					{/each}
-					{#if getHistory().length > 3}
-						<a href="/archive" class="recent-archive-more">View all {getHistory().length} diffs</a>
-					{/if}
-				</div>
 			{/if}
 		</div>
 	{/if}

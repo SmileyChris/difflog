@@ -8,11 +8,17 @@ export function load({ url }) {
 		redirect(302, ids.length > 0 ? '/profiles' : '/about');
 	}
 
+	const history = getHistory();
+
+	// No diffs yet — go straight to generate
+	if (history.length === 0) {
+		redirect(302, '/generate');
+	}
+
 	// Handle deep-link from stars/archive via search params
 	const viewId = url.searchParams.get('diff');
 	const scrollParam = url.searchParams.get('p');
 
-	const history = getHistory();
 	let initialDiff: Diff | null = viewId ? (history.find((d) => d.id === viewId) ?? null) : null;
 
 	// Fall back to latest diff
