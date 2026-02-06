@@ -6,7 +6,7 @@
 	import { getHistory } from '$lib/stores/history.svelte';
 	import { getStars } from '$lib/stores/stars.svelte';
 	import { updateProfile, autoSync } from '$lib/stores/sync.svelte';
-	import { generating, generationError, generationResult, runGeneration, clearGenerationState } from '$lib/stores/ui.svelte';
+	import { generating, generationError, generationResult, runGeneration, clearGenerationState, hasStageCache, clearStageCache } from '$lib/stores/ui.svelte';
 	import { addDiff, deleteDiff, removeStar } from '$lib/stores/operations.svelte';
 	import { PageHeader, SiteFooter } from '$lib/components';
 	import { SCAN_MESSAGES, WAIT_TIPS } from '$lib/utils/constants';
@@ -177,9 +177,14 @@
 			<div class="logo-mark logo-mark-error">&#9670;</div>
 			<h2 class="welcome-heading-lg">Generation failed</h2>
 			<p class="error-message">{generationError.value}</p>
-			<button class="btn-generate" onclick={startGeneration}>
-				<span>&#9670;</span> Try Again
+			<button class="btn-primary btn-lg btn-branded" onclick={startGeneration}>
+				{hasStageCache() ? 'Resume' : 'Try Again'}
 			</button>
+			{#if hasStageCache()}
+				<button class="btn-secondary" onclick={() => { clearStageCache(); startGeneration(); }}>
+					Start Fresh
+				</button>
+			{/if}
 			{#if getHistory().length > 0}
 				<button class="btn-secondary" onclick={goHome}>
 					View last diff
@@ -200,8 +205,8 @@
 				</div>
 			{/if}
 
-			<button class="btn-generate" onclick={startGeneration}>
-				<span>&#9670;</span> Generate your diff
+			<button class="btn-primary btn-lg btn-branded" onclick={startGeneration}>
+				Generate your diff
 			</button>
 
 			{#if getHistory().length > 0}

@@ -643,6 +643,11 @@ main.narrow > header {
   transition: all 0.2s ease;
 }
 
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-aqua {
   background: linear-gradient(135deg, var(--info) 0%, var(--info-muted) 100%);
 }
@@ -705,25 +710,6 @@ main.narrow > header {
   color: var(--danger);
 }
 
-.btn-generate {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 2rem;
-  font-size: 1rem;
-  font-weight: 600;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-muted) 100%);
-  border: none;
-  border-radius: var(--radius-md);
-  color: #000;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-generate:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 
 .btn-retry {
@@ -968,7 +954,7 @@ button:disabled {
   color: var(--accent);
 }
 
-.btn-generate-inline {
+.btn-ghost {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -983,13 +969,10 @@ button:disabled {
   transition: background 0.15s;
 }
 
-.btn-generate-inline:hover {
+.btn-ghost:hover {
   background: var(--accent-bg);
 }
 
-.btn-generate-diamond {
-  font-size: 0.7em;
-}
 
 
 /* Welcome Area (no diff state) */
@@ -2831,6 +2814,16 @@ button.profile-card-action-alt:hover:not(:disabled) {
   font-size: 0.7em;
 }
 
+.btn-branded[aria-busy="true"]::before {
+  display: inline-block;
+  animation: diamond-spin 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+@keyframes diamond-spin {
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(360deg); }
+}
+
 /* Setup Error */
 .setup-error {
   margin-top: 1rem;
@@ -2952,6 +2945,30 @@ button.profile-card-action-alt:hover:not(:disabled) {
 .sync-banner-dismiss:hover {
   color: var(--text-secondary);
 }
+
+/* Stale Diff Banner */
+.stale-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+}
+
+.stale-banner > span:first-child {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.stale-banner-btn.btn-primary {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
 
 /* Inline sync result */
 .sync-result-inline {
@@ -3511,6 +3528,11 @@ article section strong {
   margin: 0;
 }
 
+.btn-lg {
+  padding: 1rem 2rem;
+  font-size: 1rem;
+}
+
 .btn-sm {
   padding: 0.5rem 1rem;
   font-size: 0.8rem;
@@ -3762,21 +3784,6 @@ article section strong {
   color: var(--accent);
 }
 
-.btn-link-danger {
-  background: none;
-  border: none;
-  color: var(--text-disabled);
-  font-size: 0.75rem;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  margin-top: 0.25rem;
-}
-
-.btn-link-danger:hover {
-  color: var(--danger);
-}
 
 .visibility-action-btn {
   display: inline-flex;

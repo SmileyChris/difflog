@@ -278,36 +278,52 @@
         <div class="design-row">
           <button class="btn-primary">Primary</button>
           <button class="btn-secondary">Secondary</button>
+          <button class="btn-ghost">Ghost</button>
           <button class="btn-danger">Danger</button>
           <button class="btn-link">Link</button>
-          <button class="btn-link-danger">Link Danger</button>
         </div>
       </div>
-
-      <h3 class="design-subtitle">With Brand Mark</h3>
-      <div class="component-demo">
-        <div class="design-row">
-          <button class="btn-primary btn-branded">Generate</button>
-          <button class="btn-secondary btn-branded">New Diff</button>
-          <button class="btn-primary btn-branded btn-sm">Small</button>
-        </div>
-      </div>
+      <div class="component-code">.btn-primary  .btn-secondary  .btn-ghost  .btn-danger  .btn-link</div>
 
       <h3 class="design-subtitle">Sizes</h3>
       <div class="component-demo">
         <div class="design-row">
+          <button class="btn-primary btn-lg">Large</button>
           <button class="btn-primary">Default</button>
           <button class="btn-primary btn-sm">Small</button>
         </div>
       </div>
+      <div class="component-code">.btn-lg  (default)  .btn-sm</div>
+
+      <h3 class="design-subtitle">Branded (◆ modifier)</h3>
+      <div class="component-demo">
+        <div class="design-row">
+          <button class="btn-primary btn-lg btn-branded">Generate Diff</button>
+          <button class="btn-primary btn-branded">Primary</button>
+          <button class="btn-primary btn-sm btn-branded">Regenerate</button>
+          <button class="btn-secondary btn-branded">Secondary</button>
+          <button class="btn-ghost btn-branded">New Diff</button>
+        </div>
+      </div>
+      <div class="component-code">.btn-branded — adds ◆ via ::before. Composable with any variant + size.</div>
 
       <h3 class="design-subtitle">States</h3>
       <div class="component-demo">
         <div class="design-row">
           <button class="btn-primary" disabled>Disabled</button>
           <button class="btn-secondary" disabled>Disabled</button>
+          <button class="btn-primary btn-lg btn-branded" disabled>Disabled</button>
         </div>
       </div>
+
+      <h3 class="design-subtitle">Loading (aria-busy)</h3>
+      <div class="component-demo">
+        <div class="design-row">
+          <button class="btn-primary btn-sm btn-branded" aria-busy="true">Generating…</button>
+          <button class="btn-ghost btn-branded" aria-busy="true">Generating…</button>
+        </div>
+      </div>
+      <div class="component-code">.btn-branded[aria-busy="true"] — spins the ◆ via diamond-spin keyframes</div>
     </section>
 
     <!-- Form Elements -->
@@ -431,8 +447,16 @@ function example() {'{'}
       <h2 class="design-title">Loading</h2>
 
       <div class="component-demo">
-        <div class="component-label">Spinning Logo</div>
+        <div class="component-label">Spinning Logo (PageHeader)</div>
         <div class="logo-mark-header logo-mark-spinning" style="font-size: 2rem;">&#9670;</div>
+      </div>
+
+      <div class="component-demo">
+        <div class="component-label">Branded Button (aria-busy)</div>
+        <div class="design-row">
+          <button class="btn-primary btn-branded btn-sm" aria-busy="true">Generating…</button>
+          <button class="btn-ghost btn-branded" aria-busy="true">Generating…</button>
+        </div>
       </div>
 
       <div class="component-demo">
@@ -510,6 +534,21 @@ function example() {'{'}
           <button class="btn-secondary btn-sm">Sync Now</button>
         </div>
       </div>
+
+      <h3 class="design-subtitle">Stale Banner</h3>
+      <div class="component-demo" style="background: transparent; padding: 0;">
+        <div class="stale-banner" style="position: static;">
+          <span>The dev world moves fast — time to catch up.</span>
+          <button class="btn-primary btn-branded stale-banner-btn">Generate new diff</button>
+        </div>
+      </div>
+      <div class="component-demo" style="background: transparent; padding: 0;">
+        <div class="stale-banner" style="position: static;">
+          <span>Quite a bit has happened. Let's get you back up to speed.</span>
+          <button class="btn-ghost btn-branded" aria-busy="true">Generating…</button>
+        </div>
+      </div>
+      <div class="component-code">.stale-banner  .stale-banner-btn — non-dismissible, shown when latest diff is &gt;5 days old</div>
 
       <h3 class="design-subtitle">Status Indicators</h3>
       <div class="component-demo">

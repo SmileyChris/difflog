@@ -22,7 +22,7 @@
 
 	let currentDate = getCurrentDateFormatted();
 	let syncBannerDismissed = $state(false);
-	let staleBannerDismissed = $state(false);
+
 
 	onMount(() => {
 		// If generation is active and we're not viewing a diff, go to /generate
@@ -145,6 +145,8 @@
 		return "You've got weeks of ecosystem changes to unpack.";
 	});
 
+	const isArchive = $derived(diff != null && getHistory().length > 0 && diff.id !== getHistory()[0].id);
+
 	const isStale = $derived(lastDiffDays > 5);
 
 	const staleText = $derived.by(() => {
@@ -216,12 +218,22 @@
 			<h2 class="welcome-heading-lg">{welcomeHeading}</h2>
 			<div class="diff-info-bar">
 				<div class="diff-info-left">
-					<span class="diff-label">Here's your latest diff</span>
+					<span class="diff-label">{isArchive ? 'From the archives' : "Here's your latest diff"}</span>
 					<span class="diff-time">{timeAgo(diff.generated_at)}</span>
 					<StreakCalendar onDayClick={goToDiffOnDate} />
-					<button class="btn-generate-inline" onclick={() => goto('/generate')}>
-						<span class="btn-generate-diamond">&#9670;</span> New Diff
-					</button>
+					{#if generating.value}
+						<button class="btn-ghost btn-branded" onclick={() => goto('/generate')} aria-busy="true">
+							Generating…
+						</button>
+					{:else if isArchive}
+						<button class="btn-ghost" onclick={() => (diff = getHistory()[0])}>
+							Latest diff &rarr;
+						</button>
+					{:else if !isTodayDiff && !isStale}
+						<button class="btn-ghost btn-branded" onclick={() => goto('/generate')}>
+							New Diff
+						</button>
+					{/if}
 				</div>
 				<div class="diff-info-right">
 					<button
@@ -245,11 +257,18 @@
 			</div>
 		</div>
 
-		{#if isStale && !staleBannerDismissed}
-			<div class="sync-banner">
+		{#if isStale && !isArchive}
+			<div class="stale-banner">
 				<span>{staleText}</span>
-				<a href="/generate" class="sync-banner-btn">Generate new diff</a>
-				<button class="sync-banner-dismiss" onclick={() => (staleBannerDismissed = true)}>&times;</button>
+				{#if generating.value}
+					<button class="btn-ghost btn-branded" onclick={() => goto('/generate')} aria-busy="true">
+						Generating…
+					</button>
+				{:else}
+					<button class="btn-primary btn-branded stale-banner-btn" onclick={() => goto('/generate')}>
+						Generate new diff
+					</button>
+				{/if}
 			</div>
 		{/if}
 
@@ -266,6 +285,25 @@
 				{/if}
 			{/snippet}
 		</DiffContent>
+
+		<div class="diff-footer">
+			{#if prevDiff()}
+				<button class="btn-secondary btn-sm" onclick={() => (diff = prevDiff())}>
+					&larr; Older
+				</button>
+			{:else}
+				<span></span>
+			{/if}
+			{#if nextDiff()}
+				<button class="btn-secondary btn-sm" onclick={() => (diff = nextDiff())}>
+					Newer &rarr;
+				</button>
+			{:else if !isArchive}
+				<button class="btn-primary btn-sm btn-branded" onclick={() => goto('/generate')} aria-busy={generating.value || undefined}>
+					{generating.value ? 'Generating…' : isTodayDiff ? 'Regenerate' : 'Generate'}
+				</button>
+			{/if}
+		</div>
 	{:else}
 		<div class="welcome-area">
 			<div class="logo-mark">&#9670;</div>
@@ -280,8 +318,8 @@
 				</div>
 			{/if}
 
-			<button class="btn-generate" onclick={generate} disabled={generating.value}>
-				<span>&#9670;</span> Generate your diff
+			<button class="btn-primary btn-lg btn-branded" onclick={generate} disabled={generating.value}>
+				{isTodayDiff && !ctrlHeld ? 'Regenerate Diff' : 'Generate Diff'}
 			</button>
 
 			{#if getHistory().length > 0}
