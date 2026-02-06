@@ -44,6 +44,7 @@ export function buildPrompt(profile: Profile, feedContext?: string, lastDiffDate
   return `Generate a developer intelligence diff in markdown. No preamble — start directly with the date line below.
 
 FORMAT:
+- Use plain Unicode characters (·, —, →, etc.), NEVER HTML entities (&middot; &mdash; &rarr; etc.)
 - Use real URLs from the feed data or web search — never placeholder or hallucinated links
 - IMPORTANT: Make the headline itself a link. The bold text should BE the link:
   CORRECT: **[Django 6.0 Released](https://djangoproject.com/...)** — description

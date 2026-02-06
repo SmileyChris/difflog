@@ -98,6 +98,17 @@ function cleanDiffContent(rawContent: string): string {
 		content = content.slice(diffStart);
 	}
 
+	// Decode HTML entities that some models (e.g. Gemini) emit instead of plain Unicode
+	content = content
+		.replace(/&middot;/g, '·')
+		.replace(/&mdash;/g, '—')
+		.replace(/&ndash;/g, '–')
+		.replace(/&rarr;/g, '→')
+		.replace(/&larr;/g, '←')
+		.replace(/&bull;/g, '•')
+		.replace(/&hellip;/g, '…')
+		.replace(/&amp;/g, '&');
+
 	return content;
 }
 
