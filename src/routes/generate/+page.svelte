@@ -351,7 +351,7 @@
 
 			{#if getHistory().length > 0}
 				<button class="btn-secondary" onclick={goHome}>
-					Back to dashboard
+					Back home
 				</button>
 			{/if}
 		</div>

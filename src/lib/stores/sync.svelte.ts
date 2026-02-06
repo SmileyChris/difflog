@@ -3,6 +3,7 @@ import { persist } from './persist.svelte';
 import { activeProfileId, profiles, getProfile, updateProfile as updateProfileBase } from './profiles.svelte';
 import { histories, getHistory, initHistoryForProfile, deleteHistoryForProfile } from './history.svelte';
 import { bookmarks, getStars, initStarsForProfile, deleteStarsForProfile, removeStarsForDiff, starId } from './stars.svelte';
+import { isGenerating, clearGenerationState, clearStageCache } from './ui.svelte';
 import { timeAgo } from '$lib/utils/time';
 import { ApiError } from '$lib/utils/api';
 import {
@@ -541,13 +542,18 @@ function handleSyncError(e: unknown): void {
 }
 
 // Switch profile (clears password, then restores from remembered if available)
-export function switchProfileWithSync(id: string): void {
-	if (profiles.value[id]) {
-		setCachedPassword(null);
-		activeProfileId.value = id;
-		restoreSessionPassword();
-		checkSyncStatus();
-	}
+// Returns false if blocked by an in-progress generation
+export function switchProfileWithSync(id: string): boolean {
+	if (!profiles.value[id]) return false;
+	if (isGenerating()) return false;
+
+	clearGenerationState();
+	clearStageCache();
+	setCachedPassword(null);
+	activeProfileId.value = id;
+	restoreSessionPassword();
+	checkSyncStatus();
+	return true;
 }
 
 // Delete profile with cleanup

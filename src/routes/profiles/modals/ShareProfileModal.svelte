@@ -45,7 +45,11 @@
 		sharing = true;
 
 		try {
-			switchProfileWithSync(profileId);
+			if (!switchProfileWithSync(profileId)) {
+				error = 'Cannot switch profiles while a diff is generating';
+				sharing = false;
+				return;
+			}
 			await shareProfileApi(password);
 			const profile = profiles.value[profileId];
 			profiles.value = {

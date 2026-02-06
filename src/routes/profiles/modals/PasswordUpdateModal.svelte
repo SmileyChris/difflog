@@ -52,7 +52,11 @@
 
 		try {
 			if (profileId !== activeProfileId.value) {
-				switchProfileWithSync(profileId);
+				if (!switchProfileWithSync(profileId)) {
+					error = 'Cannot switch profiles while a diff is generating';
+					updating = false;
+					return;
+				}
 			}
 
 			await updatePasswordSync(currentPassword, newPassword);

@@ -35,7 +35,7 @@
 	});
 
 	function handleSwitchProfile(id: string) {
-		switchProfileWithSync(id);
+		if (!switchProfileWithSync(id)) return;
 		goto('/');
 	}
 
@@ -47,7 +47,7 @@
 	}
 
 	async function handleEditProfile(id: string, step = 0) {
-		switchProfileWithSync(id);
+		if (!switchProfileWithSync(id)) return;
 		await tick();
 		goto(`/setup?edit=${step}`);
 	}
@@ -176,12 +176,12 @@
 								<DetailRow label="Topics" value={profile.topics.join(', ')} onedit={() => handleEditProfile(id, 5)} />
 							{/if}
 							<div class="profile-detail-row profile-detail-counts">
-								<a href="/archive" class="profile-count profile-count-link" onclick={(e) => { e.stopPropagation(); if (activeProfileId.value !== id) switchProfileWithSync(id); }}>
+								<a href="/archive" class="profile-count profile-count-link" onclick={(e) => { e.stopPropagation(); if (activeProfileId.value !== id && !switchProfileWithSync(id)) e.preventDefault(); }}>
 									<span class="profile-count-icon">&#9632;</span>
 									<span class="link-secondary">{getDiffCount(id)} {getDiffCount(id) === 1 ? 'diff' : 'diffs'}</span>
 								</a>
 								{#if getStarCount(id) > 0}
-									<a href="/stars" class="profile-count profile-count-link" onclick={(e) => { e.stopPropagation(); if (activeProfileId.value !== id) switchProfileWithSync(id); }}>
+									<a href="/stars" class="profile-count profile-count-link" onclick={(e) => { e.stopPropagation(); if (activeProfileId.value !== id && !switchProfileWithSync(id)) e.preventDefault(); }}>
 										<span class="profile-count-icon">★</span>
 										<span class="link-secondary">{getStarCount(id)} {getStarCount(id) === 1 ? 'star' : 'stars'}</span>
 									</a>
