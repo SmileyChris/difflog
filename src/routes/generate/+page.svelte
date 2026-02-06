@@ -176,20 +176,24 @@
 		<div class="welcome-area">
 			<div class="logo-mark logo-mark-error">&#9670;</div>
 			<h2 class="welcome-heading-lg">Generation failed</h2>
-			<p class="error-message">{generationError.value}</p>
-			<button class="btn-primary btn-lg btn-branded" onclick={startGeneration}>
-				{hasStageCache() ? 'Resume' : 'Try Again'}
-			</button>
-			{#if hasStageCache()}
-				<button class="btn-secondary" onclick={() => { clearStageCache(); startGeneration(); }}>
-					Start Fresh
+			<p class="error-detail">{generationError.value.replace(/^Generation failed:\s*/, '')}</p>
+			<div class="error-actions">
+				<button class="btn-primary btn-lg btn-branded" onclick={startGeneration}>
+					{hasStageCache() ? '&#9670; Resume' : 'Try Again'}
 				</button>
-			{/if}
-			{#if getHistory().length > 0}
-				<button class="btn-secondary" onclick={goHome}>
-					View last diff
-				</button>
-			{/if}
+				<div class="error-actions-secondary">
+					{#if hasStageCache()}
+						<button class="btn-secondary" onclick={() => { clearStageCache(); startGeneration(); }}>
+							Start Fresh
+						</button>
+					{/if}
+					{#if getHistory().length > 0}
+						<button class="btn-secondary" onclick={goHome}>
+							View last diff
+						</button>
+					{/if}
+				</div>
+			</div>
 		</div>
 	{:else}
 		<div class="welcome-area">

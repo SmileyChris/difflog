@@ -24,8 +24,8 @@ export const PRICING = {
     synthesis: { model: 'deepseek-chat', inputPer1M: 0.14, outputPer1M: 0.28 },
   },
   gemini: {
-    curation: { model: 'gemini-2.0-flash-lite', inputPer1M: 0.075, outputPer1M: 0.30 },
-    synthesis: { model: 'gemini-2.0-flash', inputPer1M: 0.10, outputPer1M: 0.40 },
+    curation: { model: 'gemini-2.5-flash', inputPer1M: 0.15, outputPer1M: 0.60 },
+    synthesis: { model: 'gemini-2.5-flash', inputPer1M: 0.15, outputPer1M: 0.60 },
   },
 } as const;
 

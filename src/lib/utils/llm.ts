@@ -127,7 +127,7 @@ async function completeWithGemini<T>(
 ): Promise<T | null> {
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -396,7 +396,7 @@ The content should be full markdown starting with the Intelligence Window date l
 }
 
 /**
- * Gemini synthesis using gemini-2.0-flash with JSON schema
+ * Gemini synthesis using gemini-2.5-flash with JSON schema
  */
 async function synthesizeWithGemini(
   apiKey: string,
@@ -404,7 +404,7 @@ async function synthesizeWithGemini(
   maxTokens: number
 ): Promise<DiffResult> {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -420,7 +420,10 @@ async function synthesizeWithGemini(
   );
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string; status?: string } };
+    if (res.status === 429 || err.error?.status === 'RESOURCE_EXHAUSTED') {
+      throw new Error('Gemini rate limit or quota exceeded. Check your plan at ai.google.dev or switch synthesis provider.');
+    }
     throw new Error(err.error?.message || `Gemini API error: ${res.status}`);
   }
 
