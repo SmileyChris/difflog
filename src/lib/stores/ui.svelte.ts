@@ -1,7 +1,8 @@
 // Transient UI state - not persisted
 
 import type { Diff } from './history.svelte';
-import { generateDiffContent, type GenerateOptions, type GenerateResult } from '$lib/actions/generateDiff';
+import { generateDiffContent, hasStageCache, clearStageCache, type GenerateOptions, type GenerateResult } from '$lib/actions/generateDiff';
+export { hasStageCache, clearStageCache };
 
 // Track the active generation promise at module level so it survives navigation
 let _activeGeneration: Promise<GenerateResult> | null = null;

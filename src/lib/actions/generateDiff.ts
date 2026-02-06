@@ -33,6 +33,42 @@ export interface GenerateResult {
 	diff: Diff;
 }
 
+// Stage cache for resume-from-failure
+let _stageCache: {
+	timestamp: number;
+	profileHash: string;
+	feedContext: string;
+	webContext: string;
+	prompt: string;
+} | null = null;
+
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+function computeProfileHash(options: GenerateOptions): string {
+	const { profile, selectedDepth } = options;
+	return JSON.stringify({
+		languages: profile.languages,
+		frameworks: profile.frameworks,
+		tools: profile.tools,
+		topics: profile.topics,
+		depth: selectedDepth
+	});
+}
+
+function isCacheValid(options: GenerateOptions): boolean {
+	if (!_stageCache) return false;
+	if (Date.now() - _stageCache.timestamp > CACHE_TTL) return false;
+	return _stageCache.profileHash === computeProfileHash(options);
+}
+
+export function hasStageCache(): boolean {
+	return _stageCache !== null;
+}
+
+export function clearStageCache(): void {
+	_stageCache = null;
+}
+
 /**
  * Calculate the time window in days based on last diff date.
  */
@@ -81,80 +117,100 @@ export async function generateDiffContent(options: GenerateOptions): Promise<Gen
 		gemini: profile.apiKeys?.gemini
 	};
 
-	// Resolve unmapped custom items
-	let currentProfile = profile;
-	const unmapped = getUnmappedItems(profile);
-	if (unmapped.length > 0 && apiKey) {
-		console.log(`Resolving ${unmapped.length} custom item(s):`, unmapped.map((u) => u.item));
-		const newMappings = { ...profile.resolvedMappings };
-		for (const { item, category } of unmapped) {
-			const mapping = await resolveSourcesForItem(keys, item, category);
-			newMappings[item] = mapping;
-			console.log(`Resolved "${item}":`, mapping);
-		}
-		onMappingsResolved?.(newMappings);
-		currentProfile = { ...profile, resolvedMappings: newMappings };
-	}
+	let prompt: string;
+	const canResume = isCacheValid(options) && _stageCache?.prompt;
 
-	const windowDays = calculateWindowDays(lastDiffDate);
+	if (canResume && _stageCache) {
+		// Resume from cache — skip feed/search/prompt stages
+		prompt = _stageCache.prompt;
+	} else {
+		// Clear stale cache and run full pipeline
+		_stageCache = null;
 
-	// Fetch feeds and web search in parallel
-	const [webSearchResults, feedRes] = await Promise.all([
-		searchWeb(keys, currentProfile, windowDays).catch(() => []),
-		fetch('/api/feeds', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				languages: currentProfile.languages || [],
-				frameworks: currentProfile.frameworks || [],
-				tools: currentProfile.tools || [],
-				topics: currentProfile.topics || [],
-				resolvedMappings: currentProfile.resolvedMappings || {}
-			})
-		}).catch(() => null)
-	]);
-
-	// Process feed data
-	let feedContext = '';
-	if (feedRes?.ok) {
-		try {
-			const feedData = await feedRes.json();
-			const feeds = feedData.feeds || {};
-
-			const generalItems: FeedItem[] = [...(feeds.hn || []), ...(feeds.lobsters || [])];
-			let curatedGeneral: FeedItem[] = generalItems;
-			if (generalItems.length > 0) {
-				curatedGeneral = await curateGeneralFeeds(keys, generalItems, currentProfile);
+		// Resolve unmapped custom items
+		let currentProfile = profile;
+		const unmapped = getUnmappedItems(profile);
+		if (unmapped.length > 0 && apiKey) {
+			console.log(`Resolving ${unmapped.length} custom item(s):`, unmapped.map((u) => u.item));
+			const newMappings = { ...profile.resolvedMappings };
+			for (const { item, category } of unmapped) {
+				const mapping = await resolveSourcesForItem(keys, item, category);
+				newMappings[item] = mapping;
+				console.log(`Resolved "${item}":`, mapping);
 			}
-
-			const allItems: FeedItem[] = [
-				...curatedGeneral,
-				...(feeds.reddit || []),
-				...(feeds.github || []),
-				...(feeds.devto || [])
-			];
-
-			feedContext = formatItemsForPrompt(allItems);
-		} catch {
-			// Feed processing failed, continue without feed context
+			onMappingsResolved?.(newMappings);
+			currentProfile = { ...profile, resolvedMappings: newMappings };
 		}
+
+		const windowDays = calculateWindowDays(lastDiffDate);
+
+		// Fetch feeds and web search in parallel
+		const [webSearchResults, feedRes] = await Promise.all([
+			searchWeb(keys, currentProfile, windowDays).catch(() => []),
+			fetch('/api/feeds', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					languages: currentProfile.languages || [],
+					frameworks: currentProfile.frameworks || [],
+					tools: currentProfile.tools || [],
+					topics: currentProfile.topics || [],
+					resolvedMappings: currentProfile.resolvedMappings || {}
+				})
+			}).catch(() => null)
+		]);
+
+		// Process feed data
+		let feedContext = '';
+		if (feedRes?.ok) {
+			try {
+				const feedData = await feedRes.json();
+				const feeds = feedData.feeds || {};
+
+				const generalItems: FeedItem[] = [...(feeds.hn || []), ...(feeds.lobsters || [])];
+				let curatedGeneral: FeedItem[] = generalItems;
+				if (generalItems.length > 0) {
+					curatedGeneral = await curateGeneralFeeds(keys, generalItems, currentProfile);
+				}
+
+				const allItems: FeedItem[] = [
+					...curatedGeneral,
+					...(feeds.reddit || []),
+					...(feeds.github || []),
+					...(feeds.devto || [])
+				];
+
+				feedContext = formatItemsForPrompt(allItems);
+			} catch {
+				// Feed processing failed, continue without feed context
+			}
+		}
+
+		// Process web search results
+		const webContext = webSearchResults.length > 0
+			? formatWebSearchForPrompt(webSearchResults)
+			: '';
+
+		// Build prompt
+		prompt = buildPrompt(
+			{ ...currentProfile, depth: selectedDepth },
+			feedContext,
+			lastDiffDate,
+			lastDiffContent,
+			webContext
+		);
+
+		// Cache intermediate results before synthesis
+		_stageCache = {
+			timestamp: Date.now(),
+			profileHash: computeProfileHash(options),
+			feedContext,
+			webContext,
+			prompt
+		};
 	}
 
-	// Process web search results
-	const webContext = webSearchResults.length > 0
-		? formatWebSearchForPrompt(webSearchResults)
-		: '';
-
-	// Build prompt and synthesize diff
-	const prompt = buildPrompt(
-		{ ...currentProfile, depth: selectedDepth },
-		feedContext,
-		lastDiffDate,
-		lastDiffContent,
-		webContext
-	);
-
-	const synthesisProvider = currentProfile.providerSelections?.synthesis || 'anthropic';
+	const synthesisProvider = profile.providerSelections?.synthesis || 'anthropic';
 	const maxTokens = DEPTH_TOKEN_LIMITS[selectedDepth] || 8192;
 
 	const { title, content: rawContent, cost } = await synthesizeDiff(
@@ -163,6 +219,9 @@ export async function generateDiffContent(options: GenerateOptions): Promise<Gen
 		prompt,
 		maxTokens
 	);
+
+	// Clear cache on successful synthesis
+	_stageCache = null;
 
 	const cleanedContent = cleanDiffContent(rawContent);
 
