@@ -49,9 +49,13 @@
 				<span class="streak-fire-large">&#128293;</span>
 				<div class="streak-info">
 					<span class="streak-count-large">{streak.streak} diff streak</span>
-					{#if streak.expiresInDays > 0}
+					{#if streak.expiresInDays <= 2}
+						<span class="streak-expires streak-expires-warning">
+							{streak.expiresInDays === 0 ? 'Expires today' : streak.expiresInDays === 1 ? 'Expires tomorrow' : `Expires in ${streak.expiresInDays} days`}
+						</span>
+					{:else if streak.startDate}
 						<span class="streak-expires">
-							{streak.expiresInDays === 1 ? 'Expires tomorrow' : `Expires in ${streak.expiresInDays} days`}
+							Since {new Date(streak.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
 						</span>
 					{/if}
 				</div>
@@ -216,6 +220,10 @@
 	.streak-expires {
 		font-size: 0.8rem;
 		color: var(--text-subtle);
+	}
+
+	.streak-expires-warning {
+		color: var(--danger);
 	}
 
 	.streak-calendar {
