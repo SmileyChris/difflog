@@ -169,6 +169,11 @@
 			const paragraph = container.querySelector(`[data-p="${pIndex}"]`) as HTMLElement;
 			if (!paragraph) return;
 
+			const section = paragraph.closest('details.md-section');
+			if (section && !section.hasAttribute('open')) {
+				section.setAttribute('open', '');
+			}
+
 			paragraph.scrollIntoView({ behavior: 'smooth', block: 'center' });
 			paragraph.classList.add('bookmark-highlight');
 			paragraph.addEventListener(

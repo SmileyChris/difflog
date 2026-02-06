@@ -15,8 +15,50 @@
 
 	const html = $derived(diff?.content ? renderMarkdown(diff.content) : '');
 	const stars = $derived(getStars());
-
+	const hasSections = $derived(html.includes('class="md-section"'));
 	let contentElement: HTMLElement | null = $state(null);
+
+	const ANIM_MS = 200;
+
+	function animateSection(details: Element, open: boolean) {
+		const content = details.querySelector('.md-section-content') as HTMLElement;
+		if (!content) {
+			// Fallback: just toggle
+			if (open) details.setAttribute('open', '');
+			else details.removeAttribute('open');
+			return;
+		}
+
+		if (open) {
+			details.setAttribute('open', '');
+			const h = content.scrollHeight;
+			content.animate(
+				{ height: ['0px', h + 'px'] },
+				{ duration: ANIM_MS, easing: 'ease' }
+			);
+		} else {
+			details.classList.add('closing');
+			const h = content.scrollHeight;
+			const anim = content.animate(
+				{ height: [h + 'px', '0px'] },
+				{ duration: ANIM_MS, easing: 'ease' }
+			);
+			anim.onfinish = () => {
+				details.removeAttribute('open');
+				details.classList.remove('closing');
+			};
+		}
+	}
+
+	function handleSummaryClick(e: MouseEvent) {
+		const summary = (e.target as HTMLElement).closest('summary.md-h2');
+		if (!summary) return;
+		const details = summary.parentElement as HTMLDetailsElement;
+		if (!details?.classList.contains('md-section')) return;
+
+		e.preventDefault();
+		animateSection(details, !details.open);
+	}
 
 	// Track which pIndex to refocus after effect recreates buttons
 	let pendingFocusPIndex: number | null = null;
@@ -47,6 +89,28 @@
 		document.body.appendChild(toast);
 		toast.addEventListener('animationend', () => toast.remove());
 	}
+
+	// Inject paragraph counts into section summaries
+	$effect(() => {
+		if (!contentElement || !hasSections) return;
+		void html;
+
+		contentElement.querySelectorAll('.md-section-count').forEach((s) => s.remove());
+
+		contentElement.querySelectorAll('details.md-section').forEach((details) => {
+			const summary = details.querySelector('summary.md-h2');
+			const content = details.querySelector('.md-section-content');
+			if (!summary || !content) return;
+
+			const count = content.querySelectorAll('[data-p]').length;
+			if (count === 0) return;
+
+			const span = document.createElement('span');
+			span.className = 'md-section-count';
+			span.textContent = `${count}`;
+			summary.appendChild(span);
+		});
+	});
 
 	// Reactively inject bookmark buttons when html, stars, or diff changes
 	$effect(() => {
@@ -107,7 +171,10 @@
 	{#if titleRow}
 		{@render titleRow()}
 	{/if}
-	<div class="diff-content" bind:this={contentElement}>
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="diff-content" bind:this={contentElement} onclick={handleSummaryClick}>
 		{@html html}
 	</div>
 </div>
+

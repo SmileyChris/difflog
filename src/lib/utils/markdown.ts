@@ -228,14 +228,20 @@ export function renderMarkdown(text: string, citations?: Citation[]): string {
   const blocks = parseBlocks(text);
   let html = '';
   let pIndex = 0;
+  let inSection = false;
 
   for (const block of blocks) {
     switch (block.type) {
       case 'h1':
+        if (inSection) { html += `</div>\n</details>\n`; inSection = false; }
         html += `<h1 class="md-h1">${parseInline(block.content!)}</h1>\n`;
         break;
       case 'h2':
-        html += `<h2 class="md-h2">${parseInline(block.content!)}</h2>\n`;
+        if (inSection) html += `</div>\n</details>\n`;
+        html += `<details class="md-section" open>\n`;
+        html += `<summary class="md-h2">${parseInline(block.content!)}</summary>\n`;
+        html += `<div class="md-section-content">\n`;
+        inSection = true;
         break;
       case 'h3':
         html += `<h3 class="md-h3">${parseInline(block.content!)}</h3>\n`;
@@ -254,6 +260,10 @@ export function renderMarkdown(text: string, citations?: Citation[]): string {
         html += `<p class="md-p" data-p="${pIndex++}">${parseInline(block.content!)}</p>\n`;
         break;
     }
+  }
+
+  if (inSection) {
+    html += `</div>\n</details>\n`;
   }
 
   if (citations && citations.length > 0) {

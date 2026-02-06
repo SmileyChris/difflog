@@ -1420,6 +1420,58 @@ button:disabled {
   border-bottom: 1px solid var(--md-border);
 }
 
+.md-section {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.md-section > summary.md-h2 {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.md-section > summary.md-h2::-webkit-details-marker {
+  display: none;
+}
+
+.md-section-count {
+  font-size: 0.7rem;
+  color: var(--text-hint);
+  font-weight: 400;
+  margin-left: auto;
+}
+
+.md-section > summary.md-h2::after {
+  content: '';
+  display: inline-block;
+  width: 0.35em;
+  height: 0.35em;
+  border-right: 1.5px solid var(--text-hint);
+  border-bottom: 1.5px solid var(--text-hint);
+  opacity: 0.5;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.md-section:not([open]) > summary.md-h2::after,
+.md-section.closing > summary.md-h2::after {
+  transform: rotate(-45deg);
+}
+
+.md-section > summary.md-h2:hover {
+  color: var(--accent-hover);
+}
+
+.md-section-content {
+  overflow: hidden;
+}
+
+
 .md-h3 {
   font-size: 0.95rem;
   font-weight: 600;
@@ -1781,8 +1833,8 @@ kbd {
   border-radius: var(--radius-sm);
 }
 
-.diff-content .md-p:hover,
-.diff-content .md-list-item:hover {
+.diff-content .md-p:has(a):hover,
+.diff-content .md-list-item:has(a):hover {
   background: var(--accent-bg);
 }
 

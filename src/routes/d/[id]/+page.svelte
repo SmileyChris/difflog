@@ -29,6 +29,12 @@
 			setTimeout(() => {
 				const el = document.querySelector(`[data-p="${data.scrollToPIndex}"]`) as HTMLElement;
 				if (!el) return;
+
+				const section = el.closest('details.md-section');
+				if (section && !section.hasAttribute('open')) {
+					section.setAttribute('open', '');
+				}
+
 				el.classList.add('bookmark-highlight-persistent');
 				el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 			}, 200);
