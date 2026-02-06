@@ -603,24 +603,25 @@ main.narrow > header {
 }
 
 .btn-step-nav {
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
+  padding: 0 1rem;
+  height: calc(0.9rem + 1.75rem);
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  color: var(--text-subtle);
-  font-size: 0.9rem;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  color: var(--accent);
+  font-size: 1.5rem;
+  font-weight: 900;
+  line-height: 1;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .btn-step-nav:hover:not(:disabled) {
-  border-color: var(--accent-border);
-  color: var(--text-heading);
+  border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .btn-step-nav:disabled {

@@ -724,8 +724,8 @@
 				{saving ? 'Saving...' : 'Save'}
 			</button>
 			<div class="step-nav-btns">
-				<button class="btn-step-nav" onclick={prevStep} disabled={step === 0}>&larr;</button>
-				<button class="btn-step-nav" onclick={nextStep} disabled={step === totalSteps - 1}>&rarr;</button>
+				<button class="btn-step-nav" onclick={prevStep} disabled={step === 0}>&#8249;</button>
+				<button class="btn-step-nav" onclick={nextStep} disabled={step === totalSteps - 1}>&#8250;</button>
 			</div>
 		{:else}
 			<!-- Create mode: Continue until last step, then Start -->

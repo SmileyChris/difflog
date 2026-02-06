@@ -294,14 +294,14 @@
 		<div class="diff-footer">
 			{#if prevDiff()}
 				<button class="btn-secondary btn-sm" onclick={() => (diff = prevDiff())}>
-					&larr; Older
+					&#8249; Older
 				</button>
 			{:else}
 				<span></span>
 			{/if}
 			{#if nextDiff()}
 				<button class="btn-secondary btn-sm" onclick={() => (diff = nextDiff())}>
-					Newer &rarr;
+					Newer &#8250;
 				</button>
 			{:else if !isArchive}
 				<button class="btn-primary btn-sm btn-branded" onclick={() => goto('/generate')} aria-busy={generating.value || undefined}>
