@@ -241,6 +241,14 @@ const DIFF_SCHEMA: DiffSchema = {
 };
 
 /**
+ * Extract a title from diff markdown by grabbing the first ## heading text
+ */
+function extractTitle(markdown: string): string {
+  const match = markdown.match(/^##\s+(?:\S+\s+)?(.+)$/m);
+  return match ? match[1].trim().slice(0, 60) : '';
+}
+
+/**
  * Synthesize a diff using the specified provider
  */
 export async function synthesizeDiff(
@@ -332,19 +340,13 @@ async function synthesizeWithAnthropic(
 }
 
 /**
- * DeepSeek synthesis using deepseek-chat with JSON mode
+ * DeepSeek synthesis using deepseek-chat with plain text output
  */
 async function synthesizeWithDeepSeek(
   apiKey: string,
   prompt: string,
   maxTokens: number
 ): Promise<DiffResult> {
-  const systemPrompt = `You are a developer intelligence reporter. Respond with valid JSON matching this schema:
-${JSON.stringify(DIFF_SCHEMA, null, 2)}
-
-The title should be 3-8 words capturing the main theme.
-The content should be full markdown starting with the Intelligence Window date line.`;
-
   const res = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: {
@@ -354,9 +356,8 @@ The content should be full markdown starting with the Intelligence Window date l
     body: JSON.stringify({
       model: 'deepseek-chat',
       max_tokens: maxTokens,
-      response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: 'You are a developer intelligence reporter. Output markdown directly, no wrappers or code fences.' },
         { role: 'user', content: prompt }
       ],
     }),
@@ -381,11 +382,6 @@ The content should be full markdown starting with the Intelligence Window date l
     throw new Error('No content returned from DeepSeek API');
   }
 
-  const parsed = JSON.parse(content);
-  if (!parsed.content) {
-    throw new Error('Invalid response format from DeepSeek API');
-  }
-
   // Calculate cost (DeepSeek: $0.14/1M input, $0.28/1M output)
   const usage = result.usage;
   const cost = usage
@@ -393,14 +389,14 @@ The content should be full markdown starting with the Intelligence Window date l
     : undefined;
 
   return {
-    title: parsed.title || '',
-    content: parsed.content,
+    title: extractTitle(content),
+    content,
     cost,
   };
 }
 
 /**
- * Gemini synthesis using gemini-2.5-flash with JSON schema
+ * Gemini synthesis using gemini-2.5-flash with plain text output
  */
 async function synthesizeWithGemini(
   apiKey: string,
@@ -414,11 +410,12 @@ async function synthesizeWithGemini(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: 'You are a developer intelligence reporter. Output markdown directly, no wrappers or code fences.' }],
+        },
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           maxOutputTokens: maxTokens + thinkingBudget,
-          responseMimeType: 'application/json',
-          responseSchema: DIFF_SCHEMA,
           thinkingConfig: { thinkingBudget: thinkingBudget },
         },
       }),
@@ -448,20 +445,15 @@ async function synthesizeWithGemini(
     throw new Error('No content returned from Gemini API');
   }
 
-  const parsed = JSON.parse(content);
-  if (!parsed.content) {
-    throw new Error('Invalid response format from Gemini API');
-  }
-
-  // Calculate cost (Gemini 2.0 Flash: $0.10/1M input, $0.40/1M output)
+  // Calculate cost (Gemini 2.5 Flash: $0.15/1M input, $0.60/1M output)
   const usage = result.usageMetadata;
   const cost = usage
-    ? (usage.promptTokenCount * 0.10 + usage.candidatesTokenCount * 0.40) / 1_000_000
+    ? (usage.promptTokenCount * 0.15 + usage.candidatesTokenCount * 0.60) / 1_000_000
     : undefined;
 
   return {
-    title: parsed.title || '',
-    content: parsed.content,
+    title: extractTitle(content),
+    content,
     cost,
   };
 }
@@ -474,12 +466,6 @@ async function synthesizeWithPerplexity(
   prompt: string,
   maxTokens: number
 ): Promise<DiffResult> {
-  const systemPrompt = `You are a developer intelligence reporter. Respond with valid JSON matching this schema:
-${JSON.stringify(DIFF_SCHEMA, null, 2)}
-
-The title should be 3-8 words capturing the main theme.
-The content should be full markdown starting with the Intelligence Window date line.`;
-
   const res = await fetch('https://api.perplexity.ai/chat/completions', {
     method: 'POST',
     headers: {
@@ -490,7 +476,7 @@ The content should be full markdown starting with the Intelligence Window date l
       model: 'sonar-pro',
       max_tokens: maxTokens,
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: 'You are a developer intelligence reporter. Output markdown directly, no wrappers or code fences.' },
         { role: 'user', content: prompt }
       ],
     }),
@@ -515,18 +501,6 @@ The content should be full markdown starting with the Intelligence Window date l
     throw new Error('No content returned from Perplexity API');
   }
 
-  // Perplexity may return markdown-wrapped JSON, try to extract it
-  let jsonContent = content;
-  const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    jsonContent = jsonMatch[1].trim();
-  }
-
-  const parsed = JSON.parse(jsonContent);
-  if (!parsed.content) {
-    throw new Error('Invalid response format from Perplexity API');
-  }
-
   // Calculate cost (Perplexity sonar-pro: $3/1M input, $15/1M output)
   const usage = result.usage;
   const cost = usage
@@ -534,8 +508,8 @@ The content should be full markdown starting with the Intelligence Window date l
     : undefined;
 
   return {
-    title: parsed.title || '',
-    content: parsed.content,
+    title: extractTitle(content),
+    content,
     cost,
   };
 }

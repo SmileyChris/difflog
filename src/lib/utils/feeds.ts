@@ -9,7 +9,7 @@ interface Profile {
   frameworks: string[];
   tools: string[];
   topics: string[];
-  depth: 'quick' | 'standard' | 'deep';
+  depth: GenerationDepth;
   resolvedMappings?: Record<string, ResolvedMapping>;
 }
 
@@ -657,7 +657,7 @@ export function formatCuratedForPrompt(curatedText: string): string {
   return `## CURATED FEED DATA (Use these as sources — link to actual URLs)\n\n${curatedText}`;
 }
 
-export function formatFeedsForPrompt(feeds: FeedResults, depth: string): string {
+export function formatFeedsForPrompt(feeds: FeedResults, depth: GenerationDepth): string {
   const items = getAllFeedItems(feeds);
   if (items.length === 0) return '';
   return `## REAL-TIME FEED DATA (Use these as sources — link to actual URLs)\n\n${formatItems(items)}`;
