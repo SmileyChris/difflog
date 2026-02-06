@@ -22,7 +22,7 @@
 			<span class="splash-feature-icon">&#10024;</span>
 			<div>
 				<strong>Smart filtering</strong>
-				<span>Claude filters the noise for you</span>
+				<span>AI filters the noise for you</span>
 			</div>
 		</div>
 		<div class="splash-feature">
@@ -50,6 +50,6 @@
 	{/if}
 
 	<p class="splash-note">
-		Bring your own <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic API key</a> — ~$0.05/diff, full privacy
+		Bring your own AI platform key — ~$0.05/diff, full privacy
 	</p>
 </div>

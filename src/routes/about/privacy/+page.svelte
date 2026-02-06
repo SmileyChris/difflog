@@ -25,7 +25,7 @@
 
 	<section>
 		<h3>API Key Storage</h3>
-		<p>Your Anthropic API key is stored only in your browser's localStorage. When you generate a diff, your browser makes a direct request to Anthropic's API — our servers never see your key. This means you have full control over your API usage and costs.</p>
+		<p>Your AI platform API keys are stored only in your browser's localStorage. When you generate a diff, your browser makes a direct request to the provider's API — our servers never see your keys. This means you have full control over your API usage and costs.</p>
 	</section>
 
 	<section>
@@ -48,7 +48,7 @@
 		<h3>Third-Party Services</h3>
 		<p>diff·log interacts with the following external services:</p>
 		<ul>
-			<li><strong>Anthropic API</strong> — For generating diffs. Your browser communicates directly with Anthropic; we don't proxy these requests.</li>
+			<li><strong>AI providers</strong> (Anthropic, OpenAI, Google) — For generating diffs. Your browser communicates directly with the provider; we don't proxy these requests.</li>
 			<li><strong>Feed aggregator</strong> — Our server fetches public RSS/API data from sources like HN, Reddit, and GitHub to provide context for diff generation. No personal data is sent.</li>
 			<li><strong>Cloudflare</strong> — For hosting, optional sync storage (encrypted data only), and privacy-first web analytics.</li>
 		</ul>

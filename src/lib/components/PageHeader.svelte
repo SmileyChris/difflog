@@ -6,12 +6,13 @@
 	interface Props {
 		pageTitle?: string;
 		subtitle?: string;
+		subtitleContent?: Snippet;
 		icon?: 'diamond' | 'user' | 'square' | 'star';
 		iconSpinning?: boolean;
 		children?: Snippet;
 	}
 
-	let { pageTitle, subtitle, icon = 'diamond', iconSpinning = false, children }: Props = $props();
+	let { pageTitle, subtitle, subtitleContent, icon = 'diamond', iconSpinning = false, children }: Props = $props();
 
 	const spinning = $derived(isGenerating() || iconSpinning);
 </script>
@@ -43,7 +44,9 @@
 					{pageTitle}
 				{/if}
 			</h1>
-			{#if subtitle}
+			{#if subtitleContent}
+				{@render subtitleContent()}
+			{:else if subtitle}
 				<p class="header-date">{subtitle}</p>
 			{/if}
 		</div>

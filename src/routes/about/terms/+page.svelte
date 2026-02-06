@@ -12,7 +12,7 @@
 	<div class="about-tldr">
 		<h3 class="about-tldr-title">TL;DR <span class="about-tldr-aside">(because you're probably not going to read them carefully)</span></h3>
 		<ul class="about-tldr-list">
-			<li>You handle your own Anthropic API usage and costs</li>
+			<li>You handle your own AI platform API usage and costs</li>
 			<li>Your content is yours</li>
 			<li>As-is, no warranties, no liability for damages</li>
 		</ul>
@@ -20,18 +20,18 @@
 
 	<section>
 		<h3>Service Description</h3>
-		<p>diff·log is a tool that generates personalized developer ecosystem summaries using the Anthropic Claude API. The service aggregates publicly available information from various developer-focused sources and uses AI to create curated summaries based on your preferences.</p>
+		<p>diff·log is a tool that generates personalized developer ecosystem summaries using AI APIs (such as Anthropic, OpenAI, and Google). The service aggregates publicly available information from various developer-focused sources and uses AI to create curated summaries based on your preferences.</p>
 	</section>
 
 	<section>
 		<h3>API Key &amp; Costs</h3>
-		<p>diff·log requires you to provide your own Anthropic API key. You are solely responsible for:</p>
+		<p>diff·log requires you to provide your own AI platform API key (Anthropic, OpenAI, or Google). You are solely responsible for:</p>
 		<ul>
-			<li>Keeping your API key secure</li>
+			<li>Keeping your API keys secure</li>
 			<li>All charges incurred through your API key usage</li>
-			<li>Compliance with Anthropic's terms of service</li>
+			<li>Compliance with your chosen provider's terms of service</li>
 		</ul>
-		<p>diff·log does not have access to your API key — it's stored only in your browser and calls are made directly to Anthropic.</p>
+		<p>diff·log does not have access to your API keys — they are stored only in your browser and calls are made directly to the provider.</p>
 	</section>
 
 	<section>
@@ -62,7 +62,7 @@
 		<ul>
 			<li>Temporarily unavailable for maintenance</li>
 			<li>Modified, updated, or discontinued at any time</li>
-			<li>Affected by third-party service outages (Anthropic, Cloudflare, etc.)</li>
+			<li>Affected by third-party service outages (AI providers, Cloudflare, etc.)</li>
 		</ul>
 	</section>
 
