@@ -179,7 +179,7 @@
 			<p class="error-detail">{generationError.value.replace(/^Generation failed:\s*/, '')}</p>
 			<div class="error-actions">
 				<button class="btn-primary btn-lg btn-branded" onclick={startGeneration}>
-					{hasStageCache() ? '&#9670; Resume' : 'Try Again'}
+					{hasStageCache() ? 'Resume' : 'Try Again'}
 				</button>
 				<div class="error-actions-secondary">
 					{#if hasStageCache()}

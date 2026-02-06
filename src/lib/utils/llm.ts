@@ -137,6 +137,7 @@ async function completeWithGemini<T>(
             maxOutputTokens: maxTokens,
             responseMimeType: 'application/json',
             responseSchema: schema,
+            thinkingConfig: { thinkingBudget: 0 },
           },
         }),
       }
@@ -403,6 +404,7 @@ async function synthesizeWithGemini(
   prompt: string,
   maxTokens: number
 ): Promise<DiffResult> {
+  const thinkingBudget = 8192;
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
@@ -411,9 +413,10 @@ async function synthesizeWithGemini(
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          maxOutputTokens: maxTokens,
+          maxOutputTokens: maxTokens + thinkingBudget,
           responseMimeType: 'application/json',
           responseSchema: DIFF_SCHEMA,
+          thinkingConfig: { thinkingBudget: thinkingBudget },
         },
       }),
     }
