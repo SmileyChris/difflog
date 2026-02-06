@@ -709,7 +709,7 @@
 		{#if isEditing}
 			<button class="btn-secondary" onclick={cancelWizard}>Cancel</button>
 		{:else if step > 0}
-			<button class="btn-secondary" onclick={prevStep}>&larr; Back</button>
+			<button class="btn-secondary" onclick={prevStep}>&#8249; Back</button>
 		{:else if step === 0 && !hasExistingProfiles}
 			<a href="/about" class="btn-secondary">About</a>
 		{:else}
@@ -735,7 +735,7 @@
 					onclick={nextStep}
 					disabled={(step === 0 && !formData.name.trim()) || (step === 1 && !isProviderConfigComplete) || saving}
 				>
-					{saving ? 'Creating...' : 'Continue →'}
+					{saving ? 'Creating...' : 'Continue ›'}
 				</button>
 			{:else}
 				<button class="btn-primary" onclick={saveProfile} disabled={saving}>
