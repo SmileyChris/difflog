@@ -1,0 +1,79 @@
+{
+  "versions": [
+    {
+      "version": "3.0",
+      "date": "2026-02-06",
+      "summary": "Rebuilt from the ground up",
+      "description": "Full rewrite in SvelteKit. Multi-provider support for mixing AI backends across search, curation, and synthesis stages.",
+      "changes": [
+        { "type": "feature", "text": "Multi-provider support — use Anthropic, DeepSeek, Gemini, Perplexity, or Serper for each generation stage", "in": "3.0.0" },
+        { "type": "feature", "text": "Background generation with resume-from-failure and stage caching", "in": "3.0.0" },
+        { "type": "feature", "text": "Deep-link paragraph sharing on public diffs with persistent highlight", "in": "3.0.0" },
+        { "type": "feature", "text": "Keyboard-accessible starring with visible focus indicators", "in": "3.0.0" }
+      ]
+    },
+    {
+      "version": "2.0",
+      "date": "2026-01-31",
+      "summary": "Streak tracking and stability improvements",
+      "description": "Track your diff·log usage with a new streak system. See your weekly activity at a glance and build consistency in staying up to date.",
+      "changes": [
+        { "type": "feature", "text": "Streak tracking with weekly activity calendar", "in": "2.0.0" },
+        { "type": "feature", "text": "Ctrl+click demo profile creation on setup", "in": "2.0.0" },
+        { "type": "fix", "text": "Star hashing and Alpine.js key generation", "in": "2.0.0" },
+        { "type": "fix", "text": "Streak calendar shows full history from first diff", "in": "2.0.1" },
+        { "type": "fix", "text": "Markdown links with nested brackets like [pdf] now render correctly", "in": "2.0.2" },
+        { "type": "fix", "text": "Public share page shows title as main heading, removes redundant date", "in": "2.0.3" },
+        { "type": "fix", "text": "Dynamic token limits based on depth setting prevent truncated responses", "in": "2.0.4" }
+      ]
+    },
+    {
+      "version": "1.3",
+      "date": "2026-01-20",
+      "summary": "Share your diffs with the world",
+      "description": "Make any diff public with a single click. Share your personalized tech briefings with colleagues or on social media.",
+      "changes": [
+        { "type": "feature", "text": "Public diff sharing with shareable links", "in": "1.3.0" },
+        { "type": "feature", "text": "API cost tracking for each diff", "in": "1.3.0" },
+        { "type": "feature", "text": "Selective sync to reduce bandwidth", "in": "1.3.0" },
+        { "type": "fix", "text": "Share button visibility with ad blockers", "in": "1.3.1" }
+      ]
+    },
+    {
+      "version": "1.2",
+      "date": "2026-01-10",
+      "summary": "Smarter feed curation and reminders",
+      "description": "AI now curates your feeds for relevance, searches the web for breaking news, and you can set up browser notifications to never miss a diff.",
+      "changes": [
+        { "type": "feature", "text": "AI-powered feed curation for relevance", "in": "1.2.0" },
+        { "type": "feature", "text": "Web search for breaking news and updates", "in": "1.2.0" },
+        { "type": "feature", "text": "Browser notification reminders", "in": "1.2.0" },
+        { "type": "feature", "text": "Random wait tips while generating", "in": "1.2.0" }
+      ]
+    },
+    {
+      "version": "1.1",
+      "date": "2025-12-20",
+      "summary": "Multi-device sync and smoother navigation",
+      "description": "Sync your profiles and diffs across devices with end-to-end encryption. Plus, silky smooth page transitions.",
+      "changes": [
+        { "type": "feature", "text": "Cloud sync with password-protected encryption", "in": "1.1.0" },
+        { "type": "feature", "text": "CSS View Transitions for smooth navigation", "in": "1.1.0" },
+        { "type": "feature", "text": "Improved profile import and management", "in": "1.1.0" },
+        { "type": "fix", "text": "Mobile header layout improvements", "in": "1.1.1" }
+      ]
+    },
+    {
+      "version": "1.0",
+      "date": "2025-12-01",
+      "summary": "Initial release",
+      "description": "Your personalized developer intelligence diff. Set up a profile with your tech stack, interests, and depth preference, then generate daily briefings powered by Claude.",
+      "changes": [
+        { "type": "feature", "text": "Profile-based personalization", "in": "1.0.0" },
+        { "type": "feature", "text": "Multi-source feeds (HN, Reddit, GitHub, Lobsters, Dev.to)", "in": "1.0.0" },
+        { "type": "feature", "text": "Star and archive your favorite insights", "in": "1.0.0" },
+        { "type": "feature", "text": "Dark theme with accent color", "in": "1.0.0" }
+      ]
+    }
+  ]
+}

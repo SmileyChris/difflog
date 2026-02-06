@@ -1,0 +1,239 @@
+<script lang="ts">
+	import { onMount, tick } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { profiles, activeProfileId } from '$lib/stores/profiles.svelte';
+	import { histories } from '$lib/stores/history.svelte';
+	import { bookmarks } from '$lib/stores/stars.svelte';
+	import {
+		switchProfileWithSync,
+		deleteProfileWithSync,
+		hasRememberedPasswordFor
+	} from '$lib/stores/sync.svelte';
+	import { Card, IconButton, SyncDropdown, SiteFooter, PageHeader } from '$lib/components';
+	import DetailRow from './DetailRow.svelte';
+	import {
+		ImportProfileModal,
+		ShareProfileModal,
+		ShareInfoModal,
+		PasswordUpdateModal
+	} from './modals';
+
+	// Modal visibility state
+	let showImport = $state(false);
+	let showShare = $state(false);
+	let showInfo = $state(false);
+	let showPasswordUpdate = $state(false);
+
+	// Modal context (which profile the modal is operating on)
+	let modalProfileId = $state('');
+
+	onMount(() => {
+		if (sessionStorage.getItem('openImport')) {
+			sessionStorage.removeItem('openImport');
+			showImport = true;
+		}
+	});
+
+	function handleSwitchProfile(id: string) {
+		switchProfileWithSync(id);
+		goto('/');
+	}
+
+	function handleDeleteProfile(id: string) {
+		const profile = profiles.value[id];
+		if (confirm(`Delete "${profile?.name || 'this profile'}"? This cannot be undone.`)) {
+			deleteProfileWithSync(id);
+		}
+	}
+
+	async function handleEditProfile(id: string, step = 0) {
+		switchProfileWithSync(id);
+		await tick();
+		goto(`/setup?edit=${step}`);
+	}
+
+	function startShare(id: string) {
+		modalProfileId = id;
+		showShare = true;
+	}
+
+	function showShareInfo(id: string) {
+		modalProfileId = id;
+		showInfo = true;
+	}
+
+	function startPasswordUpdate(id: string) {
+		modalProfileId = id;
+		showPasswordUpdate = true;
+	}
+
+	function formatSyncDate(dateStr: string): string {
+		return new Date(dateStr).toLocaleDateString(undefined, {
+			day: 'numeric',
+			month: 'short',
+			year: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit'
+		});
+	}
+
+	function getDiffCount(id: string): number {
+		return (histories.value[id] || []).length;
+	}
+
+	function getStarCount(id: string): number {
+		return (bookmarks.value[id] || []).length;
+	}
+</script>
+
+<svelte:head>
+	<title>diff·log - Profiles</title>
+</svelte:head>
+
+<main id="content">
+	<PageHeader pageTitle="profiles" subtitle="Manage your profiles" icon="user" />
+
+	{#if Object.keys(profiles.value).length > 0}
+		<div class="profiles-section">
+			<h2 class="profiles-section-title">Your Profiles</h2>
+			{#if Object.keys(profiles.value).length > 1}
+				<p class="profiles-section-desc">Click to switch</p>
+			{/if}
+
+			<div class="profiles-list">
+				{#each Object.entries(profiles.value) as [id, profile] (id)}
+					<Card clickable={true} active={id === activeProfileId.value} onclick={() => handleSwitchProfile(id)}>
+						{#snippet header()}
+							<div class="profile-card-icon">
+								<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+									<circle cx="12" cy="11" r="4" />
+									<path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+								</svg>
+							</div>
+							<div class="profile-card-full-title">
+								<div class="profile-card-name">
+									<span>{profile.name}</span>
+									{#if profile.syncedAt}
+										<span class="profile-status profile-status-shared">synced {formatSyncDate(profile.syncedAt)}</span>
+										<button class="profile-status-share" onclick={(e) => { e.stopPropagation(); showShareInfo(id); }}>&#8599; share</button>
+									{:else if profile.syncedAt === null}
+										<span class="profile-status profile-status-warning" title="Profile not found on server">not on server</span>
+									{:else}
+										<span class="profile-status profile-status-local">local</span>
+									{/if}
+									{#if !profile.syncedAt}
+										<button class="profile-status-share" onclick={(e) => { e.stopPropagation(); startShare(id); }}>&#8599; upload</button>
+									{/if}
+								</div>
+								<div class="profile-card-id">
+									<span>{id.slice(0, 8)}</span>
+									{#if id === activeProfileId.value}
+										<SyncDropdown />
+									{:else if profile.syncedAt}
+										<span class="sync-status-static" title={hasRememberedPasswordFor(id) ? 'Synced' : 'Password required'}>
+											<span class="sync-status-cloud">&#9729;</span>
+											{#if !hasRememberedPasswordFor(id)}
+												<span class="sync-status-indicator sync-status-pending">&#9670;</span>
+											{/if}
+										</span>
+									{/if}
+								</div>
+							</div>
+							<div class="profile-card-full-actions">
+								<button
+									class="profile-card-edit"
+									title="Edit profile"
+									onclick={(e) => { e.stopPropagation(); handleEditProfile(id); }}
+								>&#9998;</button>
+								{#if profile.syncedAt}
+									<IconButton
+										icon="***"
+										variant="subtle"
+										title="Change password"
+										onclick={(e) => { e.stopPropagation(); startPasswordUpdate(id); }}
+									/>
+								{/if}
+								<IconButton
+									icon="×"
+									variant="danger"
+									title="Delete profile"
+									onclick={(e) => { e.stopPropagation(); handleDeleteProfile(id); }}
+								/>
+							</div>
+						{/snippet}
+
+						{#snippet details()}
+							{#if profile.languages?.length}
+								<DetailRow label="Languages" value={profile.languages.join(', ')} onedit={() => handleEditProfile(id, 2)} />
+							{/if}
+							{#if profile.frameworks?.length}
+								<DetailRow label="Frameworks" value={profile.frameworks.join(', ')} onedit={() => handleEditProfile(id, 3)} />
+							{/if}
+							{#if profile.tools?.length}
+								<DetailRow label="Tools" value={profile.tools.join(', ')} onedit={() => handleEditProfile(id, 4)} />
+							{/if}
+							{#if profile.topics?.length}
+								<DetailRow label="Topics" value={profile.topics.join(', ')} onedit={() => handleEditProfile(id, 5)} />
+							{/if}
+							<div class="profile-detail-row profile-detail-counts">
+								<a href="/archive" class="profile-count profile-count-link" onclick={(e) => { e.stopPropagation(); if (activeProfileId.value !== id) switchProfileWithSync(id); }}>
+									<span class="profile-count-icon">&#9632;</span>
+									<span class="link-secondary">{getDiffCount(id)} {getDiffCount(id) === 1 ? 'diff' : 'diffs'}</span>
+								</a>
+								{#if getStarCount(id) > 0}
+									<a href="/stars" class="profile-count profile-count-link" onclick={(e) => { e.stopPropagation(); if (activeProfileId.value !== id) switchProfileWithSync(id); }}>
+										<span class="profile-count-icon">★</span>
+										<span class="link-secondary">{getStarCount(id)} {getStarCount(id) === 1 ? 'star' : 'stars'}</span>
+									</a>
+								{/if}
+							</div>
+						{/snippet}
+					</Card>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	<!-- Action Cards -->
+	<div class="profiles-actions">
+		<a href="/setup" style="text-decoration: none;">
+			<Card variant="action" clickable={true}>
+				<div class="profile-card-action-icon">+</div>
+				<div class="profile-card-name">Create New</div>
+				<div class="profile-card-id">Configure your personalized diff</div>
+			</Card>
+		</a>
+
+		<Card variant="action" clickable={true} onclick={() => (showImport = true)}>
+			<div class="profile-card-action-icon">&#8595;</div>
+			<div class="profile-card-name">Import Existing</div>
+			<div class="profile-card-id">Add from another device</div>
+		</Card>
+	</div>
+
+	<!-- Modals -->
+	<ImportProfileModal
+		bind:open={showImport}
+		onclose={() => {}}
+	/>
+
+	<ShareProfileModal
+		bind:open={showShare}
+		profileId={modalProfileId}
+		onclose={() => {}}
+	/>
+
+	<ShareInfoModal
+		bind:open={showInfo}
+		profileId={modalProfileId}
+		onclose={() => {}}
+	/>
+
+	<PasswordUpdateModal
+		bind:open={showPasswordUpdate}
+		profileId={modalProfileId}
+		onclose={() => {}}
+	/>
+</main>
+
+<SiteFooter version="2.0.4" />
