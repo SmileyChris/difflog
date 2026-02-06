@@ -9,7 +9,11 @@
         { "type": "feature", "text": "Multi-provider support — use Anthropic, DeepSeek, Gemini, Perplexity, or Serper for each generation stage", "in": "3.0.0" },
         { "type": "feature", "text": "Background generation with resume-from-failure and stage caching", "in": "3.0.0" },
         { "type": "feature", "text": "Deep-link paragraph sharing on public diffs with persistent highlight", "in": "3.0.0" },
-        { "type": "feature", "text": "Keyboard-accessible starring with visible focus indicators", "in": "3.0.0" }
+        { "type": "feature", "text": "Keyboard-accessible starring with visible focus indicators", "in": "3.0.0" },
+        { "type": "feature", "text": "New users land directly on the generate page for a smoother first experience", "in": "3.0.1" },
+        { "type": "feature", "text": "Upgraded Gemini models to 2.5 Flash", "in": "3.0.1" },
+        { "type": "fix", "text": "HTML entities no longer appear in Gemini-generated diffs", "in": "3.0.1" },
+        { "type": "fix", "text": "Profile switching during generation no longer causes data corruption", "in": "3.0.1" }
       ]
     },
     {
