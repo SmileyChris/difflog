@@ -1,6 +1,18 @@
 {
   "versions": [
     {
+      "version": "3.0",
+      "date": "2026-02-06",
+      "summary": "Rebuilt from the ground up",
+      "description": "Full rewrite in SvelteKit. Multi-provider support for mixing AI backends across search, curation, and synthesis stages.",
+      "changes": [
+        { "type": "feature", "text": "Multi-provider support — use Anthropic, DeepSeek, Gemini, Perplexity, or Serper for each generation stage", "in": "3.0.0" },
+        { "type": "feature", "text": "Background generation with resume-from-failure and stage caching", "in": "3.0.0" },
+        { "type": "feature", "text": "Deep-link paragraph sharing on public diffs with persistent highlight", "in": "3.0.0" },
+        { "type": "feature", "text": "Keyboard-accessible starring with visible focus indicators", "in": "3.0.0" }
+      ]
+    },
+    {
       "version": "2.0",
       "date": "2026-01-31",
       "summary": "Streak tracking and stability improvements",
