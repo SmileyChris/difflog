@@ -5,9 +5,8 @@
 	import { timeAgo } from '$lib/utils/time';
 	import { Card, HeaderNav, EmptyState, IconButton, SiteFooter, PageHeader } from '$lib/components';
 
-	function goToStar(star: Star) {
-		sessionStorage.setItem('viewDiffId', star.diff_id);
-		sessionStorage.setItem('scrollToPIndex', star.p_index.toString());
+	function starHref(star: Star): string {
+		return `/?diff=${star.diff_id}&p=${star.p_index}`;
 	}
 
 	const stars = $derived(getStars());
@@ -36,7 +35,7 @@
 					{#if starContent}
 						<div class="bookmark-meta">
 							<span class="diff-title-icon">&#9632;</span>
-							<a href="/" class="bookmark-source" onclick={() => goToStar(star)}>
+							<a href={starHref(star)} class="bookmark-source">
 								{starContent.diff_title}
 							</a>
 							<span class="bookmark-dot">&middot;</span>

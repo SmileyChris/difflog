@@ -2,17 +2,15 @@ import { redirect } from '@sveltejs/kit';
 import { profiles, isUnlocked, getProfile } from '$lib/stores/profiles.svelte';
 import { getHistory, type Diff } from '$lib/stores/history.svelte';
 
-export function load() {
+export function load({ url }) {
 	if (!isUnlocked()) {
 		const ids = Object.keys(profiles.value);
 		redirect(302, ids.length > 0 ? '/profiles' : '/about');
 	}
 
-	// Handle deep-link from stars/archive
-	const viewId = sessionStorage.getItem('viewDiffId');
-	const scrollToPIndex = sessionStorage.getItem('scrollToPIndex');
-	sessionStorage.removeItem('viewDiffId');
-	sessionStorage.removeItem('scrollToPIndex');
+	// Handle deep-link from stars/archive via search params
+	const viewId = url.searchParams.get('diff');
+	const scrollParam = url.searchParams.get('p');
 
 	const history = getHistory();
 	let initialDiff: Diff | null = viewId ? (history.find((d) => d.id === viewId) ?? null) : null;
@@ -24,7 +22,7 @@ export function load() {
 
 	return {
 		initialDiff,
-		scrollToPIndex: scrollToPIndex ? parseInt(scrollToPIndex, 10) : null,
+		scrollToPIndex: scrollParam ? parseInt(scrollParam, 10) : null,
 		selectedDepth: getProfile()?.depth || 'standard'
 	};
 }

@@ -7,8 +7,7 @@
 	import { Card, HeaderNav, EmptyState, IconButton, ShareDropdown, SiteFooter, PageHeader } from '$lib/components';
 
 	function goToDiff(diffId: string) {
-		sessionStorage.setItem('viewDiffId', diffId);
-		goto('/');
+		goto(`/?diff=${diffId}`);
 	}
 
 	function formatDate(dateStr: string): string {

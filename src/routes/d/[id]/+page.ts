@@ -8,7 +8,7 @@ interface PublicDiff {
 	profile_name: string;
 }
 
-export const load: PageLoad = async ({ params, fetch }) => {
+export const load: PageLoad = async ({ params, fetch, url }) => {
 	if (!params.id) {
 		return { error: 'No diff ID provided' };
 	}
@@ -24,7 +24,8 @@ export const load: PageLoad = async ({ params, fetch }) => {
 		}
 
 		const diff: PublicDiff = await res.json();
-		return { diff };
+		const scrollParam = url.searchParams.get('p');
+		return { diff, scrollToPIndex: scrollParam ? parseInt(scrollParam, 10) : null };
 	} catch {
 		return { error: 'Failed to load diff' };
 	}

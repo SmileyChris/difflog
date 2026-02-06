@@ -1797,40 +1797,59 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent);
+  background: transparent;
   border: none;
-  font-size: 1rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: #000;
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.2s ease, transform 0.2s ease, filter 0.2s ease;
   z-index: 10;
-  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
 }
 
-.md-p:hover .bookmark-btn,
-.md-list-item:hover .bookmark-btn {
-  opacity: 1;
+/* Unstarred: show ☆ outline on line hover or keyboard focus */
+.md-p:hover .bookmark-btn:not(.bookmark-btn-existing),
+.md-list-item:hover .bookmark-btn:not(.bookmark-btn-existing),
+.bookmark-btn:not(.bookmark-btn-existing):focus-visible {
+  opacity: 0.4;
 }
 
-.bookmark-btn:hover {
+.md-p:hover .bookmark-btn:not(.bookmark-btn-existing)::after,
+.md-list-item:hover .bookmark-btn:not(.bookmark-btn-existing)::after,
+.bookmark-btn:not(.bookmark-btn-existing):focus-visible::after {
+  content: '☆';
+  color: var(--accent);
+}
+
+.bookmark-btn:focus-visible {
+  outline: none;
+}
+
+/* Unstarred: ☆ with + on direct hover */
+.bookmark-btn:not(.bookmark-btn-existing):hover {
+  opacity: 1 !important;
   transform: translateY(-50%) scale(1.2) !important;
-  filter: brightness(1.1) !important;
 }
 
-.bookmark-btn-saved {
-  background: var(--accent) !important;
-  color: #000 !important;
+.bookmark-btn:not(.bookmark-btn-existing):hover::after {
+  content: '☆' !important;
+  color: var(--accent) !important;
+  font-size: 1.8rem !important;
 }
 
-/* Always show existing bookmarks, faded and smaller */
+
+/* Already-starred: filled star, always visible */
 .bookmark-btn-existing {
   background: var(--accent);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
   opacity: 0.4;
   font-size: 0;
-  /* Hide any inner content for solid star */
   transform: translateY(-50%) scale(0.75);
+}
+
+.bookmark-btn-existing:focus-visible {
+  opacity: 0.8;
 }
 
 .md-p:hover .bookmark-btn-existing,
@@ -1841,6 +1860,8 @@ kbd {
 .bookmark-btn-existing:hover {
   opacity: 1 !important;
   font-size: 1.2rem;
+  transform: translateY(-50%) scale(1.2) !important;
+  filter: brightness(1.1) !important;
   /* Show the minus on hover */
 }
 
@@ -1867,6 +1888,88 @@ kbd {
 
   100% {
     background: transparent;
+  }
+}
+
+/* Copy link button for public diffs (same position as star) */
+.copy-link-btn {
+  position: absolute;
+  right: -2.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.2rem;
+  height: 2.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 10;
+}
+
+.copy-link-btn::after {
+  content: '🔗';
+}
+
+.md-p:hover .copy-link-btn,
+.md-list-item:hover .copy-link-btn {
+  opacity: 0.4;
+}
+
+.copy-link-btn:hover {
+  opacity: 1 !important;
+  transform: translateY(-50%) scale(1.2) !important;
+}
+
+/* Persistent highlight for public diff deep-links */
+.bookmark-highlight-persistent {
+  border-left: 2px solid var(--accent);
+  animation: bookmark-settle 2s ease-out forwards;
+}
+
+@keyframes bookmark-settle {
+  0% {
+    background: var(--accent-glow);
+  }
+  100% {
+    background: color-mix(in srgb, var(--accent-glow) 30%, transparent);
+  }
+}
+
+
+/* "Copied" toast that zooms and fades from cursor */
+.copy-toast {
+  position: fixed;
+  transform: translate(-50%, -50%) scale(0.6);
+  pointer-events: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+  z-index: 1000;
+  animation: copy-zoom-fade 1.2s ease-out forwards;
+}
+
+@keyframes copy-zoom-fade {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -150%) scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -200%) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -220%) scale(1.1);
   }
 }
 

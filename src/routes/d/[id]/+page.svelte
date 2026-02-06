@@ -1,12 +1,60 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
-	import { SiteFooter } from '$lib/components';
+	import { SiteFooter, PageHeader } from '$lib/components';
 
 	let { data } = $props();
 
 	const diff = $derived(data.diff);
 	const error = $derived(data.error);
 	const renderedContent = $derived(diff?.content ? renderMarkdown(diff.content) : '');
+
+	let contentElement: HTMLElement | null = $state(null);
+
+	function copyParagraphLink(e: MouseEvent, pIndex: number) {
+		const url = `${window.location.origin}/d/${data.diff!.id}?p=${pIndex}`;
+		navigator.clipboard.writeText(url);
+
+		const toast = document.createElement('span');
+		toast.className = 'copy-toast';
+		toast.textContent = '\u{1F517} Copied';
+		toast.style.left = `${e.clientX}px`;
+		toast.style.top = `${e.clientY}px`;
+		document.body.appendChild(toast);
+		toast.addEventListener('animationend', () => toast.remove());
+	}
+
+	onMount(() => {
+		if (data.scrollToPIndex !== null) {
+			setTimeout(() => {
+				const el = document.querySelector(`[data-p="${data.scrollToPIndex}"]`) as HTMLElement;
+				if (!el) return;
+				el.classList.add('bookmark-highlight-persistent');
+				el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			}, 200);
+		}
+	});
+
+	$effect(() => {
+		if (!contentElement) return;
+
+		contentElement.querySelectorAll('[data-p]').forEach((el) => {
+			if (!el.querySelector('a')) return;
+
+			const pIndex = parseInt(el.getAttribute('data-p') || '0', 10);
+
+			const btn = document.createElement('button');
+			btn.className = 'copy-link-btn';
+			btn.title = 'Copy link to paragraph';
+			btn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				copyParagraphLink(e, pIndex);
+			});
+
+			el.appendChild(btn);
+		});
+	});
 </script>
 
 <svelte:head>
@@ -14,19 +62,7 @@
 </svelte:head>
 
 <main id="content" class="public-diff-page">
-	<header>
-		<div class="header-left">
-			<div class="logo-mark-header">&#9670;</div>
-			<div>
-				<h1 class="main-title">
-					<a href="/" class="main-title-link">diff<span class="title-diamond">&#9670;</span>log</a>
-				</h1>
-				{#if diff}
-					<p class="header-date">{diff.profile_name ? `shared by ${diff.profile_name}` : 'Shared Diff'}</p>
-				{/if}
-			</div>
-		</div>
-	</header>
+	<PageHeader subtitle={diff?.profile_name ? `shared by ${diff.profile_name}` : 'Shared Diff'} />
 
 	<!-- Error -->
 	{#if error}
@@ -43,7 +79,7 @@
 			<h1 class="public-diff-title">{diff.title}</h1>
 		{/if}
 		<div class="diff-container">
-			<div class="diff-content">
+			<div class="diff-content" bind:this={contentElement}>
 				{@html renderedContent}
 			</div>
 		</div>
