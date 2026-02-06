@@ -10,6 +10,8 @@ export const DEPTHS = [
   { id: 'deep', label: 'Deep Dive', desc: '10+ min, full analysis', icon: '\uD83D\uDD2C' }
 ] as const;
 
+export type GenerationDepth = typeof DEPTHS[number]['id'];
+
 export const DEPTH_TOKEN_LIMITS: Record<string, number> = {
   quick: 4096,
   standard: 8192,

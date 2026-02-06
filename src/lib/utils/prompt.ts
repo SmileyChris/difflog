@@ -1,14 +1,16 @@
+import { type GenerationDepth } from './constants';
+
 interface Profile {
   name: string;
   languages: string[];
   frameworks: string[];
   tools: string[];
   topics: string[];
-  depth: 'quick' | 'standard' | 'deep';
+  depth?: GenerationDepth;
   customFocus?: string;
 }
 
-const DEPTH_INSTRUCTIONS: Record<string, string> = {
+const DEPTH_INSTRUCTIONS = {
   quick: 'Keep it very concise. Max 3 sections, 1-2 bullet points each. Headlines and key facts only. Target ~500 words total.',
   standard: 'Provide balanced coverage. 2-4 bullet points per section with key details and context.',
   deep: 'Provide comprehensive analysis. Include background context, implications, and detailed analysis for each item.'
@@ -57,7 +59,7 @@ PROFILE:
 - Focus (topics & interests): ${profile.topics.join(', ') || 'General tech'}
 ${profile.customFocus ? `- Custom focus: ${profile.customFocus}` : ''}
 
-DEPTH: ${DEPTH_INSTRUCTIONS[profile.depth] || DEPTH_INSTRUCTIONS.standard}
+DEPTH: ${DEPTH_INSTRUCTIONS[(profile.depth as GenerationDepth) || 'standard']}
 ${webSection}${feedSection}${sourcesNote}${previousDiffSection}
 
 SECTION GUIDANCE:

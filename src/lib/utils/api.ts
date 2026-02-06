@@ -20,7 +20,7 @@ export async function fetchJson<T>(url: string, options?: RequestInit): Promise<
   const res = await fetch(url, options);
 
   if (res.status === 429) {
-    const data = await res.json().catch(() => ({}));
+    const data = (await res.json().catch(() => ({}))) as { retry_after_seconds?: number };
     const retryAfter = data.retry_after_seconds;
     throw new ApiError(
       `Too many attempts. Try again in ${Math.ceil((retryAfter || 60) / 60)} minutes.`,
@@ -30,7 +30,7 @@ export async function fetchJson<T>(url: string, options?: RequestInit): Promise<
   }
 
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
+    const data = (await res.json().catch(() => ({}))) as { error?: string; attempts_remaining?: number };
     let message = data.error || `Request failed: ${res.status}`;
     // Include remaining attempts for 401 errors
     if (res.status === 401 && typeof data.attempts_remaining === 'number') {
@@ -39,7 +39,7 @@ export async function fetchJson<T>(url: string, options?: RequestInit): Promise<
     throw new ApiError(message, res.status);
   }
 
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
 /**

@@ -8,6 +8,8 @@ import {
   computeContentHash,
   uint8ToBase64
 } from './crypto';
+import { completeJson } from './llm';
+import { DEPTH_TOKEN_LIMITS, type GenerationDepth } from './constants';
 import { fetchJson, postJson } from './api';
 import { STORAGE_KEYS } from './constants';
 
@@ -79,8 +81,8 @@ export interface Profile {
   frameworks?: string[];
   tools?: string[];
   topics?: string[];
-  depth?: string;
-  customFocus?: string;
+  depth: GenerationDepth;
+  customFocus: string;
   resolvedMappings?: Record<string, ResolvedMapping>;
   [key: string]: unknown;
 }
@@ -234,7 +236,12 @@ export async function checkStatus(
       return { exists: false, error: 'Failed to check sync status' };
     }
 
-    const status = await res.json();
+    const status = (await res.json()) as {
+      exists: boolean;
+      diffs_hash?: string;
+      stars_hash?: string;
+      error?: string;
+    };
     let localDiffsHash: string | null = null;
     let localStarsHash: string | null = null;
     let needsSync = false;
@@ -322,7 +329,7 @@ export async function importProfile(
     frameworks?: string[];
     tools?: string[];
     topics?: string[];
-    depth?: string;
+    depth?: GenerationDepth;
     custom_focus?: string;
   }>(`/api/profile/${id}?password_hash=${encodeURIComponent(passwordHash)}`);
 
@@ -338,7 +345,7 @@ export async function importProfile(
     frameworks: data.frameworks || [],
     tools: data.tools || [],
     topics: data.topics || [],
-    depth: data.depth || 'standard',
+    depth: (data.depth as GenerationDepth) || 'standard',
     customFocus: data.custom_focus || '',
     syncedAt: new Date().toISOString(),
   };
@@ -374,7 +381,7 @@ export async function uploadContent(
   try {
     const statusRes = await fetch(`/api/profile/${profileId}/status`);
     if (statusRes.ok) {
-      const status = await statusRes.json();
+      const status = (await statusRes.json()) as { diffs_hash?: string; stars_hash?: string };
       // If server hashes match our stored hashes, server hasn't changed
       // We can safely upload only modified items
       const serverDiffsMatch = status.diffs_hash === profile.diffsHash;
@@ -499,7 +506,7 @@ export async function downloadContent(
       frameworks: string[];
       tools: string[];
       topics: string[];
-      depth: string;
+      depth: GenerationDepth;
       custom_focus: string;
     };
   }>(`/api/profile/${profileId}/content`, {
@@ -522,7 +529,7 @@ export async function downloadContent(
       frameworks: data.profile.frameworks,
       tools: data.profile.tools,
       topics: data.profile.topics,
-      depth: data.profile.depth,
+      depth: data.profile.depth as GenerationDepth,
       customFocus: data.profile.custom_focus,
     };
   }

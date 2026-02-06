@@ -172,11 +172,11 @@ Find 5-10 relevant items. Only include items with real URLs you found.`
       return [];
     }
 
-    const result = await res.json();
+    const result = (await res.json()) as { content?: { type: string; text?: string; citations?: any[] }[] };
     const results: WebSearchResult[] = [];
 
     for (const block of result.content || []) {
-      if (block.type === 'text') {
+      if (block.type === 'text' && block.text) {
         const lines = block.text.split('\n');
         for (const line of lines) {
           const match = line.match(/^ITEM:\s*"([^"]+)"\s*\|\s*(https?:\/\/[^\s|]+)\s*\|\s*(.+)$/i);
@@ -264,7 +264,7 @@ ITEM: "Title" | URL | Brief description`
       return [];
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const content = data.choices?.[0]?.message?.content || '';
     const results: WebSearchResult[] = [];
 

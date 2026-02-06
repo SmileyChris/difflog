@@ -1,5 +1,6 @@
 import type { ResolvedMapping, ApiKeys } from './sync';
 import { completeJson } from './llm';
+import { searchWeb, type WebSearchResult } from './search';
 // Re-export search types for backwards compatibility
 export { searchWeb, type WebSearchResult } from './search';
 
@@ -227,7 +228,7 @@ async function fetchHackerNews(): Promise<FeedItem[]> {
   const items = await Promise.allSettled(
     top50.map(async (id) => {
       const r = await fetchWithTimeout(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
-      const item = await r.json();
+      const item = (await r.json()) as { title?: string; url?: string; score?: number; time?: number };
       return {
         title: item.title || '',
         url: item.url || `https://news.ycombinator.com/item?id=${id}`,
@@ -255,7 +256,7 @@ async function fetchLobsters(extraTags?: string[]): Promise<FeedItem[]> {
   const results = await Promise.allSettled(
     urls.map(async (url) => {
       const res = await fetchWithTimeout(url);
-      const stories: LobstersStory[] = await res.json();
+      const stories = (await res.json()) as LobstersStory[];
       return stories.slice(0, 40).map(story => ({
         title: story.title || '',
         url: story.url || story.comments_url || `https://lobste.rs/s/${story.short_id}`,
@@ -288,10 +289,10 @@ async function fetchReddit(profile: Profile, extraSubs?: string[]): Promise<Feed
 
   const results = await Promise.allSettled(
     subreddits.map(async (sub) => {
-      const res = await fetchWithTimeout(`https://www.reddit.com/r/${sub}/hot.json?limit=${perSub + 2}`, {
+      const res = await fetchWithTimeout(`https://www.reddit.com/r/${sub}/hot.json?limit=${perSub}`, {
         headers: { 'User-Agent': 'Difflog/1.0' },
       });
-      const data = await res.json();
+      const data = (await res.json()) as { data?: { children?: RedditPost[] } };
       const posts: RedditPost[] = (data?.data?.children || []).slice(0, perSub);
       return posts.map((post) => ({
         title: post.data.title || '',
@@ -323,9 +324,9 @@ async function fetchGitHubTrending(profile: Profile, days: number = 7): Promise<
       const langQuery = lang ? ` language:${lang.toLowerCase()}` : '';
       const res = await fetchWithTimeout(
         `https://api.github.com/search/repositories?q=created:>${since}${encodeURIComponent(langQuery)}&sort=stars&order=desc&per_page=${perLang}`,
-        { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        { headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'Difflog/1.0' } }
       );
-      const data = await res.json();
+      const data = (await res.json()) as { items?: GitHubRepo[] };
       const repos: GitHubRepo[] = data?.items || [];
       return repos.map((repo) => ({
         title: `${repo.full_name}: ${repo.description || 'No description'}`,

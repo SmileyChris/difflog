@@ -3,12 +3,12 @@
  * Handles the orchestration of feed fetching, AI synthesis, and content processing.
  */
 import type { Diff } from '$lib/stores/history.svelte';
-import type { ApiKeys } from '$lib/utils/sync';
 import { buildPrompt } from '$lib/utils/prompt';
+import type { ResolvedMapping, ApiKeys } from '$lib/utils/sync';
 import { getUnmappedItems, resolveSourcesForItem, curateGeneralFeeds, formatItemsForPrompt, formatWebSearchForPrompt, type FeedItem } from '$lib/utils/feeds';
 import { searchWeb } from '$lib/utils/search';
 import { synthesizeDiff } from '$lib/utils/llm';
-import { DEPTH_TOKEN_LIMITS } from '$lib/utils/constants';
+import { DEPTH_TOKEN_LIMITS, type GenerationDepth } from '$lib/utils/constants';
 
 export interface GenerateOptions {
 	profile: {
@@ -17,13 +17,13 @@ export interface GenerateOptions {
 		frameworks: string[];
 		tools: string[];
 		topics: string[];
-		depth: string;
-		resolvedMappings?: Record<string, unknown>;
+		depth: GenerationDepth;
+		resolvedMappings?: Record<string, ResolvedMapping>;
 		providerSelections?: { synthesis?: string };
 		apiKeys?: Partial<ApiKeys>;
 	};
 	apiKey: string;
-	selectedDepth: string;
+	selectedDepth: GenerationDepth;
 	lastDiffDate: string | null;
 	lastDiffContent?: string;
 	onMappingsResolved?: (mappings: Record<string, unknown>) => void;
@@ -164,7 +164,7 @@ export async function generateDiffContent(options: GenerateOptions): Promise<Gen
 		let feedContext = '';
 		if (feedRes?.ok) {
 			try {
-				const feedData = await feedRes.json();
+				const feedData = (await feedRes.json()) as { feeds: Record<string, FeedItem[]> };
 				const feeds = feedData.feeds || {};
 
 				const generalItems: FeedItem[] = [...(feeds.hn || []), ...(feeds.lobsters || [])];
@@ -195,7 +195,7 @@ export async function generateDiffContent(options: GenerateOptions): Promise<Gen
 		prompt = buildPrompt(
 			{ ...currentProfile, depth: selectedDepth },
 			feedContext,
-			lastDiffDate,
+			lastDiffDate ?? undefined,
 			lastDiffContent,
 			webContext
 		);

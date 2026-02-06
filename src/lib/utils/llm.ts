@@ -105,7 +105,7 @@ async function completeWithDeepSeek<T>(
       return null;
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const content = data.choices?.[0]?.message?.content;
     if (!content) return null;
 
@@ -148,7 +148,7 @@ async function completeWithGemini<T>(
       return null;
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
     const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!content) return null;
 
@@ -195,7 +195,7 @@ async function completeWithAnthropic<T>(
       return null;
     }
 
-    const data: AnthropicResponse = await res.json();
+    const data = (await res.json()) as AnthropicResponse;
     const toolUse = data.content?.find((b): b is AnthropicToolUseBlock => b.type === 'tool_use');
     if (!toolUse?.input) return null;
 
@@ -302,11 +302,11 @@ async function synthesizeWithAnthropic(
   });
 
   if (!res.ok) {
-    const err = await res.json();
+    const err = (await res.json()) as { error?: { message?: string } };
     throw new Error(err.error?.message || `Anthropic API error: ${res.status}`);
   }
 
-  const result: AnthropicResponse = await res.json();
+  const result = (await res.json()) as AnthropicResponse;
 
   if (result.stop_reason === 'max_tokens') {
     throw new Error('Response truncated: the diff exceeded the token limit. Try a shallower depth setting.');
@@ -363,11 +363,14 @@ The content should be full markdown starting with the Intelligence Window date l
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
+    const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
     throw new Error(err.error?.message || `DeepSeek API error: ${res.status}`);
   }
 
-  const result = await res.json();
+  const result = (await res.json()) as {
+    choices?: { finish_reason?: string; message?: { content?: string } }[];
+    usage?: { prompt_tokens: number; completion_tokens: number };
+  };
 
   if (result.choices?.[0]?.finish_reason === 'length') {
     throw new Error('Response truncated: the diff exceeded the token limit. Try a shallower depth setting.');
@@ -430,7 +433,10 @@ async function synthesizeWithGemini(
     throw new Error(err.error?.message || `Gemini API error: ${res.status}`);
   }
 
-  const result = await res.json();
+  const result = (await res.json()) as {
+    candidates?: { finishReason?: string; content?: { parts?: { text?: string }[] } }[];
+    usageMetadata?: { promptTokenCount: number; candidatesTokenCount: number };
+  };
 
   const finishReason = result.candidates?.[0]?.finishReason;
   if (finishReason === 'MAX_TOKENS') {
@@ -491,11 +497,14 @@ The content should be full markdown starting with the Intelligence Window date l
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
+    const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
     throw new Error(err.error?.message || `Perplexity API error: ${res.status}`);
   }
 
-  const result = await res.json();
+  const result = (await res.json()) as {
+    choices?: { finish_reason?: string; message?: { content?: string } }[];
+    usage?: { prompt_tokens: number; completion_tokens: number };
+  };
 
   if (result.choices?.[0]?.finish_reason === 'length') {
     throw new Error('Response truncated: the diff exceeded the token limit. Try a shallower depth setting.');
