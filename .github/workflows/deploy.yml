@@ -28,9 +28,16 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Run D1 Migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply difflog-db --remote
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=difflog
+          command: pages deploy .svelte-kit/cloudflare --project-name=difflog
