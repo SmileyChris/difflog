@@ -2,7 +2,7 @@
   import { dev } from '$app/environment';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
-  import { PageHeader } from '$lib/components';
+  import { PageHeader, InputField, ModalDialog } from '$lib/components';
 
   // Redirect to home in production
   onMount(() => {
@@ -11,9 +11,14 @@
     }
   });
 
-  let demoDialog: HTMLDialogElement;
-  let demoDialogSm: HTMLDialogElement;
-  let demoDialogLg: HTMLDialogElement;
+  let demoDialog: { open: () => void; close: () => void };
+  let demoDialogSm: { open: () => void; close: () => void };
+  let demoDialogLg: { open: () => void; close: () => void };
+
+  let validValue = $state('Valid input');
+  let invalidValue = $state('Invalid input');
+  let checkingValue = $state('Checking...');
+  let hintValue = $state('');
 </script>
 
 <svelte:head>
@@ -352,24 +357,15 @@
 
       <h3 class="design-subtitle">Validation States</h3>
       <div class="component-demo">
-        <div class="input-group">
-          <label class="input-label">With Status Indicator</label>
-          <div class="input-with-status" style="position: relative;">
-            <input type="text" class="text-input" value="Valid input" />
-            <span class="input-status input-status-valid">&#10003;</span>
-          </div>
+        <InputField label="Valid State" bind:value={validValue} status="valid" />
+        <div style="margin-top: 1rem;">
+          <InputField label="Invalid State" bind:value={invalidValue} status="invalid" />
         </div>
-        <div class="input-group" style="margin-top: 1rem;">
-          <label class="input-label">Invalid State</label>
-          <div class="input-with-status" style="position: relative;">
-            <input type="text" class="text-input" value="Invalid input" />
-            <span class="input-status input-status-invalid">&#10007;</span>
-          </div>
+        <div style="margin-top: 1rem;">
+          <InputField label="Checking State" bind:value={checkingValue} status="checking" />
         </div>
-        <div class="input-group" style="margin-top: 1rem;">
-          <label class="input-label">With Hint Text</label>
-          <input type="text" class="text-input" placeholder="Enter value" />
-          <span class="input-hint">Helper text with <a href="#">a link</a> for more info.</span>
+        <div style="margin-top: 1rem;">
+          <InputField label="With Hint Text" bind:value={hintValue} placeholder="Enter value" hint="Helper text for more info." />
         </div>
       </div>
     </section>
@@ -426,30 +422,18 @@ function example() {'{'}
 
       <div class="component-demo">
         <div class="design-row">
-          <button class="btn-secondary" onclick={() => demoDialog?.showModal()}>Default</button>
-          <button class="btn-secondary" onclick={() => demoDialogSm?.showModal()}>Small Dark</button>
-          <button class="btn-secondary" onclick={() => demoDialogLg?.showModal()}>Large</button>
+          <button class="btn-secondary" onclick={() => demoDialog?.open()}>Default</button>
+          <button class="btn-secondary" onclick={() => demoDialogSm?.open()}>Small Dark</button>
+          <button class="btn-secondary" onclick={() => demoDialogLg?.open()}>Large</button>
         </div>
       </div>
 
-      <pre class="component-code">&lt;dialog class="lg"&gt;
-  &lt;header&gt;
-    &lt;h2 class="dialog-title"&gt;Title&lt;/h2&gt;
-    &lt;button class="dialog-close"&gt;&amp;times;&lt;/button&gt;
-  &lt;/header&gt;
-  &lt;div class="dialog-body"&gt;...&lt;/div&gt;
-  &lt;footer&gt;...&lt;/footer&gt;
-&lt;/dialog&gt;</pre>
+      <div class="component-code">&lt;ModalDialog title="Title" size="sm|default|lg" dark?&gt; ... &lt;/ModalDialog&gt;</div>
     </section>
 
     <!-- Loading -->
     <section id="loading" class="design-section">
       <h2 class="design-title">Loading</h2>
-
-      <div class="component-demo">
-        <div class="component-label">Spinning Logo (PageHeader)</div>
-        <div class="logo-mark-header logo-mark-spinning" style="font-size: 2rem;">&#9670;</div>
-      </div>
 
       <div class="component-demo">
         <div class="component-label">Branded Button (aria-busy)</div>
@@ -549,26 +533,6 @@ function example() {'{'}
         </div>
       </div>
       <div class="component-code">.stale-banner  .stale-banner-btn — non-dismissible, shown when latest diff is &gt;5 days old</div>
-
-      <h3 class="design-subtitle">Status Indicators</h3>
-      <div class="component-demo">
-        <div class="design-row" style="gap: 1.5rem;">
-          <span class="sync-status">
-            <span class="sync-status-cloud">&#9729;</span>
-            <span class="sync-status-indicator sync-status-ok">&#10003;</span>
-          </span>
-          <span class="sync-status">
-            <span class="sync-status-cloud">&#9729;</span>
-            <span class="sync-status-indicator sync-status-pending">&#9670;</span>
-          </span>
-          <span class="sync-status">
-            <span class="sync-status-cloud">&#9729;</span>
-            <span class="sync-status-indicator sync-status-spinning">&#8635;</span>
-          </span>
-        </div>
-      </div>
-
-      <div class="component-code">.sync-status  .sync-status-cloud  .sync-status-ok  .sync-status-pending  .sync-status-spinning</div>
     </section>
 
     <!-- Wizard -->
@@ -618,45 +582,29 @@ function example() {'{'}
     </section>
 
     <!-- Demo Dialogs -->
-    <dialog bind:this={demoDialog} onclick={(e) => { if (e.target === demoDialog) demoDialog.close(); }}>
-      <header>
-        <h2 class="dialog-title">Default Dialog</h2>
-        <button class="dialog-close" onclick={() => demoDialog?.close()}>&times;</button>
-      </header>
-      <div class="dialog-body">
-        <p>This is the default 500px dialog.</p>
-      </div>
-      <footer>
+    <ModalDialog bind:this={demoDialog} title="Default Dialog" onclose={() => demoDialog?.close()}>
+      <p>This is the default 500px dialog.</p>
+      {#snippet footer()}
         <button class="btn-secondary" onclick={() => demoDialog?.close()}>Cancel</button>
         <button class="btn-primary" onclick={() => demoDialog?.close()}>Confirm</button>
-      </footer>
-    </dialog>
+      {/snippet}
+    </ModalDialog>
 
-    <dialog bind:this={demoDialogSm} class="sm dark" onclick={(e) => { if (e.target === demoDialogSm) demoDialogSm.close(); }}>
-      <div class="dialog-body padded">
-        <h2 class="unlock-title">Small Dark Dialog</h2>
-        <p class="unlock-subtitle">Used for forms and confirmations.</p>
-        <div class="input-group">
-          <label class="input-label">Example Field</label>
-          <input type="text" class="text-input" placeholder="Enter value" />
-        </div>
+    <ModalDialog bind:this={demoDialogSm} title="Small Dark Dialog" subtitle="Used for forms and confirmations." size="sm" dark onclose={() => demoDialogSm?.close()}>
+      <div class="input-group">
+        <label class="input-label">Example Field</label>
+        <input type="text" class="text-input" placeholder="Enter value" />
       </div>
-      <footer>
+      {#snippet footer()}
         <button class="btn-secondary" onclick={() => demoDialogSm?.close()}>Cancel</button>
         <button class="btn-primary">Submit</button>
-      </footer>
-    </dialog>
+      {/snippet}
+    </ModalDialog>
 
-    <dialog bind:this={demoDialogLg} class="lg" onclick={(e) => { if (e.target === demoDialogLg) demoDialogLg.close(); }}>
-      <header>
-        <h2 class="dialog-title subtle">Large Dialog</h2>
-        <button class="dialog-close" onclick={() => demoDialogLg?.close()}>&times;</button>
-      </header>
-      <div class="dialog-body">
-        <p>This is the large 800px dialog, used for content like previews.</p>
-        <pre class="prompt-text">Large content area for code, previews, etc.</pre>
-      </div>
-    </dialog>
+    <ModalDialog bind:this={demoDialogLg} title="Large Dialog" size="lg" onclose={() => demoDialogLg?.close()}>
+      <p>This is the large 800px dialog, used for content like previews.</p>
+      <pre class="prompt-text">Large content area for code, previews, etc.</pre>
+    </ModalDialog>
 
   </main>
 
