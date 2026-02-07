@@ -67,6 +67,29 @@ describe("crypto.ts", () => {
       const encrypted = await encryptData(data, password, salt);
       expect(decryptData(encrypted, "wrong-password", salt)).rejects.toThrow();
     });
+
+    test("wrong salt fails to decrypt data", async () => {
+      const salt2 = uint8ToBase64(new Uint8Array(16).fill(2));
+      const data = { id: "diff-1", content: "test diff" };
+      const encrypted = await encryptData(data, password, salt);
+      expect(decryptData(encrypted, password, salt2)).rejects.toThrow();
+    });
+
+    test("data encrypted with salt1 cannot be decrypted with salt2", async () => {
+      // Regression: simulates multi-device salt drift after password change
+      const salt1 = uint8ToBase64(new Uint8Array(16).fill(10));
+      const salt2 = uint8ToBase64(new Uint8Array(16).fill(20));
+      const diff = { id: "d1", content: "# Dev News", generated_at: "2025-01-01" };
+
+      const encrypted = await encryptData(diff, password, salt1);
+
+      // Same password but different salt → OperationError
+      expect(decryptData(encrypted, password, salt2)).rejects.toThrow();
+
+      // Original salt still works
+      const decrypted = await decryptData(encrypted, password, salt1);
+      expect(decrypted).toEqual(diff);
+    });
   });
 
   describe("verifyPassword", () => {

@@ -13,7 +13,8 @@
         { "type": "feature", "text": "New users land directly on the generate page for a smoother first experience", "in": "3.0.1" },
         { "type": "feature", "text": "Upgraded Gemini models to 2.5 Flash", "in": "3.0.1" },
         { "type": "fix", "text": "HTML entities no longer appear in Gemini-generated diffs", "in": "3.0.1" },
-        { "type": "fix", "text": "Profile switching during generation no longer causes data corruption", "in": "3.0.1" }
+        { "type": "fix", "text": "Profile switching during generation no longer causes data corruption", "in": "3.0.1" },
+        { "type": "fix", "text": "Sync encryption salt now stays in sync with the server, fixing decrypt failures after cross-device password changes", "in": "3.0.2" }
       ]
     },
     {

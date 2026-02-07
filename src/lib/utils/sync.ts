@@ -486,6 +486,8 @@ export async function downloadContent(
   starsHash: string;
   profileUpdates?: Partial<Profile>;
   remainingPending: PendingChanges;
+  salt: string;
+  decryptionErrors: number;
 }> {
   const passwordSalt = profile.passwordSalt;
   if (!passwordSalt) {
@@ -517,6 +519,7 @@ export async function downloadContent(
 
   const salt = data.salt || profile.salt!;
   let downloaded = 0;
+  let decryptionErrors = 0;
 
   // Build profile updates (skip if local profile changes pending)
   const hasLocalProfileChanges = pending.profileModified;
@@ -568,6 +571,7 @@ export async function downloadContent(
         }
       } catch (e) {
         console.error('Failed to decrypt diff:', e);
+        decryptionErrors++;
       }
     }
 
@@ -594,6 +598,7 @@ export async function downloadContent(
         }
       } catch (e) {
         console.error('Failed to decrypt star:', e);
+        decryptionErrors++;
       }
     }
 
@@ -634,6 +639,8 @@ export async function downloadContent(
     stars: filteredStars,
     diffsHash,
     starsHash,
+    salt,
+    decryptionErrors,
     profileUpdates,
     remainingPending
   };

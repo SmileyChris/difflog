@@ -362,7 +362,7 @@ async function downloadContentInternal(password: string): Promise<{ downloaded: 
 
 		updateProfileBase({
 			syncedAt: new Date().toISOString(),
-			salt: profile.salt,
+			salt: result.salt,
 			diffsHash: result.diffsHash,
 			starsHash: result.starsHash
 		});
@@ -371,6 +371,23 @@ async function downloadContentInternal(password: string): Promise<{ downloaded: 
 			_pendingSync.value = {
 				..._pendingSync.value,
 				[activeProfileId.value]: result.remainingPending
+			};
+		}
+
+		// If decryption errors occurred, mark all local diffs/stars as pending
+		// so the next upload re-encrypts everything with the correct salt
+		if (result.decryptionErrors > 0 && activeProfileId.value) {
+			console.warn(`${result.decryptionErrors} item(s) failed to decrypt — scheduling full re-upload`);
+			const currentHistory = result.diffs;
+			const currentStars = result.stars;
+			_pendingSync.value = {
+				..._pendingSync.value,
+				[activeProfileId.value]: {
+					modifiedDiffs: currentHistory.map((d: Diff) => d.id),
+					modifiedStars: currentStars.map((s: Star) => starId(s)),
+					deletedDiffs: [],
+					deletedStars: [],
+				}
 			};
 		}
 
