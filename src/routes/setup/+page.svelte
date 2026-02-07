@@ -1044,8 +1044,10 @@
 
 <style>
 	.demo-option {
-		margin-top: 2rem;
 		text-align: center;
+		display: flex;
+		gap: 1rem;
+		justify-content: center;
 	}
 
 	.demo-text {
