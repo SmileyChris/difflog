@@ -336,16 +336,22 @@
 	}
 
 	@media (max-width: 600px) {
-		.streak-dropdown {
-			left: 50%;
-			min-width: auto;
-			width: calc(100vw - 2rem);
-			transform: translateX(-50%) translateY(-0.5rem) scale(0.98);
+		.streak-wrapper {
+			position: static;
 		}
 
-		.streak-wrapper:hover .streak-dropdown,
-		.streak-wrapper:focus-within .streak-dropdown {
-			transform: translateX(-50%) translateY(0) scale(1);
+		.streak-dropdown {
+			position: absolute;
+			top: calc(100% + 0.5rem);
+			left: 0;
+			right: 0;
+			min-width: auto;
+			width: auto;
+		}
+
+		.streak-dropdown::before {
+			top: -1rem;
+			height: 1rem;
 		}
 	}
 </style>
