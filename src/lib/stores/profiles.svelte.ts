@@ -26,6 +26,10 @@ export function getApiKey(): string | null {
 	return profile ? getAnthropicKey(profile) ?? null : null;
 }
 
+export function isDemoProfile(): boolean {
+	return getApiKey() === 'demo-key-placeholder';
+}
+
 export function isUnlocked(): boolean {
 	return getProfile() !== null && getApiKey() !== null;
 }

@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { persist } from './persist.svelte';
-import { activeProfileId, profiles, getProfile, updateProfile as updateProfileBase } from './profiles.svelte';
+import { activeProfileId, profiles, getProfile, isDemoProfile, updateProfile as updateProfileBase } from './profiles.svelte';
 import { histories, getHistory, initHistoryForProfile, deleteHistoryForProfile } from './history.svelte';
 import { bookmarks, getStars, initStarsForProfile, deleteStarsForProfile, removeStarsForDiff, starId } from './stars.svelte';
 import { isGenerating, clearGenerationState, clearStageCache } from './ui.svelte';
@@ -453,6 +453,7 @@ export async function autoSync(): Promise<void> {
 export async function shareProfile(password: string): Promise<string> {
 	const profile = getProfile();
 	if (!activeProfileId.value || !profile) throw new Error('No active profile');
+	if (isDemoProfile()) throw new Error('Demo profiles cannot be synced. Add a real API key first.');
 
 	const { passwordSalt, salt } = await shareProfileApi(activeProfileId.value, profile, password);
 

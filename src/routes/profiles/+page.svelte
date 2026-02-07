@@ -121,7 +121,7 @@
 									{:else}
 										<span class="profile-status profile-status-local">local</span>
 									{/if}
-									{#if !profile.syncedAt}
+									{#if !profile.syncedAt && profile.apiKey !== 'demo-key-placeholder'}
 										<button class="profile-status-share" onclick={(e) => { e.stopPropagation(); startShare(id); }}>&#8599; upload</button>
 									{/if}
 								</div>

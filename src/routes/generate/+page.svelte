@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from "svelte";
 	import { goto } from "$app/navigation";
 	import { browser } from "$app/environment";
-	import { getProfile, getApiKey } from "$lib/stores/profiles.svelte";
+	import { getProfile, getApiKey, isDemoProfile } from "$lib/stores/profiles.svelte";
 	import { getHistory } from "$lib/stores/history.svelte";
 	import { getStars } from "$lib/stores/stars.svelte";
 	import { updateProfile, autoSync } from "$lib/stores/sync.svelte";
@@ -111,9 +111,20 @@
 	async function startGeneration() {
 		const apiKey = getApiKey();
 
-		if (apiKey === "demo-key-placeholder") {
-			generationError.value =
-				"This is a demo profile. To generate real diffs, go to Profiles and add your Anthropic API key, or create a new profile with a valid key.";
+		if (isDemoProfile()) {
+			scanIndex = 0;
+			scanMessages = [...SCAN_MESSAGES].sort(() => Math.random() - 0.5);
+			generating.value = true;
+			startScanAnimation();
+			const { createDemoDiff } = await import("$lib/utils/demo");
+			await new Promise((r) => setTimeout(r, 2500));
+			addDiff(createDemoDiff());
+			generating.value = false;
+			if (scanInterval) {
+				clearInterval(scanInterval);
+				scanInterval = null;
+			}
+			goto("/");
 			return;
 		}
 
