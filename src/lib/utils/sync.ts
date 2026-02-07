@@ -92,6 +92,7 @@ export interface Diff {
   generated_at: string;
   title?: string;
   duration_seconds?: number;
+  cost?: number;
   isPublic?: boolean;
   [key: string]: unknown;
 }
