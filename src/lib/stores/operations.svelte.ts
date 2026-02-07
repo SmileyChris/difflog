@@ -58,7 +58,6 @@ import {
 // Profile creation with history/stars initialization
 export function createProfile(data: {
 	name: string;
-	apiKey?: string;
 	apiKeys?: Profile['apiKeys'];
 	providerSelections?: Profile['providerSelections'];
 	languages: string[];

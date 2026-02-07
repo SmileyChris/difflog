@@ -1,8 +1,26 @@
+import { browser } from '$app/environment';
 import { persist } from './persist.svelte';
 import { getAnthropicKey, type Profile } from '$lib/utils/sync';
 
 // Persisted state
 const _profiles = persist<Record<string, Profile>>('difflog-profiles', {});
+
+// One-time migration: move legacy apiKey → apiKeys.anthropic
+if (browser) {
+	let migrated = false;
+	const current = _profiles.value;
+	for (const profile of Object.values(current)) {
+		const legacy = (profile as Record<string, unknown>).apiKey as string | undefined;
+		if (legacy) {
+			profile.apiKeys = { ...profile.apiKeys, anthropic: profile.apiKeys?.anthropic || legacy };
+			delete (profile as Record<string, unknown>).apiKey;
+			migrated = true;
+		}
+	}
+	if (migrated) {
+		_profiles.value = { ...current };
+	}
+}
 const _activeProfileId = persist<string | null>('difflog-active-profile', null);
 
 // State accessors
@@ -26,8 +44,9 @@ export function getApiKey(): string | null {
 	return profile ? getAnthropicKey(profile) ?? null : null;
 }
 
-export function isDemoProfile(): boolean {
-	return getApiKey() === 'demo-key-placeholder';
+export function isDemoProfile(profile?: Profile | null): boolean {
+	const p = profile ?? getProfile();
+	return p?.apiKeys?.anthropic === 'demo-key-placeholder';
 }
 
 export function isUnlocked(): boolean {
@@ -37,7 +56,6 @@ export function isUnlocked(): boolean {
 // Actions
 export function createProfile(data: {
 	name: string;
-	apiKey?: string;
 	apiKeys?: Profile['apiKeys'];
 	providerSelections?: Profile['providerSelections'];
 	languages: string[];
@@ -51,7 +69,6 @@ export function createProfile(data: {
 	const newProfile: Profile = {
 		id,
 		name: data.name,
-		apiKey: data.apiKey,
 		apiKeys: data.apiKeys,
 		providerSelections: data.providerSelections,
 		languages: data.languages,

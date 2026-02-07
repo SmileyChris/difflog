@@ -61,16 +61,15 @@ export interface ProviderSelections {
 }
 
 /**
- * Get Anthropic API key from profile (handles backwards compat with legacy apiKey field)
+ * Get Anthropic API key from profile
  */
-export function getAnthropicKey(profile: { apiKey?: string; apiKeys?: ApiKeys }): string | undefined {
-  return profile.apiKeys?.anthropic || profile.apiKey;
+export function getAnthropicKey(profile: { apiKeys?: ApiKeys }): string | undefined {
+  return profile.apiKeys?.anthropic;
 }
 
 export interface Profile {
   id: string;
   name: string;
-  apiKey?: string;
   apiKeys?: ApiKeys;
   providerSelections?: ProviderSelections;
   salt?: string;
@@ -281,9 +280,10 @@ export async function shareProfile(
   profile: Profile,
   password: string
 ): Promise<{ passwordSalt: string; salt: string }> {
-  if (!profile.apiKey) throw new Error('Profile missing API key');
+  const anthropicKey = getAnthropicKey(profile);
+  if (!anthropicKey) throw new Error('Profile missing API key');
 
-  const { encrypted, salt } = await encryptApiKey(profile.apiKey, password);
+  const { encrypted, salt } = await encryptApiKey(anthropicKey, password);
   const existingPasswordSalt = profile.passwordSalt;
   const passwordHash = await hashPasswordForTransport(password, existingPasswordSalt);
 
@@ -338,7 +338,8 @@ export async function importProfile(
   const profile: Profile = {
     id: data.id,
     name: data.name,
-    apiKey,
+    apiKeys: { anthropic: apiKey },
+    providerSelections: { search: 'anthropic', curation: 'anthropic', synthesis: 'anthropic' },
     salt: data.salt,
     passwordSalt: shareData.password_salt,
     languages: data.languages || [],
@@ -657,7 +658,8 @@ export async function updatePassword(
   oldPassword: string,
   newPassword: string
 ): Promise<{ passwordSalt: string; salt: string }> {
-  if (!profile.apiKey) throw new Error('Profile missing API key');
+  const anthropicKey = getAnthropicKey(profile);
+  if (!anthropicKey) throw new Error('Profile missing API key');
   if (!profile.passwordSalt) throw new Error('Profile missing password salt');
   if (!profile.salt) throw new Error('Profile missing encryption salt');
 
@@ -673,7 +675,7 @@ export async function updatePassword(
   const newPasswordSalt = newPasswordHash.split(':')[0];
 
   // Re-encrypt API key with new password + new salt
-  const newEncryptedApiKey = await encryptApiKeyWithSalt(profile.apiKey, newPassword, newSalt);
+  const newEncryptedApiKey = await encryptApiKeyWithSalt(anthropicKey, newPassword, newSalt);
 
   // Re-encrypt all diffs with new password + new salt
   const encryptedDiffs: { id: string; encrypted_data: string }[] = [];

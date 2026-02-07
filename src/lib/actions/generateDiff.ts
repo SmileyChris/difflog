@@ -22,7 +22,6 @@ export interface GenerateOptions {
 		providerSelections?: { synthesis?: string };
 		apiKeys?: Partial<ApiKeys>;
 	};
-	apiKey: string;
 	selectedDepth: GenerationDepth;
 	lastDiffDate: string | null;
 	lastDiffContent?: string;
@@ -117,11 +116,11 @@ function cleanDiffContent(rawContent: string): string {
  * This orchestrates the entire generation pipeline.
  */
 export async function generateDiffContent(options: GenerateOptions): Promise<GenerateResult> {
-	const { profile, apiKey, selectedDepth, lastDiffDate, lastDiffContent, onMappingsResolved } = options;
+	const { profile, selectedDepth, lastDiffDate, lastDiffContent, onMappingsResolved } = options;
 	const startTime = Date.now();
 
 	const keys: ApiKeys = {
-		anthropic: apiKey,
+		anthropic: profile.apiKeys?.anthropic,
 		serper: profile.apiKeys?.serper,
 		perplexity: profile.apiKeys?.perplexity,
 		deepseek: profile.apiKeys?.deepseek,
@@ -141,7 +140,7 @@ export async function generateDiffContent(options: GenerateOptions): Promise<Gen
 		// Resolve unmapped custom items
 		let currentProfile = profile;
 		const unmapped = getUnmappedItems(profile);
-		if (unmapped.length > 0 && apiKey) {
+		if (unmapped.length > 0 && keys.anthropic) {
 			console.log(`Resolving ${unmapped.length} custom item(s):`, unmapped.map((u) => u.item));
 			const newMappings = { ...profile.resolvedMappings };
 			for (const { item, category } of unmapped) {

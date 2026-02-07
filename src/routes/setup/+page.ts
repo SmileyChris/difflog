@@ -22,9 +22,6 @@ export function load({ url }) {
 			providerStates[id] = { key: '', status: 'idle', masked: true };
 		}
 
-		if (p.apiKey) {
-			providerStates.anthropic = { key: p.apiKey, status: 'valid', masked: true };
-		}
 		if (p.apiKeys) {
 			for (const [id, key] of Object.entries(p.apiKeys)) {
 				if (key && providerStates[id]) {

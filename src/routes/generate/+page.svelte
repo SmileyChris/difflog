@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from "svelte";
 	import { goto } from "$app/navigation";
 	import { browser } from "$app/environment";
-	import { getProfile, getApiKey, isDemoProfile } from "$lib/stores/profiles.svelte";
+	import { getProfile, isDemoProfile } from "$lib/stores/profiles.svelte";
 	import { getHistory } from "$lib/stores/history.svelte";
 	import { getStars } from "$lib/stores/stars.svelte";
 	import { updateProfile, autoSync } from "$lib/stores/sync.svelte";
@@ -109,8 +109,6 @@
 	}
 
 	async function startGeneration() {
-		const apiKey = getApiKey();
-
 		if (isDemoProfile()) {
 			scanIndex = 0;
 			scanMessages = [...SCAN_MESSAGES].sort(() => Math.random() - 0.5);
@@ -160,7 +158,6 @@
 							profile.providerSelections?.synthesis || undefined,
 					},
 				},
-				apiKey: apiKey || "",
 				selectedDepth,
 				lastDiffDate: lastDiff?.generated_at ?? null,
 				lastDiffContent: lastDiff?.content,

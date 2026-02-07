@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { profiles, activeProfileId } from '$lib/stores/profiles.svelte';
+	import { profiles, activeProfileId, isDemoProfile } from '$lib/stores/profiles.svelte';
 	import { histories } from '$lib/stores/history.svelte';
 	import { bookmarks } from '$lib/stores/stars.svelte';
 	import {
@@ -121,7 +121,7 @@
 									{:else}
 										<span class="profile-status profile-status-local">local</span>
 									{/if}
-									{#if !profile.syncedAt && profile.apiKey !== 'demo-key-placeholder'}
+									{#if !profile.syncedAt && !isDemoProfile(profile)}
 										<button class="profile-status-share" onclick={(e) => { e.stopPropagation(); startShare(id); }}>&#8599; upload</button>
 									{/if}
 								</div>
