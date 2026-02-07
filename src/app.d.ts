@@ -1,6 +1,8 @@
 /// <reference types="@sveltejs/kit" />
 /// <reference types="@cloudflare/workers-types" />
 
+declare const __APP_VERSION__: string;
+
 declare global {
 	namespace App {
 		interface Error {

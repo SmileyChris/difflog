@@ -3438,6 +3438,56 @@ article section strong {
   color: #e25555;
 }
 
+/* Dialog */
+dialog.dialog {
+  background: var(--bg-surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  width: 100%;
+  max-width: 580px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+dialog.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+dialog.dialog > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 1.5rem 1rem;
+}
+
+.dialog-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  margin: 0;
+}
+
+.dialog-close {
+  background: none;
+  border: none;
+  color: var(--text-subtle);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius);
+}
+
+.dialog-close:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.dialog-body {
+  padding: 0 1.5rem 1.5rem;
+}
+
 /* Changelog */
 .changelog-wrapper {
   text-align: right;

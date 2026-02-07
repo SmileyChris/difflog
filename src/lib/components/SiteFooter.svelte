@@ -3,11 +3,7 @@
 	import { browser, dev } from '$app/environment';
 	import { STORAGE_KEYS } from '$lib/utils/constants';
 
-	interface Props {
-		version: string;
-	}
-
-	let { version }: Props = $props();
+	const version = __APP_VERSION__;
 
 	interface Change {
 		type: string;
