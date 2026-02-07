@@ -334,4 +334,18 @@
 	.day-number {
 		font-size: 0.7em;
 	}
+
+	@media (max-width: 600px) {
+		.streak-dropdown {
+			left: 50%;
+			min-width: auto;
+			width: calc(100vw - 2rem);
+			transform: translateX(-50%) translateY(-0.5rem) scale(0.98);
+		}
+
+		.streak-wrapper:hover .streak-dropdown,
+		.streak-wrapper:focus-within .streak-dropdown {
+			transform: translateX(-50%) translateY(0) scale(1);
+		}
+	}
 </style>
