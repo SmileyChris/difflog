@@ -148,7 +148,7 @@
 	<title>diff·log</title>
 </svelte:head>
 
-<PageHeader subtitle={currentDate} iconSpinning={generating.value}>
+<PageHeader subtitle={currentDate}>
 	<div class="header-profile-group">
 		{#if getStars()?.length > 0}
 			<a href="/stars" class="header-link">

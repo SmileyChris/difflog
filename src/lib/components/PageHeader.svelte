@@ -8,23 +8,22 @@
 		subtitle?: string;
 		subtitleContent?: Snippet;
 		icon?: 'diamond' | 'user' | 'square' | 'star';
-		iconSpinning?: boolean;
 		children?: Snippet;
 	}
 
-	let { pageTitle, subtitle, subtitleContent, icon = 'diamond', iconSpinning = false, children }: Props = $props();
+	let { pageTitle, subtitle, subtitleContent, icon = 'diamond', children }: Props = $props();
 
-	const spinning = $derived(isGenerating() || iconSpinning);
+	const generating = $derived(isGenerating());
 </script>
 
 <header>
 	<div class="header-left">
-		{#if isGenerating()}
+		{#if generating}
 			<button class="logo-mark-header logo-mark-spinning logo-mark-clickable" onclick={() => goto('/generate')} title="View generation progress">
 				&#9670;
 			</button>
 		{:else if icon === 'diamond'}
-			<div class="logo-mark-header" class:logo-mark-spinning={spinning}>&#9670;</div>
+			<div class="logo-mark-header">&#9670;</div>
 		{:else if icon === 'user'}
 			<div class="logo-mark-header logo-mark-user">
 				<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
