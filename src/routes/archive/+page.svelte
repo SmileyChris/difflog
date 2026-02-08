@@ -48,16 +48,16 @@
 	<title>diff·log - Archive</title>
 </svelte:head>
 
-<main id="content">
-	<PageHeader pageTitle="archive" subtitle="{history.length} saved diffs" icon="square">
-		{#if stars?.length > 0}
-			<a href="/stars" class="header-link">
-				<span class="header-link-icon">&#9733;</span> {getStarCountLabel()}
-			</a>
-		{/if}
-		<HeaderNav />
-	</PageHeader>
+<PageHeader pageTitle="archive" subtitle="{history.length} saved diffs" icon="square">
+	{#if stars?.length > 0}
+		<a href="/stars" class="header-link">
+			<span class="header-link-icon">&#9733;</span> {getStarCountLabel()}
+		</a>
+	{/if}
+	<HeaderNav />
+</PageHeader>
 
+<main id="content">
 	{#if history.length === 0}
 		<EmptyState icon="◼" message="No diffs yet">
 			{#snippet action()}

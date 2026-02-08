@@ -243,11 +243,11 @@
 	<title>{generating.value ? "Generating..." : isTodayDiff ? "Regenerate" : "Generate"} | diff·log</title>
 </svelte:head>
 
-<main id="content">
-	<PageHeader subtitle={currentDate} iconSpinning={generating.value}>
-		<HeaderNav />
-	</PageHeader>
+<PageHeader subtitle={currentDate} iconSpinning={generating.value}>
+	<HeaderNav />
+</PageHeader>
 
+<main id="content">
 	{#if generating.value}
 		<div class="generating-state">
 			<div class="scan-animation">

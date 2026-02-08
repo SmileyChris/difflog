@@ -16,11 +16,11 @@
 	<title>diff·log - Stars</title>
 </svelte:head>
 
-<main id="content">
-	<PageHeader pageTitle="stars" subtitle={getStarCountLabel()} icon="star">
-		<HeaderNav />
-	</PageHeader>
+<PageHeader pageTitle="stars" subtitle={getStarCountLabel()} icon="star">
+	<HeaderNav />
+</PageHeader>
 
+<main id="content">
 	{#if !stars?.length}
 		<EmptyState
 			icon="★"

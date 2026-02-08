@@ -148,18 +148,18 @@
 	<title>diff·log</title>
 </svelte:head>
 
-<main id="content">
-	<PageHeader subtitle={currentDate} iconSpinning={generating.value}>
-		<div class="header-profile-group">
-			{#if getStars()?.length > 0}
-				<a href="/stars" class="header-link">
-					<span class="header-link-icon">&#9733;</span> {getStarCountLabel()}
-				</a>
-			{/if}
-			<HeaderNav />
-		</div>
-	</PageHeader>
+<PageHeader subtitle={currentDate} iconSpinning={generating.value}>
+	<div class="header-profile-group">
+		{#if getStars()?.length > 0}
+			<a href="/stars" class="header-link">
+				<span class="header-link-icon">&#9733;</span> {getStarCountLabel()}
+			</a>
+		{/if}
+		<HeaderNav />
+	</div>
+</PageHeader>
 
+<main id="content">
 	{#if needsSyncPrompt()}
 		<div class="sync-banner">
 			<span>You have unsynced changes.</span>

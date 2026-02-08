@@ -65,7 +65,6 @@
 		align-items: center;
 		gap: 1rem;
 		flex-wrap: wrap;
-		margin-bottom: 2rem;
 	}
 
 	.header-left {

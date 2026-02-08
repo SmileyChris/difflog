@@ -90,9 +90,9 @@
 	<title>diff·log - Profiles</title>
 </svelte:head>
 
-<main id="content">
-	<PageHeader pageTitle="profiles" subtitle="Manage your profiles" icon="user" />
+<PageHeader pageTitle="profiles" subtitle="Manage your profiles" icon="user" />
 
+<main id="content">
 	{#if Object.keys(profiles.value).length > 0}
 		<div class="profiles-section">
 			<h2 class="profiles-section-title">Your Profiles</h2>

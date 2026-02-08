@@ -139,9 +139,11 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 1rem 0;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 1.5rem;
   flex-wrap: wrap;
   gap: 1rem;
 }
@@ -3175,7 +3177,6 @@ button.profile-card-action-alt:hover:not(:disabled) {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  margin-bottom: 2rem;
   font-family: var(--font-mono);
   font-size: 0.8rem;
   text-transform: lowercase;
@@ -3369,7 +3370,6 @@ article section strong {
   text-align: center;
   padding: 3rem 1rem;
   flex: 1;
-  min-height: calc(100vh - 10rem);
 }
 
 

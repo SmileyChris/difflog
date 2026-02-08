@@ -37,31 +37,31 @@
 	{/if}
 {/snippet}
 
+{#if !profile}
+	<nav class="about-nav">
+		{@render aboutNav({about: 'welcome'})}
+	</nav>
+{/if}
+
+{#if profile}
+	<PageHeader>
+		{#snippet subtitleContent()}
+			<nav class="about-nav-inline">
+				{@render aboutNav({about: 'about'})}
+			</nav>
+		{/snippet}
+		<HeaderNav />
+	</PageHeader>
+{/if}
+
 <main id="content">
-	{#if !profile}
-		<nav class="about-nav">
-			{@render aboutNav({about: 'welcome'})}
-		</nav>
-	{/if}
-
-	{#if profile}
-		<PageHeader>
-			{#snippet subtitleContent()}
-				<nav class="about-nav-inline">
-					{@render aboutNav({about: 'about'})}
-				</nav>
-			{/snippet}
-			<HeaderNav />
-		</PageHeader>
-	{/if}
-
 	{@render children()}
-
-	<footer class="about-footer">
-		{#if profile}
-			<a href="/" class="about-footer-link">&larr; back home</a>
-			<span class="about-footer-sep">&#9670;</span>
-		{/if}
-		<a href="https://smileychris.github.io/difflog/" class="about-footer-link" target="_blank" rel="noopener">&hearts; opensource</a>
-	</footer>
 </main>
+
+<footer class="about-footer">
+	{#if profile}
+		<a href="/" class="about-footer-link">&larr; back home</a>
+		<span class="about-footer-sep">&#9670;</span>
+	{/if}
+	<a href="https://smileychris.github.io/difflog/" class="about-footer-link" target="_blank" rel="noopener">&hearts; opensource</a>
+</footer>

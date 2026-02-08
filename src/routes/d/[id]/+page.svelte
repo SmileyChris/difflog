@@ -67,9 +67,9 @@
 	<title>{diff?.title ? `${diff.title} - diff·log` : 'diff·log'}</title>
 </svelte:head>
 
-<main id="content" class="public-diff-page">
-	<PageHeader subtitle={diff?.profile_name ? `shared by ${diff.profile_name}` : 'Shared Diff'} />
+<PageHeader subtitle={diff?.profile_name ? `shared by ${diff.profile_name}` : 'Shared Diff'} />
 
+<main id="content" class="public-diff-page">
 	<!-- Error -->
 	{#if error}
 		<div class="error-box">
