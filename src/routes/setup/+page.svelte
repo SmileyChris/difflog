@@ -39,15 +39,12 @@
 		masked: boolean;
 	}
 
-	// Initialize state from load function data
-	let step = $state(pageData.initialStep ?? 0);
-	let saving = $state(false);
-	let setupError = $state("");
-	const isEditing = pageData.isEditing ?? false;
-	const hasExistingProfiles = pageData.hasExistingProfiles ?? false;
-
-	let formData = $state(
-		pageData.initialData ?? {
+	// Snapshot pageData for form initialization (intentional one-time read)
+	const _init = (() => ({
+		step: pageData.initialStep ?? 0,
+		isEditing: pageData.isEditing ?? false,
+		hasExistingProfiles: pageData.hasExistingProfiles ?? false,
+		formData: pageData.initialData ?? {
 			name: "",
 			languages: [] as string[],
 			frameworks: [] as string[],
@@ -56,20 +53,9 @@
 			depth: "standard",
 			customFocus: "",
 		},
-	);
-
-	// Custom items for each category (not in predefined options)
-	let customLanguages = $state<string[]>(
-		pageData.customItems?.languages ?? [],
-	);
-	let customFrameworks = $state<string[]>(
-		pageData.customItems?.frameworks ?? [],
-	);
-	let customTools = $state<string[]>(pageData.customItems?.tools ?? []);
-	let customTopics = $state<string[]>(pageData.customItems?.topics ?? []);
-
-	let providers = $state<Record<string, ProviderState>>(
-		pageData.providerStates ??
+		customItems: pageData.customItems ?? {},
+		providerStates:
+			pageData.providerStates ??
 			Object.fromEntries(
 				Object.keys(PROVIDERS).map((id) => [
 					id,
@@ -80,19 +66,35 @@
 					},
 				]),
 			),
-	);
+		selections: pageData.selections ?? {
+			search: null as string | null,
+			curation: null as string | null,
+			synthesis: null as string | null,
+		},
+	}))();
+
+	const isEditing = _init.isEditing;
+	const hasExistingProfiles = _init.hasExistingProfiles;
+
+	let step = $state(_init.step);
+	let saving = $state(false);
+	let setupError = $state("");
+
+	let formData = $state(_init.formData);
+
+	// Custom items for each category (not in predefined options)
+	let customLanguages = $state<string[]>(_init.customItems.languages ?? []);
+	let customFrameworks = $state<string[]>(_init.customItems.frameworks ?? []);
+	let customTools = $state<string[]>(_init.customItems.tools ?? []);
+	let customTopics = $state<string[]>(_init.customItems.topics ?? []);
+
+	let providers = $state<Record<string, ProviderState>>(_init.providerStates);
 
 	let selections = $state<{
 		search: string | null;
 		curation: string | null;
 		synthesis: string | null;
-	}>(
-		pageData.selections ?? {
-			search: null,
-			curation: null,
-			synthesis: null,
-		},
-	);
+	}>(_init.selections);
 
 	// Get existing keys from other profiles (excluding current profile if editing)
 	function getExistingKeys(): Record<string, string> {
