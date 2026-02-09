@@ -69,12 +69,13 @@ A saved configuration that personalizes your diffs.
     curation: string | null;
     synthesis: string | null;
   };
-  languages: string[];     // Programming languages
-  frameworks: string[];    // Frameworks
-  tools: string[];         // Developer tools
-  topics: string[];        // Topics of interest
+  languages?: string[];    // Programming languages
+  frameworks?: string[];   // Frameworks
+  tools?: string[];        // Developer tools
+  topics?: string[];       // Topics of interest
   depth: string;           // Reading preference
-  customFocus?: string;    // Optional custom instructions
+  customFocus: string;     // Custom instructions (empty string if none)
+  createdAt?: string;      // ISO timestamp
   resolvedMappings?: {     // AI-resolved sources for custom items
     [item: string]: {
       subreddits: string[];
@@ -97,11 +98,12 @@ Diffs store markdown only. HTML is rendered client-side on display.
 
 ```typescript
 {
-  id: string;           // Unique identifier (timestamp-based)
-  title: string;        // AI-generated title
-  content: string;      // Markdown content
-  generated_at: string; // ISO timestamp
-  duration_seconds: number;
+  id: string;              // Unique identifier (timestamp-based)
+  content: string;         // Markdown content
+  generated_at: string;    // ISO timestamp
+  title?: string;          // AI-generated title
+  duration_seconds?: number;
+  cost?: number;           // Estimated generation cost in USD
 }
 ```
 
@@ -111,12 +113,13 @@ Stars are lightweight references to paragraphs within diffs, not copies of conte
 
 ```typescript
 {
-  id: string;           // Unique identifier (UUID)
   diff_id: string;      // Reference to parent diff
   p_index: number;      // Paragraph index (data-p attribute)
   added_at: string;     // ISO timestamp
 }
 ```
+
+The star ID is derived as `${diff_id}:${p_index}` via `starId()` — not stored on the object.
 
 Content is reconstructed on display via `getStarContent(star)`, which:
 
