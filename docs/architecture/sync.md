@@ -114,12 +114,12 @@ sequenceDiagram
 Changes are tracked in `pendingSync` (persisted to localStorage):
 
 ```typescript
-interface PendingSync {
+interface PendingChanges {
   modifiedDiffs: string[];    // IDs of new/changed diffs
   modifiedStars: string[];    // IDs of new/changed stars
   deletedDiffs: string[];     // IDs of deleted diffs
   deletedStars: string[];     // IDs of deleted stars
-  profileModified: boolean;   // Profile metadata changed
+  profileModified?: boolean;  // Profile metadata changed
 }
 ```
 
@@ -134,27 +134,28 @@ When the password is cached (in sessionStorage), sync triggers automatically:
 | **Page load** | Sync if hashes differ from server |
 
 ```typescript
-_scheduleAutoSync() {
-  if (this._autoSyncTimeout) clearTimeout(this._autoSyncTimeout);
-  this._autoSyncTimeout = setTimeout(() => this.autoSync(), 2000);
+function scheduleAutoSync(): void {
+  if (_autoSyncTimeout) clearTimeout(_autoSyncTimeout);
+  _autoSyncTimeout = setTimeout(() => autoSync(), 2000);
 }
 
-_syncIfStale() {
-  const lastSync = new Date(this.profile.syncedAt).getTime();
+function syncIfStale(): void {
+  const profile = getProfile();
+  if (!password || !profile?.syncedAt) return;
+  const lastSync = new Date(profile.syncedAt).getTime();
   const oneHour = 60 * 60 * 1000;
   if (Date.now() - lastSync > oneHour) {
-    this.autoSync();
+    autoSync();
   }
 }
 
-async autoSync() {
-  // Clear any pending scheduled sync
-  if (this._autoSyncTimeout) clearTimeout(this._autoSyncTimeout);
+async function autoSync(): Promise<void> {
+  if (_autoSyncTimeout) clearTimeout(_autoSyncTimeout);
   // Download first (merges server content into local)
-  await this.downloadContent(password);
+  await downloadContentInternal(password);
   // Then upload (sends all local content + deletions)
-  if (this.hasPendingChanges()) {
-    await this.uploadContent(password);
+  if (hasPendingChanges()) {
+    await uploadContentInternal(password);
   }
 }
 ```
@@ -178,7 +179,7 @@ This prevents the app from repeatedly retrying with an invalid password and trig
 Upload is **skipped entirely** if there are no pending changes:
 
 ```typescript
-if (!this.hasPendingChanges()) {
+if (!hasPendingChanges()) {
   return { uploaded: 0 };
 }
 ```
@@ -248,14 +249,15 @@ for (const encryptedDiff of data.diffs) {
   const diff = await decryptData(encryptedDiff.encrypted_data, password, salt);
 
   // Skip if already local OR pending deletion
+  const existingIdx = mergedHistory.findIndex(d => d.id === encryptedDiff.id);
   if (existingIdx === -1 && !pendingDeletedDiffs.has(encryptedDiff.id)) {
-    this.history = [...this.history, diff];
+    mergedHistory.push(diff);
   }
 }
 
 // Remove local items not on server (deleted by another device)
 // Keep items that are: on server, pending local deletion, or pending local upload
-this.history = this.history.filter(d =>
+mergedHistory = mergedHistory.filter(d =>
   serverDiffIds.has(d.id) || pendingDeletedDiffs.has(d.id) || pendingModifiedDiffs.has(d.id)
 );
 ```
@@ -270,8 +272,7 @@ Profile metadata (name, languages, frameworks, etc.) is also synced:
 ```typescript
 // Apply server profile metadata (skip if local changes pending)
 if (data.profile && !hasLocalProfileChanges) {
-  this.profiles[id] = {
-    ...current,
+  profileUpdates = {
     name: data.profile.name,
     languages: data.profile.languages,
     frameworks: data.profile.frameworks,
@@ -317,7 +318,7 @@ Hashes are computed over **plaintext** (not encrypted data) for deterministic co
 | **Selective download** | Pass local hashes to server - skip fetching collections where hash matches |
 | **Selective upload** | Compare server hash to profile's stored hash - if unchanged, only upload modified items |
 
-The hash is computed over encrypted data, so it can be stored on the server without revealing content.
+The server stores the hash of the plaintext content (sent by the client after upload) for comparison. Content itself is always encrypted before upload.
 
 ## Password Caching
 
