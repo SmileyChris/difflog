@@ -42,12 +42,13 @@ When the app needs the sync password, it checks these sources in order:
 If a remembered password is found, it's automatically promoted to session storage for the current tab:
 
 ```typescript
-get _syncPassword(): string | null {
+function getSyncPasswordWithFallback(): string | null {
   const sessionPwd = getSyncPassword();
   if (sessionPwd) return sessionPwd;
 
-  if (this.activeProfileId) {
-    const remembered = getRememberedPassword(this.activeProfileId);
+  const profileId = activeProfileId.value;
+  if (profileId) {
+    const remembered = getRememberedPassword(profileId);
     if (remembered) {
       // Promote to session storage for this tab
       setSyncPassword(remembered);
@@ -96,12 +97,7 @@ This prevents the app from hammering the server with invalid credentials and tri
 
 When the user needs to enter their password, a checkbox appears:
 
-```html
-<label class="sync-dropdown-remember">
-  <input type="checkbox" x-model="remember" />
-  <span class="sync-dropdown-remember-text">Remember password</span>
-</label>
-```
+A "Remember password" checkbox appears in the sync/import password forms.
 
 ### Forget Button (when logged in)
 
@@ -130,16 +126,16 @@ clearRememberedPassword(profileId: string): void
 hasRememberedPassword(profileId: string): boolean
 ```
 
-### store.ts
+### sync.svelte.ts (store)
 
 ```typescript
-// Check if current profile has a remembered password
-get hasRememberedPassword(): boolean
+// Check if active profile has a remembered password
+isPasswordRemembered(): boolean
 
-// Remember password for current profile
+// Remember password for active profile
 rememberPassword(password: string): void
 
-// Forget password for current profile (session + remembered)
+// Forget password for active profile (session + remembered)
 forgetPassword(): void
 ```
 

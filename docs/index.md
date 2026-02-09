@@ -17,24 +17,24 @@ diff·log is an open source app that uses AI to summarize dev news based on your
 
 ## Technology Stack
 
-**Client:** [Alpine.js](https://alpinejs.dev/) with [@alpinejs/persist](https://alpinejs.dev/plugins/persist) for localStorage. CSS View Transitions for smooth page navigation.
+**Client:** [SvelteKit](https://svelte.dev/) SPA with Svelte 5 runes for reactivity. CSS View Transitions for smooth navigation.
 
-**Server:** [Bun](https://bun.sh/) for local dev, [Cloudflare Pages](https://pages.cloudflare.com/) for production hosting, [Cloudflare D1](https://developers.cloudflare.com/d1/) for sync storage.
+**Server:** [Cloudflare Pages](https://pages.cloudflare.com/) for production hosting, [Cloudflare D1](https://developers.cloudflare.com/d1/) for sync storage. SvelteKit API routes for server endpoints.
 
-**Build:** Bun's HTML imports automatically bundle TypeScript and CSS. No webpack or vite needed.
+**Build:** [Vite](https://vite.dev/) via SvelteKit with Cloudflare adapter. [Bun](https://bun.sh/) as package manager and test runner.
 
 ## Architecture Overview
 
 ``` mermaid
 graph TB
     subgraph Client ["Client (Browser)"]
-        Store[Alpine.js Store]
+        Stores[Svelte 5 Stores]
         Crypto[Web Crypto API]
         Storage[localStorage]
     end
 
     subgraph Server ["Cloudflare Pages"]
-        API["/api/* Functions"]
+        API["/api/* Server Routes"]
     end
 
     subgraph DB ["Cloudflare D1"]
@@ -43,9 +43,9 @@ graph TB
         Stars[(stars)]
     end
 
-    Store <--> Crypto
-    Store <--> Storage
-    Store <--> API
+    Stores <--> Crypto
+    Stores <--> Storage
+    Stores <--> API
     API <--> Profiles
     API <--> Diffs
     API <--> Stars
@@ -55,5 +55,5 @@ graph TB
 
 ```bash
 bun install          # Install dependencies
-bun run dev          # Start dev server at localhost:3000
+bun run dev          # Start dev server
 ```

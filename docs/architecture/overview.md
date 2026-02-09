@@ -4,16 +4,16 @@ icon: lucide/layers
 
 # Architecture Overview
 
-diff·log is built as a multi-page app with optional cloud sync capabilities.
+diff·log is a SvelteKit SPA with optional cloud sync capabilities.
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | Alpine.js |
-| **Styling** | Custom CSS with CSS variables |
-| **Bundling** | Bun HTML imports |
-| **Backend** | Cloudflare Pages Functions |
+| **Frontend** | SvelteKit with Svelte 5 runes |
+| **Styling** | Global CSS (`app.css`) + scoped component styles |
+| **Build** | Vite via SvelteKit (Cloudflare adapter) |
+| **Backend** | SvelteKit API routes on Cloudflare Pages |
 | **Database** | Cloudflare D1 (SQLite) |
 | **AI** | Multi-provider (Anthropic, DeepSeek, Gemini, Perplexity, Serper — see [AI Pipeline](../ai.md)) |
 
@@ -21,94 +21,83 @@ diff·log is built as a multi-page app with optional cloud sync capabilities.
 
 ### Module Structure
 
-The client code is organized into focused modules:
-
 ```
 src/
-├── app.ts              # Entry point (Alpine plugin setup)
-├── store.ts            # Alpine store (state management)
-├── components/
-│   ├── index.ts        # Barrel export
-│   ├── dashboard.ts    # Main dashboard component
-│   ├── profiles.ts     # Profile management component
-│   ├── setup.ts        # Setup wizard component
-│   └── share-profile.ts
-└── lib/
-    ├── sync.ts         # Sync service
-    ├── time.ts         # Time utilities
-    ├── api.ts          # Fetch utilities
-    ├── constants.ts    # Shared constants
-    ├── crypto.ts       # Encryption
-    ├── prompt.ts       # Prompt building
-    ├── feeds.ts        # Feed fetching
-    └── markdown.ts     # Markdown rendering
+├── routes/                    # SvelteKit file-based routing
+│   ├── +layout.svelte         # Root layout (CSS, View Transitions)
+│   ├── +page.svelte           # Dashboard
+│   ├── about/                 # Landing, privacy, terms
+│   ├── setup/                 # Profile creation/editing wizard
+│   ├── profiles/              # Profile management, sync, sharing
+│   ├── archive/               # Past diffs list
+│   ├── stars/                 # Bookmarked paragraphs
+│   ├── generate/              # Diff generation page
+│   ├── d/[id]/                # Public diff view
+│   ├── design/                # Design system (dev only)
+│   └── api/                   # Server endpoints
+├── lib/
+│   ├── stores/                # Svelte 5 state management
+│   │   ├── profiles.svelte.ts # Profile CRUD
+│   │   ├── history.svelte.ts  # Diff history, streaks
+│   │   ├── stars.svelte.ts    # Bookmarks
+│   │   ├── sync.svelte.ts     # Cloud sync state
+│   │   ├── ui.svelte.ts       # Transient UI state
+│   │   ├── operations.svelte.ts # Cross-domain composite operations
+│   │   └── persist.svelte.ts  # localStorage/sessionStorage helpers
+│   ├── components/            # Reusable Svelte components
+│   ├── utils/                 # Pure utility functions
+│   │   ├── providers.ts       # AI provider configuration
+│   │   ├── llm.ts             # Multi-provider LLM abstraction
+│   │   ├── search.ts          # Web search providers
+│   │   ├── feeds.ts           # Feed fetching and curation
+│   │   ├── prompt.ts          # Prompt construction
+│   │   ├── sync.ts            # Sync utilities, types
+│   │   ├── crypto.ts          # Client-side encryption
+│   │   ├── markdown.ts        # Markdown rendering
+│   │   └── ...                # api, constants, time, pricing, etc.
+│   └── actions/               # Svelte actions
+│       ├── clickOutside.ts    # Click-outside detection
+│       └── generateDiff.ts    # Diff generation orchestration
+└── app.css                    # Global styles and design system
 ```
 
-### Alpine.js Store
+### Store Architecture
 
-The central state management (`src/store.ts`) uses Alpine's `$persist` plugin for localStorage persistence:
+Domain-driven store modules using Svelte 5 `$state()` runes. State is exposed via accessor objects with `get/set value()`. Derived state uses functions. Actions are plain functions that mutate state.
 
 ```typescript
-Alpine.store('app', {
-  // Persisted state
-  profiles: Alpine.$persist({}).as('difflog-profiles'),
-  histories: Alpine.$persist({}).as('difflog-histories'),
-  bookmarks: Alpine.$persist({}).as('difflog-bookmarks'),
-  activeProfileId: Alpine.$persist(null).as('difflog-active-profile'),
-  pendingSync: Alpine.$persist({}).as('difflog-pending-sync'),
+// Reading state
+const profile = getProfile();
+const history = getHistory();
 
-  // Session state (not persisted)
-  syncing: false,
-  syncError: null,
-  syncStatus: null,
-
-  // Computed
-  get profile() { return this.profiles[this.activeProfileId]; },
-  get history() { return this.histories[this.activeProfileId] || []; },
-  get stars() { return this.bookmarks[this.activeProfileId] || []; },
-
-  // Helper methods for templates
-  get starCountLabel() { ... },
-  formatTimeAgo(dateStr) { ... },
-});
+// Mutating state
+addDiff(entry);
+updateProfile({ name: 'New Name' });
 ```
 
-### Page Structure
-
-Each page is a full HTML document that works standalone:
-
-```
-pages/
-├── splash.html      # Landing page (/welcome)
-├── setup.html       # Profile setup wizard (/setup)
-├── dashboard.html   # Main app (/)
-├── archive.html     # Past diffs list (/archive)
-├── stars.html       # Bookmarked items (/stars)
-└── profiles.html    # Profile management (/profiles)
-```
-
-CSS View Transitions provide smooth cross-document navigation.
+localStorage keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-active-profile`, `difflog-pending-sync`.
 
 ## Server Architecture
 
-### Cloudflare Pages Functions
+### SvelteKit API Routes
 
-API endpoints are TypeScript functions in the `functions/` directory:
+API endpoints are `+server.ts` files under `src/routes/api/`:
 
 ```
-functions/
-├── api/
-│   ├── generate.ts           # Generate diff via Claude
-│   ├── profile/
-│   │   ├── create.ts         # Create/update profile
-│   │   ├── [id].ts           # Get/update/delete profile
-│   │   └── [id]/
-│   │       ├── content.ts    # Download encrypted content
-│   │       ├── status.ts     # Sync status check
-│   │       └── sync.ts       # Upload content
-│   └── share/
-│       └── [id].ts           # Public profile info
-└── types.ts                  # Shared types
+src/routes/api/
+├── feeds/+server.ts              # Fetch developer news feeds
+├── diff/[id]/public/+server.ts   # Public diff view
+├── profile/
+│   ├── create/+server.ts         # Create/update profile
+│   ├── [id]/+server.ts           # Get/update/delete profile
+│   └── [id]/
+│       ├── content/+server.ts    # Download encrypted content
+│       ├── password/+server.ts   # Update password
+│       ├── status/+server.ts     # Sync status check
+│       └── sync/+server.ts       # Upload content
+├── share/[id]/+server.ts         # Public profile info
+├── auth.ts                       # Shared auth helpers
+└── types.ts                      # Shared types
 ```
 
 ### D1 Database Schema
@@ -201,41 +190,3 @@ stateDiagram-v2
     Local --> [*]: Delete
     Shared --> [*]: Delete
 ```
-
-## Key Files
-
-### Entry & State
-
-| File | Purpose |
-|------|---------|
-| `src/app.ts` | Entry point — Alpine plugin setup, imports store and components |
-| `src/store.ts` | Alpine store — profile/history/sync state management |
-
-### Components
-
-| File | Purpose |
-|------|---------|
-| `src/components/dashboard.ts` | Main dashboard — diff generation, display, starring |
-| `src/components/profiles.ts` | Profile management — switch, import, share, sync |
-| `src/components/setup.ts` | Setup wizard — profile creation/editing |
-| `src/components/share-profile.ts` | Share profile page component |
-| `src/components/index.ts` | Barrel export for all components |
-
-### Libraries
-
-| File | Purpose |
-|------|---------|
-| `src/lib/sync.ts` | Sync service — upload, download, change tracking |
-| `src/lib/time.ts` | Time utilities — `timeAgo()`, `daysSince()`, `formatDate()` |
-| `src/lib/api.ts` | Fetch utilities — `fetchJson()`, `postJson()`, `ApiError` |
-| `src/lib/constants.ts` | Shared constants — LANGUAGES, FRAMEWORKS, DEPTHS, etc. |
-| `src/lib/crypto.ts` | Encryption utilities — AES-GCM, PBKDF2 |
-| `src/lib/prompt.ts` | Claude prompt construction |
-| `src/lib/feeds.ts` | Feed fetching, AI source resolution, and curation |
-| `src/lib/markdown.ts` | Client-side markdown rendering with `data-p` indices |
-
-### Styles
-
-| File | Purpose |
-|------|---------|
-| `styles.css` | All styles (dark theme) |

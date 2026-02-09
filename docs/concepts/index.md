@@ -17,35 +17,23 @@ Terminology, conventions, and technology choices used throughout diff·log.
 | **Streak** | Count of consecutive diffs generated with an 8-day tolerance between each |
 | **Sync** | Optional cross-device sharing via encrypted cloud storage |
 
-## Pages and Partials
+## Routes
 
-**Pages** are full HTML documents that work standalone on direct load. CSS View Transitions provide smooth cross-document navigation.
+SvelteKit file-based routing. CSS View Transitions provide smooth navigation.
 
-| Route | File | Purpose |
-|-------|------|---------|
-| `/` | `index.html` | Main dashboard — generate and view diffs |
-| `/about` | `about/index.html` | Landing page for new users |
-| `/about/privacy` | `about/privacy.html` | Privacy policy |
-| `/about/terms` | `about/terms.html` | Terms of service |
-| `/setup` | `setup.html` | Profile creation wizard |
-| `/archive` | `archive.html` | Past diffs list |
-| `/stars` | `stars.html` | Bookmarked paragraphs |
-| `/profiles` | `profiles.html` | Manage multiple profiles |
-| `/share` | `share.html` | Import a shared profile |
-| `/d/:id` | `d.html` | Public diff view |
-
-**Partials** are HTML fragments in `partials/`. They're inlined at build time via `<!-- @include partials/filename.html -->` for repeated sections (footer, dropdowns) or loaded dynamically by Alpine components (setup wizard steps).
-
-| File | Purpose |
-|------|---------|
-| `step-languages.html` | Setup wizard — programming languages |
-| `step-frameworks.html` | Setup wizard — frameworks |
-| `step-tools.html` | Setup wizard — tools |
-| `step-topics.html` | Setup wizard — topics of interest |
-| `step-depth.html` | Setup wizard — reading depth preference |
-| `sync-dropdown.html` | Sync status and controls |
-| `share-dropdown.html` | Public sharing controls |
-| `site-footer.html` | Common footer links |
+| Route | Purpose |
+|-------|---------|
+| `/` | Main dashboard — generate and view diffs |
+| `/about` | Landing page for new users |
+| `/about/privacy` | Privacy policy |
+| `/about/terms` | Terms of service |
+| `/setup` | Profile creation/editing wizard |
+| `/generate` | Diff generation page |
+| `/archive` | Past diffs list |
+| `/stars` | Bookmarked paragraphs |
+| `/profiles` | Profile management, sync, sharing |
+| `/d/:id` | Public diff view |
+| `/design` | Design system (dev only) |
 
 ## localStorage Keys
 
