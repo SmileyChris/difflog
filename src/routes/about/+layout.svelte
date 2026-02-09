@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { page } from '$app/state';
-	import { getProfile } from '$lib/stores/profiles.svelte';
-	import { PageHeader, HeaderNav } from '$lib/components';
+	import { page } from "$app/state";
+	import { getProfile } from "$lib/stores/profiles.svelte";
+	import { PageHeader, HeaderNav } from "$lib/components";
 
 	interface Props {
-		children: import('svelte').Snippet;
+		children: import("svelte").Snippet;
 	}
 
 	let { children }: Props = $props();
@@ -17,20 +17,20 @@
 	}
 </script>
 
-{#snippet aboutNav(labels: {about: string})}
-	{#if isActive('/about')}
+{#snippet aboutNav(labels: { about: string })}
+	{#if isActive("/about")}
 		<span class="about-nav-link about-nav-link-active">{labels.about}</span>
 	{:else}
 		<a href="/about" class="about-nav-link">{labels.about}</a>
 	{/if}
 	<span class="about-nav-sep">&#9670;</span>
-	{#if isActive('/about/privacy')}
+	{#if isActive("/about/privacy")}
 		<span class="about-nav-link about-nav-link-active">privacy</span>
 	{:else}
 		<a href="/about/privacy" class="about-nav-link">privacy</a>
 	{/if}
 	<span class="about-nav-sep">&#9670;</span>
-	{#if isActive('/about/terms')}
+	{#if isActive("/about/terms")}
 		<span class="about-nav-link about-nav-link-active">terms</span>
 	{:else}
 		<a href="/about/terms" class="about-nav-link">terms</a>
@@ -39,7 +39,7 @@
 
 {#if !profile}
 	<nav class="about-nav">
-		{@render aboutNav({about: 'welcome'})}
+		{@render aboutNav({ about: "welcome" })}
 	</nav>
 {/if}
 
@@ -47,7 +47,7 @@
 	<PageHeader>
 		{#snippet subtitleContent()}
 			<nav class="about-nav-inline">
-				{@render aboutNav({about: 'about'})}
+				{@render aboutNav({ about: "about" })}
 			</nav>
 		{/snippet}
 		<HeaderNav />
@@ -58,12 +58,16 @@
 	{@render children()}
 </main>
 
-<footer class="about-footer">
+<footer>
 	{#if profile}
-		<a href="/" class="about-footer-link">&larr; back home</a>
+		<a href="/">&larr; back home</a>
 		<span class="about-footer-sep">&#9670;</span>
 	{/if}
-	<a href="https://smileychris.github.io/difflog/" class="about-footer-link" target="_blank" rel="noopener">&hearts; opensource</a>
+	<a
+		href="https://smileychris.github.io/difflog/"
+		target="_blank"
+		rel="noopener"><span class="heart-red">&hearts;</span> opensource</a
+	>
 </footer>
 
 <style>
@@ -85,7 +89,9 @@
 		width: fit-content;
 		margin-left: auto;
 		margin-right: auto;
-		box-shadow: 0 0 20px var(--accent-bg), 0 0 40px var(--accent-bg);
+		box-shadow:
+			0 0 20px var(--accent-bg),
+			0 0 40px var(--accent-bg);
 	}
 
 	.about-nav-link {
@@ -125,26 +131,25 @@
 		font-size: 0.4em;
 	}
 
-	.about-footer {
+	footer {
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		gap: 0.5rem;
 		margin-top: auto;
-		padding: 1.5rem 0;
 		font-family: var(--font-mono);
 		font-size: 0.75rem;
 		text-transform: lowercase;
 	}
 
-	.about-footer-link {
+	footer a {
 		color: var(--text-disabled);
 		text-decoration: none;
 		padding: 0.25rem 0.5rem;
 		transition: color 0.15s;
 	}
 
-	.about-footer-link:hover {
+	footer a:hover {
 		color: var(--accent);
 	}
 
