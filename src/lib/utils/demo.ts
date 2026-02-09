@@ -109,10 +109,24 @@ function buildContent(): string {
 	return parts.join('\n\n');
 }
 
-export function createDemoDiff(): Diff {
+const TITLES = [
+	'Your Demo Developer Intelligence Diff',
+	'What Changed While You Were Coding',
+	'Dev Ecosystem Snapshot',
+	'Your Stack This Week',
+	"Here's What You Missed",
+	'Fresh Off the Wire',
+	'The Dev World Moves Fast',
+	'Meanwhile, in Open Source...',
+	'Your Ecosystem at a Glance',
+	'Caught Up in 60 Seconds',
+];
+
+export function createDemoDiff(lastTitle?: string): Diff {
+	const candidates = lastTitle ? TITLES.filter((t) => t !== lastTitle) : TITLES;
 	return {
 		id: Date.now().toString(),
-		title: 'Your Demo Developer Intelligence Diff',
+		title: candidates[Math.floor(Math.random() * candidates.length)],
 		content: buildContent(),
 		generated_at: new Date().toISOString(),
 		duration_seconds: 42,

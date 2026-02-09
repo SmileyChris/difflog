@@ -63,6 +63,25 @@ header {
   flex-wrap: nowrap;
 }
 
+.logo-mark {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.6rem;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.logo-mark::after {
+  content: '\25C7';
+  position: absolute;
+  font-size: 3rem;
+  color: var(--accent);
+}
+
 .diff-title-icon {
   color: var(--accent);
   font-size: 0.75em;

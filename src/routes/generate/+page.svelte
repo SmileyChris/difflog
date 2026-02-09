@@ -63,6 +63,7 @@
 
 	const providersText = $derived.by(() => {
 		const p = getProfile();
+		if (isDemoProfile(p)) return 'Using sample demo data';
 		const selections = p?.providerSelections || {};
 		const nameMap: Record<string, string> = {
 			anthropic: 'Anthropic',
@@ -136,13 +137,32 @@
 
 	async function startGeneration() {
 		if (isDemoProfile()) {
+			if (ctrlHeld) forceNew = true;
 			scanIndex = 0;
 			scanMessages = [...SCAN_MESSAGES].sort(() => Math.random() - 0.5);
 			generating.value = true;
 			startScanAnimation();
 			const { createDemoDiff } = await import("$lib/utils/demo");
 			await new Promise((r) => setTimeout(r, 2500));
-			addDiff(createDemoDiff());
+
+			// Handle replacing today's existing diff (unless force new)
+			const today = new Date().toDateString();
+			const history = getHistory();
+			if (
+				!forceNew &&
+				history.length > 0 &&
+				new Date(history[0].generated_at).toDateString() === today
+			) {
+				const oldDiffId = history[0].id;
+				const starsToRemove = getStars().filter(
+					(s) => s.diff_id === oldDiffId,
+				);
+				for (const star of starsToRemove) {
+					removeStar(star.diff_id, star.p_index);
+				}
+				deleteDiff(oldDiffId);
+			}
+			addDiff(createDemoDiff(getHistory()[0]?.title));
 			generating.value = false;
 			if (scanInterval) {
 				clearInterval(scanInterval);
@@ -329,6 +349,7 @@
 		</div>
 	{:else}
 		<div class="welcome-area">
+			<div class="logo-mark">&#9670;</div>
 			<h2 class="welcome-heading-lg">{isFirstTime ? `Welcome, ${getProfile()?.name || "Developer"}` : isTodayDiff ? "Ready to regenerate" : "Ready to generate"}</h2>
 			{#if isFirstTime}
 				<p class="welcome-text">
@@ -340,8 +361,9 @@
 				</p>
 			{:else if isTodayDiff}
 				<p class="welcome-text">
-					Your diff is current. Regenerate to get the latest.
-					{#if !ctrlHeld}<small class="ctrl-hint">(hold <kbd>Ctrl</kbd> to generate another)</small>{/if}
+					You've already generated today's diff.
+					{#if ctrlHeld}But let's generate another...{:else}Regenerate to refresh it.
+					<small class="ctrl-hint">(hold <kbd>Ctrl</kbd> to generate another)</small>{/if}
 				</p>
 			{:else}
 				<p class="welcome-text">
