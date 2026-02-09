@@ -61,6 +61,32 @@
 		].join(" · ");
 	});
 
+	const providersText = $derived.by(() => {
+		const p = getProfile();
+		const selections = p?.providerSelections || {};
+		const nameMap: Record<string, string> = {
+			anthropic: 'Anthropic',
+			perplexity: 'Perplexity',
+			deepseek: 'DeepSeek',
+			gemini: 'Gemini',
+			serper: 'Serper',
+		};
+
+		// Collect unique providers being used
+		const providers = new Set<string>();
+		if (selections.search) providers.add(nameMap[selections.search] || selections.search);
+		if (selections.curation) providers.add(nameMap[selections.curation] || selections.curation);
+		if (selections.synthesis) providers.add(nameMap[selections.synthesis || 'anthropic'] || 'Anthropic');
+
+		const providerList = Array.from(providers);
+		if (providerList.length === 0) return 'Using Anthropic';
+		if (providerList.length === 1) return `Using ${providerList[0]}`;
+		if (providerList.length === 2) return `Using ${providerList.join(' and ')}`;
+
+		const last = providerList.pop();
+		return `Using ${providerList.join(', ')} and ${last}`;
+	});
+
 	onMount(() => {
 		// Check URL params for force new
 		const params = new URLSearchParams(window.location.search);
@@ -303,7 +329,6 @@
 		</div>
 	{:else}
 		<div class="welcome-area">
-			<div class="logo-mark">&#9670;</div>
 			<h2 class="welcome-heading-lg">{isFirstTime ? `Welcome, ${getProfile()?.name || "Developer"}` : isTodayDiff ? "Ready to regenerate" : "Ready to generate"}</h2>
 			{#if isFirstTime}
 				<p class="welcome-text">
@@ -331,7 +356,7 @@
 						<div class="gen-options-row">
 							<span class="first-time-tracking-label">Tracking</span>
 							<span class="first-time-tracking-items">{trackingText}</span>
-							<a href="/profiles" class="first-time-tracking-edit">Edit</a>
+							<a href="/setup?edit=2" class="first-time-tracking-edit">&#9998;</a>
 						</div>
 					{/if}
 					<div class="gen-options-row">
@@ -362,6 +387,8 @@
 					Back home
 				</button>
 			{/if}
+
+			<p class="provider-hint">{providersText}</p>
 		</div>
 	{/if}
 </main>
@@ -388,7 +415,7 @@
 	.gen-options {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 1rem;
 		margin-bottom: 2rem;
 		padding: 0.75rem 1rem;
 		background: var(--bg-chip);
@@ -530,5 +557,12 @@
 
 	.first-time-tracking-edit:hover {
 		color: var(--accent);
+	}
+
+	.provider-hint {
+		font-size: 0.8rem;
+		color: var(--text-disabled);
+		margin-top: 0.75rem;
+		text-align: center;
 	}
 </style>
