@@ -284,27 +284,6 @@
     color: var(--text-disabled);
   }
 
-  .sync-dropdown-btn {
-    background: var(--accent);
-    color: var(--bg-base);
-    border: none;
-    border-radius: var(--radius);
-    padding: 0.5rem;
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-
-  .sync-dropdown-btn:hover:not(:disabled) {
-    opacity: 0.9;
-  }
-
-  .sync-dropdown-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
   .sync-dropdown-error {
     color: var(--danger);
     font-size: 0.8rem;

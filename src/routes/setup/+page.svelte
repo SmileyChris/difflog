@@ -1181,16 +1181,6 @@
 		margin-bottom: 0.5rem;
 	}
 
-	.step-hint {
-		font-size: 0.85rem;
-		color: var(--text-hint);
-		margin-top: 0.5rem;
-	}
-
-	.step-hint a {
-		color: var(--accent);
-	}
-
 	.setup-error {
 		color: var(--danger);
 		font-size: 0.85rem;
@@ -1540,10 +1530,6 @@
 
 	.status-validating {
 		color: var(--text-subtle);
-	}
-
-	.status-valid {
-		color: var(--success);
 	}
 
 	.status-invalid {
