@@ -4,7 +4,7 @@ icon: lucide/rocket
 
 # diff·log
 
-diff·log is an open source app that uses Claude to summarize dev news based on your tech stack. These docs are for technical users interested in the underlying technology.
+diff·log is an open source app that uses AI to summarize dev news based on your tech stack. These docs are for technical users interested in the underlying technology.
 
 [difflog.dev](https://difflog.dev) (the site) | [GitHub](https://github.com/SmileyChris/difflog) (the code)
 
@@ -13,7 +13,7 @@ diff·log is an open source app that uses Claude to summarize dev news based on 
 - **Local-first** — All data stored in browser localStorage; [sync](architecture/sync.md) is optional
 - **End-to-end encrypted** — Sync data is [encrypted](architecture/encryption.md) client-side before upload
 - **Multi-profile** — Track different tech stacks separately
-- **BYOK** — Bring your own Anthropic API key for [AI generation](ai.md)
+- **BYOK** — Bring your own API keys for [AI generation](ai.md) (supports Anthropic, DeepSeek, Gemini, Perplexity, Serper)
 
 ## Technology Stack
 

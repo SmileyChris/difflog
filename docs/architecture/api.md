@@ -40,7 +40,7 @@ Fetch developer news feeds from multiple sources. Returns items grouped by sourc
 }
 ```
 
-The client curates HN/Lobsters items via Haiku before including in the prompt. Reddit, GitHub, and Dev.to are already profile-targeted.
+The client curates HN/Lobsters items via a lightweight call to the configured curation provider before including in the prompt. Reddit, GitHub, and Dev.to are already profile-targeted.
 
 ---
 

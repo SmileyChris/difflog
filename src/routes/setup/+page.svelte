@@ -157,7 +157,9 @@
 
 	const isProviderConfigComplete = $derived(
 		selections.synthesis !== null &&
-			providers[selections.synthesis!]?.status === "valid",
+			providers[selections.synthesis!]?.status === "valid" &&
+			selections.curation !== null &&
+			providers[selections.curation!]?.status === "valid",
 	);
 
 	// Provider table state
@@ -206,8 +208,8 @@
 		if (providers[providerId].status !== "valid") return;
 
 		if (selections[capStep] === providerId) {
-			// Don't allow deselecting synthesis (required)
-			if (capStep !== "synthesis") {
+			// Don't allow deselecting required steps
+			if (capStep !== "synthesis" && capStep !== "curation") {
 				selections[capStep] = null;
 			}
 		} else {
@@ -333,7 +335,7 @@
 		}
 
 		if (!isProviderConfigComplete) {
-			setupError = "Configure at least one provider";
+			setupError = "Configure providers for curation and synthesis";
 			return;
 		}
 

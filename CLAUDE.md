@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**difflog** — A SvelteKit app that generates personalized developer intelligence diffs using the Anthropic Claude API. Shows you what's changed in the dev ecosystem since you last checked in.
+**difflog** — A SvelteKit app that generates personalized developer intelligence diffs using multiple AI providers (Anthropic, DeepSeek, Gemini, Perplexity, Serper). Shows you what's changed in the dev ecosystem since you last checked in.
 
 ## Commands
 
@@ -59,10 +59,13 @@ updateProfile({ name: 'New Name' });
 localStorage keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-active-profile`, `difflog-pending-sync`.
 
 ### API Flow
-1. User clicks Generate → fetches `/api/feeds` for context
-2. Builds prompt with `src/lib/utils/prompt.ts`
-3. Calls Anthropic API directly from browser (API key in localStorage)
-4. Stores markdown in history, renders with `src/lib/utils/markdown.ts`
+1. User clicks Generate → resolves custom sources (curation provider), fetches `/api/feeds` + web search in parallel
+2. Curates general feeds for relevance (curation provider)
+3. Builds prompt with `src/lib/utils/prompt.ts`
+4. Calls selected synthesis provider directly from browser (API keys in localStorage)
+5. Stores markdown in history, renders with `src/lib/utils/markdown.ts`
+
+Pipeline steps use configurable providers: search (Serper/Perplexity/Anthropic, optional), curation (DeepSeek/Gemini/Anthropic), synthesis (DeepSeek/Gemini/Anthropic/Perplexity). See `src/lib/utils/providers.ts` and `src/lib/utils/llm.ts`.
 
 ### Sync System
 Local-first with optional password-protected cloud sync via Cloudflare D1. All data encrypted client-side (AES-GCM) before upload. See `src/lib/utils/sync.ts` and `src/lib/utils/crypto.ts`.
@@ -81,7 +84,10 @@ Local-first with optional password-protected cloud sync via Cloudflare D1. All d
 - `src/routes/+page.svelte` — Main dashboard with diff generation
 - `src/routes/+layout.svelte` — Root layout with global styles
 - `src/lib/stores/operations.svelte.ts` — Composite operations (addDiff, deleteDiff, etc.)
-- `src/lib/utils/prompt.ts` — Prompt construction for Claude API
+- `src/lib/utils/providers.ts` — Provider capabilities and step configuration
+- `src/lib/utils/llm.ts` — Multi-provider LLM abstraction (curation + synthesis)
+- `src/lib/utils/search.ts` — Web search providers (Serper, Perplexity, Anthropic)
+- `src/lib/utils/prompt.ts` — Prompt construction for diff generation
 - `src/lib/utils/sync.ts` — Sync utilities (encryption, API calls)
 - `src/lib/utils/crypto.ts` — Client-side encryption (AES-GCM, PBKDF2)
 - `src/lib/utils/markdown.ts` — Markdown-to-HTML renderer with `data-p` indices for bookmarking

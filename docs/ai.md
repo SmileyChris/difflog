@@ -4,7 +4,19 @@ icon: lucide/sparkles
 
 # AI Pipeline
 
-diff·log uses multiple Claude models at different stages to generate personalized diffs. All API calls are made directly from the browser using the user's API key.
+diff·log uses a multi-step AI pipeline to generate personalized diffs. Each step can be powered by a different provider, and all API calls are made directly from the browser using the user's own keys.
+
+## Providers
+
+| Provider | Search | Curation | Synthesis | Model(s) |
+|----------|:------:|:--------:|:---------:|----------|
+| **Anthropic** | ✓ | ✓ | ✓ | Haiku 4.5 (curation), Sonnet 4.5 (search/synthesis) |
+| **Serper** | ✓ | | | Google News API |
+| **Perplexity** | ✓ | | ✓ | Sonar (search), Sonar Pro (synthesis) |
+| **DeepSeek** | | ✓ | ✓ | DeepSeek Chat |
+| **Gemini** | | ✓ | ✓ | Gemini 2.5 Flash |
+
+Users configure API keys for one or more providers, then assign a provider to each pipeline step. Curation and synthesis require a provider; search is optional.
 
 ## Overview
 
@@ -16,10 +28,10 @@ graph LR
     end
 
     subgraph "AI Pipeline"
-        H1[Haiku: Resolve Sources]
-        H2[Haiku: Curate Feeds]
-        S1[Sonnet: Web Search]
-        S2[Sonnet: Generate Diff]
+        H1[Curation: Resolve Sources]
+        H2[Curation: Filter Feeds]
+        S1[Search: Web Search]
+        S2[Synthesis: Generate Diff]
     end
 
     P <--> H1
@@ -31,32 +43,13 @@ graph LR
     S2 --> D[Diff]
 ```
 
-## Models Used
+## Pipeline Steps
 
-| Stage | Model | Purpose |
-|-------|-------|---------|
-| Source Resolution | `claude-haiku-4-5` | Map custom items to feed sources |
-| Feed Curation | `claude-haiku-4-5` | Filter general feeds for relevance |
-| Web Search | `claude-sonnet-4-5` | Find recent news via `web_search` tool |
-| Diff Generation | `claude-sonnet-4-5` | Generate the final diff |
+### 1. Source Resolution (curation provider)
 
-## Depth Levels
+When users add custom languages, frameworks, tools, or topics not in the predefined mappings, the curation provider resolves them to feed sources.
 
-Users select a reading depth that controls how detailed the generated diff will be:
-
-| Level | ID | Prompt Instruction |
-|-------|----|--------------------|
-| Quick Scan | `quick` | 1-2 bullet points per section max. Headlines and key facts only. |
-| Standard Brief | `standard` | 2-4 bullet points per section with key details and context. |
-| Deep Dive | `deep` | Comprehensive analysis with background context and implications. |
-
-The depth is passed to the generation prompt via `DEPTH_INSTRUCTIONS` in `src/lib/prompt.ts`.
-
-## Source Resolution
-
-When users add custom languages, frameworks, tools, or topics not in the predefined mappings, Haiku resolves them to feed sources.
-
-**Predefined mappings** exist in `src/lib/feeds.ts`:
+**Predefined mappings** exist in `src/lib/utils/feeds.ts`:
 
 - `LANGUAGE_SUBREDDITS` — e.g., `TypeScript → ['typescript']`
 - `FRAMEWORK_SUBREDDITS` — e.g., `React → ['reactjs']`
@@ -66,7 +59,7 @@ When users add custom languages, frameworks, tools, or topics not in the predefi
 **Custom items** (anything not in these maps) are resolved via `resolveSourcesForItem()`:
 
 ```typescript
-// Haiku returns structured sources via tool use
+// Returns structured sources via JSON
 {
   subreddits: ['homelab', 'selfhosted'],
   lobstersTags: ['unix', 'devops'],
@@ -76,37 +69,56 @@ When users add custom languages, frameworks, tools, or topics not in the predefi
 
 Resolved mappings are cached in `profile.resolvedMappings` to avoid repeated API calls.
 
-## Feed Curation
+**Provider fallback** for curation tasks: DeepSeek → Gemini → Anthropic Haiku (cheapest available is preferred).
 
-General feeds (Hacker News, Lobsters) contain broad tech news. Before including them in the prompt, Haiku filters for relevance to the user's profile.
+### 2. Feed Curation (curation provider)
 
-**Process** (`curateGeneralFeeds()` in `src/lib/feeds.ts`):
+General feeds (Hacker News, Lobsters) contain broad tech news. Before including them in the prompt, the curation provider filters for relevance to the user's profile.
+
+**Process** (`curateGeneralFeeds()` in `src/lib/utils/feeds.ts`):
 
 1. Format all HN + Lobsters items with indices
-2. Send to Haiku with profile context
-3. Haiku returns indices of relevant items via `select_relevant` tool
+2. Send to curation provider with profile context
+3. Provider returns indices of relevant items
 4. Only selected items are included in the prompt
 
 This reduces noise while keeping important cross-cutting news (security alerts, major releases).
 
-## Web Search
+### 3. Web Search (search provider, optional)
 
-Sonnet searches the web for recent news relevant to the profile using the `web_search` tool.
+The search provider finds recent news relevant to the user's profile.
 
-**Process** (`searchWebForProfile()` in `src/lib/feeds.ts`):
+**Provider priority:** Serper → Perplexity → Anthropic (cheapest first).
+
+| Provider | Method | Notes |
+|----------|--------|-------|
+| **Serper** | Google News API queries | Cheapest (~$0.001/request). Builds targeted queries from profile. |
+| **Perplexity** | Sonar model with built-in search | Mid-tier. Has native web search capability. |
+| **Anthropic** | Sonnet with `web_search` tool | Most expensive. Uses Claude's web search tool (max 5 searches). |
+
+**Process** (`searchWeb()` in `src/lib/utils/search.ts`):
 
 1. Build search context from profile (technologies + topics)
-2. Call Sonnet with `web_search_20250305` tool (max 5 searches)
+2. Execute searches via the selected provider
 3. Extract results in structured format: title, URL, snippet
 4. Format as `WEB SEARCH RESULTS` section in prompt
 
 Web search runs in parallel with feed fetching for performance.
 
-## Diff Generation
+### 4. Diff Synthesis (synthesis provider)
 
-The main generation combines all sources into a single prompt for Sonnet.
+The main generation combines all sources into a single prompt for the selected synthesis provider.
 
-**Prompt structure** (`buildPrompt()` in `src/lib/prompt.ts`):
+| Provider | Model | Cost (per 1M tokens) |
+|----------|-------|---------------------|
+| **DeepSeek** | `deepseek-chat` | $0.14 input / $0.28 output |
+| **Gemini** | `gemini-2.5-flash` | $0.15 input / $0.60 output |
+| **Anthropic** | `claude-sonnet-4-5` | $3 input / $15 output |
+| **Perplexity** | `sonar-pro` | $3 input / $15 output |
+
+Anthropic uses structured output via `tool_choice` (`submit_diff` tool). Other providers use plain text output with system instructions and a title extracted from the first `##` heading.
+
+**Prompt structure** (`buildPrompt()` in `src/lib/utils/prompt.ts`):
 
 ```
 FORMAT instructions (link formatting, score display)
@@ -118,10 +130,23 @@ SECTION GUIDANCE (suggested sections with emoji prefixes)
 PREVIOUS DIFF (to avoid repetition)
 ```
 
-**Output** via `submit_diff` tool:
+**Output:**
 
 - `title` — Short creative title (3-8 words)
 - `content` — Full markdown starting with date line
+- `cost` — Estimated cost based on token usage
+
+## Depth Levels
+
+Users select a reading depth that controls how detailed the generated diff will be:
+
+| Level | ID | Prompt Instruction |
+|-------|----|--------------------|
+| Quick Scan | `quick` | 1-2 bullet points per section max. Headlines and key facts only. |
+| Standard Brief | `standard` | 2-4 bullet points per section with key details and context. |
+| Deep Dive | `deep` | Comprehensive analysis with background context and implications. |
+
+The depth is passed to the generation prompt via `DEPTH_INSTRUCTIONS` in `src/lib/utils/prompt.ts`.
 
 ## Intelligence Window
 
@@ -132,13 +157,13 @@ The time window adapts to when the user last generated a diff:
 
 This is displayed as "Intelligence Window: Past N days" in the diff header.
 
-## Cost Estimate
+## Cost Estimates
 
-Typical costs per diff (varies with depth and content):
+Costs vary significantly by provider selection. Estimated costs per diff at standard depth:
 
-- Source resolution: ~$0.001 per custom item (Haiku)
-- Feed curation: ~$0.002 (Haiku)
-- Web search: ~$0.01-0.02 (Sonnet with search)
-- Generation: ~$0.03-0.05 (Sonnet)
-
-**Total: ~$0.05/diff** for standard depth with web search enabled.
+| Configuration | Search | Curation | Synthesis | Total |
+|--------------|--------|----------|-----------|-------|
+| **Budget** (Serper + DeepSeek) | ~$0.005 | ~$0.0001 | ~$0.001 | **~$0.006** |
+| **Mid-range** (Serper + Gemini) | ~$0.005 | ~$0.0001 | ~$0.002 | **~$0.007** |
+| **Anthropic-only** | ~$0.01-0.02 | ~$0.002 | ~$0.03-0.05 | **~$0.05** |
+| **No search** (DeepSeek) | — | ~$0.0001 | ~$0.001 | **~$0.001** |

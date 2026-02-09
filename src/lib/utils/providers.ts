@@ -76,7 +76,7 @@ export const STEPS: StepConfig[] = [
     id: 'curation',
     label: 'Feed Curation',
     description: 'Filter feeds for relevance',
-    required: false,  // Can skip curation, use all feeds
+    required: true,
   },
   {
     id: 'synthesis',

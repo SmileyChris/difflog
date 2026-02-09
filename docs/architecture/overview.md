@@ -15,7 +15,7 @@ diff·log is built as a multi-page app with optional cloud sync capabilities.
 | **Bundling** | Bun HTML imports |
 | **Backend** | Cloudflare Pages Functions |
 | **Database** | Cloudflare D1 (SQLite) |
-| **AI** | Anthropic Claude API (see [AI Pipeline](../ai.md)) |
+| **AI** | Multi-provider (Anthropic, DeepSeek, Gemini, Perplexity, Serper — see [AI Pipeline](../ai.md)) |
 
 ## Client Architecture
 
@@ -164,20 +164,20 @@ sequenceDiagram
     participant U as User
     participant C as Client
     participant F as /api/feeds
-    participant AI as Claude API
+    participant AI as AI Providers
 
     U->>C: Click "Generate"
-    C->>C: Resolve unmapped custom items (Haiku)
+    C->>C: Resolve unmapped custom items (curation provider)
     par Parallel fetch
-        C->>AI: Web search for profile topics (Sonnet)
+        C->>AI: Web search for profile topics (search provider)
         C->>F: Fetch feeds (grouped by source)
     end
     AI-->>C: Web search results
     F-->>C: HN, Lobsters, Reddit, GitHub, Dev.to items
-    C->>AI: Curate HN/Lobsters for relevance (Haiku)
+    C->>AI: Curate HN/Lobsters for relevance (curation provider)
     AI-->>C: Filtered feed items
     C->>C: Build prompt with web results + curated feeds
-    C->>AI: Generate diff (Sonnet)
+    C->>AI: Generate diff (synthesis provider)
     AI-->>C: Markdown response
     C->>C: Store markdown in history
     C->>C: Render HTML client-side

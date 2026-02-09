@@ -11,7 +11,7 @@ Terminology, conventions, and technology choices used throughout diff·log.
 | Term | Meaning |
 |------|---------|
 | **Diff** | A generated intelligence report — what's changed since you last checked in |
-| **Profile** | A saved configuration (tech stack, interests, API key) that personalizes your diffs |
+| **Profile** | A saved configuration (tech stack, interests, API keys) that personalizes your diffs |
 | **Star** | A reference to a bookmarked paragraph in a diff (not a copy) |
 | **Depth** | Reading preference — how detailed your diffs should be (see [AI Pipeline](../ai.md#depth-levels)) |
 | **Streak** | Count of consecutive diffs generated with an 8-day tolerance between each |
@@ -69,7 +69,18 @@ A saved configuration that personalizes your diffs.
 {
   id: string;              // UUID
   name: string;            // Display name
-  apiKey: string;          // Anthropic API key (stored locally)
+  apiKeys?: {              // API keys per provider (stored locally)
+    anthropic?: string;
+    serper?: string;
+    perplexity?: string;
+    deepseek?: string;
+    gemini?: string;
+  };
+  providerSelections?: {   // Which provider to use per pipeline step
+    search: string | null;
+    curation: string | null;
+    synthesis: string | null;
+  };
   languages: string[];     // Programming languages
   frameworks: string[];    // Frameworks
   tools: string[];         // Developer tools
@@ -90,7 +101,7 @@ A saved configuration that personalizes your diffs.
 }
 ```
 
-Custom languages/tools/topics not in predefined mappings are resolved via AI (Haiku) on first use. Results are cached in `resolvedMappings` to avoid repeated API calls.
+Custom languages/tools/topics not in predefined mappings are resolved via AI on first use (using the cheapest available curation provider). Results are cached in `resolvedMappings` to avoid repeated API calls.
 
 ### Diff
 
