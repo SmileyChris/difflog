@@ -263,3 +263,131 @@
 </main>
 
 <SiteFooter />
+
+<style>
+	/* Welcome Bar (above diff) */
+	.welcome-bar {
+		padding: 1rem 0;
+		margin-bottom: 1rem;
+	}
+
+	.diff-info-bar {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		position: relative;
+	}
+
+	.diff-info-left {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.5rem 1.25rem;
+		color: var(--text-subtle);
+		font-size: 0.95rem;
+	}
+
+	.diff-info-right {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		color: var(--text-subtle);
+		font-size: 0.9rem;
+	}
+
+	.diff-label {
+		color: var(--text-secondary);
+	}
+
+	.diff-time {
+		font-family: var(--font-mono);
+		font-size: 0.85em;
+		opacity: 0.7;
+	}
+
+	.diff-nav-btn {
+		background: none;
+		border: none;
+		color: var(--text-subtle);
+		font-size: 1.1rem;
+		padding: 0 0.35rem;
+		cursor: pointer;
+		opacity: 0.7;
+		transition: opacity 0.15s, color 0.15s;
+		line-height: 1;
+	}
+
+	.diff-nav-btn:hover:not(.diff-nav-btn-disabled) {
+		opacity: 1;
+		color: var(--accent);
+	}
+
+	.diff-nav-btn-disabled {
+		opacity: 0.25;
+		cursor: default;
+	}
+
+	.diff-position-link {
+		color: var(--text-disabled);
+		text-decoration: none;
+		transition: color 0.15s;
+		font-size: 0.9rem;
+	}
+
+	.diff-position-link:hover {
+		color: var(--accent);
+	}
+
+	.diff-title-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 1.5rem 2rem 0;
+		gap: 1rem;
+	}
+
+	.diff-title-row .diff-title {
+		padding: 0;
+	}
+
+	.diff-footer {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 1rem 0;
+		border-top: 1px solid var(--border);
+	}
+
+	.sync-banner-btn {
+		padding: 0.4rem 0.75rem;
+		background: var(--accent);
+		border: none;
+		border-radius: var(--radius);
+		color: var(--bg-base);
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+
+	.sync-banner-btn:hover {
+		background: var(--accent-muted);
+	}
+
+	.sync-banner-dismiss {
+		background: none;
+		border: none;
+		color: var(--text-subtle);
+		font-size: 1.2rem;
+		cursor: pointer;
+		padding: 0.25rem;
+		line-height: 1;
+		transition: color 0.15s;
+	}
+
+	.sync-banner-dismiss:hover {
+		color: var(--text-secondary);
+	}
+</style>

@@ -1456,4 +1456,69 @@
 			padding: 0.5rem 0.25rem;
 		}
 	}
+
+	.setup-title {
+		font-size: 1.5rem;
+		font-weight: 600;
+		letter-spacing: 0.15em;
+		margin: 0;
+		color: var(--text-heading);
+	}
+
+	.setup-diamond {
+		font-size: 0.4em;
+		vertical-align: 0.3em;
+		margin: 0 0.05em;
+		opacity: 0.7;
+	}
+
+	.setup-subtitle {
+		font-size: 0.8rem;
+		color: var(--text-hint);
+		letter-spacing: 0.1em;
+		margin-top: 0.25rem;
+	}
+
+	.depth-options {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.depth-card {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 1rem;
+		background: var(--bg-chip);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		transition: all 0.2s ease;
+		text-align: left;
+	}
+
+	.depth-card:hover {
+		border-color: var(--text-disabled);
+	}
+
+	.depth-card-selected {
+		background: var(--accent-bg);
+		border-color: var(--accent);
+	}
+
+	.depth-icon {
+		font-size: 1.5rem;
+	}
+
+	.depth-label {
+		font-weight: 600;
+		color: var(--text-heading);
+		min-width: 120px;
+	}
+
+	.depth-desc {
+		font-size: 0.85rem;
+		color: var(--text-hint);
+	}
 </style>

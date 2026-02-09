@@ -402,7 +402,7 @@
 		align-items: center;
 		gap: 0.6rem;
 	}
-	.gen-options-row :global(.first-time-tracking-label) {
+	.gen-options-row .first-time-tracking-label {
 		margin-right: 0.2rem;
 	}
 	.middot {
@@ -413,5 +413,122 @@
 		color: var(--text-hint);
 		font-size: 0.9rem;
 		margin-top: -0.25rem;
+	}
+
+	/* Generating State */
+	.generating-state {
+		text-align: center;
+		padding: 4rem 2rem;
+	}
+
+	.scan-animation {
+		width: 280px;
+		height: 4px;
+		background: var(--bg-chip);
+		border-radius: 2px;
+		margin: 0 auto 2rem;
+		overflow: hidden;
+		position: relative;
+	}
+
+	.scan-line {
+		position: absolute;
+		width: 40%;
+		height: 100%;
+		background: linear-gradient(90deg, transparent, var(--accent), transparent);
+		animation: scan 1.5s ease-in-out infinite;
+	}
+
+	.scan-message-container {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		margin-bottom: 1.5rem;
+		min-height: 2rem;
+	}
+
+	.scan-icon {
+		font-size: 1.25rem;
+		animation: pulse 1s ease-in-out infinite;
+	}
+
+	.generating-text {
+		font-size: 0.95rem;
+		color: var(--accent);
+		margin: 0;
+		font-weight: 500;
+	}
+
+	.generating-subtext {
+		font-size: 0.8rem;
+		color: var(--text-disabled);
+		margin-top: 0.5rem;
+	}
+
+	@keyframes scan {
+		0% {
+			left: -40%;
+		}
+
+		100% {
+			left: 100%;
+		}
+	}
+
+	/* Error */
+	.logo-mark-error {
+		color: var(--error, #dc3545);
+	}
+
+	.logo-mark-error::after {
+		color: var(--error, #dc3545);
+	}
+
+	.error-detail {
+		font-size: 0.9rem;
+		color: var(--text-secondary);
+		background: var(--bg-chip);
+		border-left: 3px solid var(--error, #dc3545);
+		padding: 0.875rem 1.25rem;
+		border-radius: var(--radius-sm);
+		margin: 0 auto 2rem;
+		max-width: 480px;
+		text-align: left;
+		line-height: 1.5;
+	}
+
+	.error-actions-secondary {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	/* First-time tracking summary */
+	.first-time-tracking-label {
+		font-size: 0.7rem;
+		font-weight: 600;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		color: var(--accent);
+		flex-shrink: 0;
+	}
+
+	.first-time-tracking-items {
+		font-size: 0.85rem;
+		color: var(--text-secondary);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.first-time-tracking-edit {
+		font-size: 0.75rem;
+		color: var(--text-hint);
+		text-decoration: none;
+		flex-shrink: 0;
+	}
+
+	.first-time-tracking-edit:hover {
+		color: var(--accent);
 	}
 </style>

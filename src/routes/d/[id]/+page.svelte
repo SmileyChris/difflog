@@ -93,3 +93,19 @@
 </main>
 
 <SiteFooter />
+
+<style>
+	.public-diff-page {
+		max-width: 800px;
+		margin: 0 auto;
+		padding: 1rem;
+	}
+
+	.public-diff-title {
+		font-size: 2rem;
+		font-weight: 600;
+		margin-bottom: 1.5rem;
+		color: var(--text-primary);
+		line-height: 1.2;
+	}
+</style>

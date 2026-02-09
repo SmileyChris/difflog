@@ -104,3 +104,19 @@
 		</div>
 	{/if}
 </article>
+
+<style>
+	.about-updated {
+		font-size: 0.8rem;
+		color: var(--text-disabled);
+		margin-top: 2rem;
+		text-align: center;
+	}
+
+	.about-tldr-aside {
+		font-weight: 400;
+		text-transform: none;
+		letter-spacing: normal;
+		color: var(--text-muted);
+	}
+</style>

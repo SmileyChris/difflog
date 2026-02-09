@@ -409,7 +409,7 @@
 
       <div class="component-demo">
         <p style="margin: 0 0 1rem;">Inline code: <code class="md-code">const x = 42;</code> within text.</p>
-        <pre class="prompt-text" style="max-height: 150px;">// Code block
+        <pre class="component-code" style="max-height: 150px;">// Code block
 function example() {'{'}
   return "Hello, world!";
 {'}'}</pre>
@@ -503,7 +503,7 @@ function example() {'{'}
         </div>
       </div>
 
-      <div class="component-code">.profile-badge  .profile-card  .profile-detail-row  .profile-label</div>
+      <div class="component-code">.profile-badge  .profile-card  .profile-card-active  .profile-card-icon  .profile-card-name</div>
     </section>
 
     <!-- Sync -->
@@ -603,7 +603,7 @@ function example() {'{'}
 
     <ModalDialog bind:this={demoDialogLg} title="Large Dialog" size="lg" onclose={() => demoDialogLg?.close()}>
       <p>This is the large 800px dialog, used for content like previews.</p>
-      <pre class="prompt-text">Large content area for code, previews, etc.</pre>
+      <pre class="component-code">Large content area for code, previews, etc.</pre>
     </ModalDialog>
 
   </main>

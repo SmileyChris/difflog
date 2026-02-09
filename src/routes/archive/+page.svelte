@@ -94,3 +94,42 @@
 </main>
 
 <SiteFooter />
+
+<style>
+	.archive-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.archive-date {
+		font-size: 0.8rem;
+		color: var(--accent);
+	}
+
+	.archive-cost {
+		color: var(--text-subtle);
+		font-size: 0.7rem;
+		opacity: 0.6;
+	}
+
+	.archive-actions {
+		margin-left: auto;
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.archive-title {
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--text-primary);
+		line-height: 1.4;
+	}
+
+	.archive-categories {
+		font-size: 0.8rem;
+		color: var(--text-subtle);
+		margin-top: 0.25rem;
+	}
+</style>

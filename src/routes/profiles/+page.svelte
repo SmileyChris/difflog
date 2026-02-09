@@ -237,3 +237,199 @@
 </main>
 
 <SiteFooter />
+
+<style>
+	.profiles-section-title {
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--text-heading);
+		margin: 0 0 0.5rem 0;
+	}
+
+	.profiles-section-desc {
+		font-size: 0.85rem;
+		color: var(--text-hint);
+		margin: 0 0 1rem 0;
+	}
+
+	.profiles-list {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.profile-card-full-title {
+		flex: 1;
+	}
+
+	.profile-card-full-title .profile-card-name {
+		margin-bottom: 0.125rem;
+	}
+
+	.profile-card-full-actions {
+		display: flex;
+		gap: 0.5rem;
+		opacity: 0;
+		transition: opacity 0.15s;
+	}
+
+	:global(.card):hover .profile-card-full-actions {
+		opacity: 1;
+	}
+
+	.profile-card-edit {
+		background: none;
+		border: none;
+		color: var(--text-subtle);
+		font-size: 1rem;
+		cursor: pointer;
+		padding: 0.25rem 0.5rem;
+		text-decoration: none;
+		transition: color 0.15s;
+	}
+
+	.profile-card-edit:hover {
+		color: var(--accent);
+	}
+
+	.profile-detail-row {
+		display: flex;
+		gap: 0.75rem;
+		font-size: 0.8rem;
+	}
+
+	.profile-detail-counts {
+		margin-top: 0.25rem;
+		gap: 1rem;
+	}
+
+	.profile-status-local {
+		color: var(--text-subtle);
+		background: rgba(255, 255, 255, 0.08);
+		border: 1px solid var(--border-subtle);
+	}
+
+	.profile-status-shared {
+		color: var(--text-subtle);
+		background: var(--info-bg);
+		border: 1px solid var(--info-border);
+	}
+
+	.profile-status-warning {
+		color: var(--warning);
+		background: var(--warning-bg);
+		border: 1px solid var(--warning-border);
+	}
+
+	.sync-status-static {
+		display: inline-flex;
+		align-items: center;
+		position: relative;
+		opacity: 0.6;
+	}
+
+	.sync-status-static .sync-status-cloud {
+		font-size: 1.4rem;
+		color: var(--text-hint);
+		line-height: 1;
+	}
+
+	.sync-status-static .sync-status-indicator {
+		position: absolute;
+		font-size: 0.5rem;
+		font-weight: 700;
+		top: 50%;
+		right: -0.1rem;
+		transform: translateY(-50%);
+		line-height: 1;
+	}
+
+	/* Action Cards Row */
+	.profiles-actions {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 1rem;
+		margin-top: 2rem;
+	}
+
+	/* Action Card (Create/Import) */
+	:global(button.profile-card-action) {
+		font: inherit;
+		line-height: inherit;
+		-webkit-appearance: none;
+		appearance: none;
+	}
+
+	:global(.profile-card-action) {
+		min-height: 140px;
+		text-decoration: none;
+		text-align: left;
+		border: 2px dashed var(--border-subtle);
+		background: transparent;
+		cursor: pointer;
+		transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+	}
+
+	:global(.profile-card-action:hover),
+	:global(button.profile-card-action:hover:not(:disabled)) {
+		border-color: var(--accent);
+		background: linear-gradient(135deg, var(--accent-bg) 0%, transparent 100%);
+		box-shadow: 0 0 25px var(--accent-bg);
+		filter: none;
+	}
+
+	:global(.profile-card-action-alt:hover),
+	:global(button.profile-card-action-alt:hover:not(:disabled)) {
+		border-color: var(--info);
+		background: linear-gradient(135deg, var(--info-bg) 0%, transparent 100%);
+		box-shadow: 0 0 25px var(--info-bg);
+	}
+
+	:global(.profile-card-action-alt:hover .profile-card-action-icon) {
+		background: linear-gradient(135deg, var(--info) 0%, var(--info-muted) 100%);
+		box-shadow: 0 0 20px var(--info-glow);
+	}
+
+	:global(.profile-card-action-alt:hover .profile-card-name) {
+		color: var(--info);
+	}
+
+	:global(.profile-card-action-icon) {
+		width: 48px;
+		height: 48px;
+		border-radius: 50%;
+		background: var(--bg-elevated);
+		border: 1px solid var(--border-subtle);
+		color: var(--text-subtle);
+		font-size: 1.5rem;
+		font-weight: 300;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 0.75rem;
+		transition: all 0.2s ease;
+	}
+
+	:global(.profile-card-action:hover .profile-card-action-icon) {
+		background: linear-gradient(135deg, var(--accent) 0%, var(--accent-muted) 100%);
+		border-color: transparent;
+		color: var(--bg-base);
+		transform: scale(1.1);
+		box-shadow: 0 0 20px var(--accent-glow);
+	}
+
+	:global(.profile-card-action:hover .profile-card-name) {
+		color: var(--accent);
+	}
+
+	:global(.profile-card-action .profile-card-id) {
+		font-family: inherit;
+		color: var(--text-subtle);
+	}
+
+	@media (max-width: 500px) {
+		.profiles-actions {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

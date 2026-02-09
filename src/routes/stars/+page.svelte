@@ -72,3 +72,80 @@
 </main>
 
 <SiteFooter />
+
+<style>
+	.bookmarks-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.bookmark-meta {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 0.5rem;
+		font-size: 0.75rem;
+	}
+
+	.bookmark-source {
+		color: var(--accent);
+		font-weight: 500;
+	}
+
+	.bookmark-dot {
+		color: var(--text-disabled);
+	}
+
+	.bookmark-date {
+		color: var(--text-hint);
+	}
+
+	.bookmark-preview {
+		font-size: 0.85rem;
+		color: var(--text-secondary);
+		line-height: 1.5;
+	}
+
+	.bookmark-preview :global(.md-p),
+	.bookmark-preview :global(.md-list-item) {
+		margin: 0;
+		font-size: inherit;
+		padding-left: 0;
+		border-left: none;
+	}
+
+	.bookmark-preview :global(.md-p)::after,
+	.bookmark-preview :global(.md-list-item)::after {
+		display: none !important;
+	}
+
+	.bookmark-preview :global(ul),
+	.bookmark-preview :global(ol) {
+		list-style: none;
+		padding-left: 0;
+		margin: 0;
+	}
+
+	.bookmark-preview :global(li) {
+		padding-left: 0;
+	}
+
+	.bookmark-preview :global(li)::marker {
+		content: none;
+	}
+
+	.bookmark-added {
+		margin-top: 0.5rem;
+		font-size: 0.7rem;
+		color: var(--text-disabled);
+	}
+
+	.bookmark-orphan {
+		opacity: 0.6;
+	}
+
+	.bookmark-orphan-message {
+		font-style: italic;
+	}
+</style>

@@ -238,4 +238,43 @@
 		margin-bottom: 1rem;
 		flex-shrink: 0;
 	}
+
+	.scanner-container {
+		position: relative;
+		width: 100%;
+		aspect-ratio: 1;
+		background: #000;
+		border-radius: var(--radius-md);
+		overflow: hidden;
+		margin: 1rem 0;
+	}
+
+	.scanner-video {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.scanner-overlay {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.scanner-frame {
+		width: 200px;
+		height: 200px;
+		border: 2px solid var(--accent);
+		border-radius: var(--radius-lg);
+		box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+	}
+
+	.scanner-error {
+		text-align: center;
+		color: var(--danger);
+		font-size: 0.9rem;
+		margin-bottom: 1rem;
+	}
 </style>
