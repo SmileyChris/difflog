@@ -75,7 +75,6 @@
 		align-items: center;
 		justify-content: center;
 		gap: 0.5rem;
-		margin-bottom: 2rem;
 		font-family: var(--font-mono);
 		font-size: 0.8rem;
 		text-transform: lowercase;

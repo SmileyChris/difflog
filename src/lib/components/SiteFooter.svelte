@@ -142,15 +142,15 @@
 	}
 </script>
 
-<footer class="site-footer">
-	<nav class="site-footer-links">
-		<a href="/about" class="site-footer-link">About diff·log</a>
-		<span class="site-footer-sep">&#9670;</span>
-		<a href="/about/privacy" class="site-footer-link">Privacy</a>
-		<span class="site-footer-sep">&#9670;</span>
-		<a href="/about/terms" class="site-footer-link">Terms</a>
-		<span class="site-footer-sep">&#9670;</span>
-		<a href="https://smileychris.github.io/difflog/" class="site-footer-link" target="_blank" rel="noopener">
+<footer>
+	<nav>
+		<a href="/about">About diff·log</a>
+		<span>&#9670;</span>
+		<a href="/about/privacy">Privacy</a>
+		<span>&#9670;</span>
+		<a href="/about/terms">Terms</a>
+		<span>&#9670;</span>
+		<a href="https://smileychris.github.io/difflog/" target="_blank" rel="noopener">
 			<span class="heart-red">&hearts;</span> opensource
 		</a>
 	</nav>
@@ -158,7 +158,7 @@
 
 <div class="changelog-wrapper">
 	{#if dev}
-		<a href="/design" class="site-footer-link design-link">Design</a>
+		<a href="/design" class="design-link">Design</a>
 	{/if}
 	<button class="changelog-btn" onclick={show}>
 		v{version}
@@ -242,11 +242,55 @@
 </div>
 
 <style>
+	footer {
+		margin-top: auto;
+		padding: 1.5rem 0;
+		text-align: center;
+	}
+
+	nav {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		font-family: var(--font-mono);
+		font-size: 0.75rem;
+		text-transform: lowercase;
+	}
+
+	footer a,
+	.design-link {
+		color: var(--text-disabled);
+		text-decoration: none;
+		padding: 0.25rem 0.5rem;
+		transition: color 0.15s;
+	}
+
+	footer a:hover,
+	.design-link:hover {
+		color: var(--accent);
+	}
+
+	nav > span {
+		color: var(--accent);
+		opacity: 0.5;
+		font-size: 0.5em;
+		vertical-align: middle;
+	}
+
+	.heart-red {
+		transition: color 0.15s;
+	}
+
+	footer a:hover .heart-red {
+		color: #e25555;
+	}
+
 	.design-link {
 		margin-right: 0.75rem;
-		font-size: 0.75rem;
 		opacity: 0.6;
 	}
+
 	.design-link:hover {
 		opacity: 1;
 	}
