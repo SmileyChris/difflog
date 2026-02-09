@@ -23,7 +23,8 @@ nav = [
   { "Operations" = "operations/index.md" },
   { "Future" = [
     { "Roadmap" = "future/index.md" },
-    { "CLI Interface" = "future/cli.md" }
+    { "CLI Interface" = "future/cli.md" },
+    { "Team Profiles" = "future/teams.md" }
   ]},
 ]
 

@@ -1,145 +1,100 @@
-# The Difflog CLI: A Manifesto & Vision
+---
+icon: lucide/terminal
+---
+
+# CLI Interface
 
 **Status:** Conceptual / RFC
-**Context:** Bringing Developer Intelligence to the Command Line
+
+A terminal client for generating and reading diffs without opening a browser.
 
 ---
 
-## 1. Purpose & Goals
+## Goals
 
-### The Purpose
-To liberate developer intelligence from the browser tab and inject it directly into the developer's native environment: **the terminal**.
-
-The Difflog CLI is not just a "wrapper" for the API. It is a philosophy that says staying informed shouldn't require context switching. It treats global ecosystem updates—framework releases, breaking changes, trending tools—as a raw data stream that can be piped, filtered, and automated.
-
-### The Goals
-1.  **Frictionless Access:** Reducing the "time-to-insight" to zero. No opening a browser, no logging in. Just typing a command.
-2.  ** UNIX Philosophy:** The tool should produce text streams that play nicely with other tools (`grep`, `less`, `glow`, `cat`). `stdout` is for content; `stderr` is for status.
-3.  **Local-First Security:** Replicate the browser's security model. Keys and profile data live encrypted on the user's disk, not our servers.
-4.  **Flow State Preservation:** Allow developers to check "what's new" without being sucked into the infinite scroll of social media or news aggregators.
+1. **Frictionless access** — no browser, no login. Just a command.
+2. **UNIX-friendly** — text output that works with `grep`, `less`, `glow`, `jq`. `stdout` for content, `stderr` for status.
+3. **Local-first** — keys and profile data stay encrypted on disk, same as the browser model.
 
 ---
 
-## 2. The User Experience (The "Dream")
-
-We imagine a tool that feels like it has always been part of your toolbelt, like `git` or `curl`.
-
-### Scenario A: The Morning Briefing
-You open your terminal with your morning coffee. Instead of doom-scrolling Hacker News, you run one command:
+## Usage Examples
 
 ```bash
+# Morning briefing
 $ difflog gen --today
-```
 
-**Result:** A concise, 30-second read of exactly what changed in your stack (e.g., Rust, React, AWS) overnight. You read it, you know you aren't missing anything critical, and you start coding.
-
-### Scenario B: The "Deep Dive" Pipe
-You see a headline about a new security vulnerability but want the details without the fluff. You pipe the output to your preferred markdown reader:
-
-```bash
+# Deep dive on a topic, piped to a markdown reader
 $ difflog gen --focus "security" --deep | glow -
+
+# One-line summary for CI/scripts
+$ difflog summary --profile team-backend
 ```
 
-### Scenario C: The "Message of the Day" (MOTD)
-You manage a team of 10 engineers. You want them to know about the new breaking change in the company's core framework. You add this to the project's `Makefile` or CI pipeline:
+---
 
-```bash
-# In CI output or local dev setup script
-difflog summary --profile team-backend
-```
+## Implementation: Bun vs Rust
 
-**Result:** Every time they build the project, they get a 1-line summary of critical ecosystem news relevant to *that specific project*.
+### Option A: Bun (TypeScript)
+
+Reuses the existing `src/lib/` codebase (feeds, prompts, crypto, types).
+
+- **Code reuse:** ~90% of logic is shared with the web app. Prompt/AI improvements apply to both instantly.
+- **Distribution:** `bun build --compile` produces a single standalone binary (~90MB) — no Bun/Node install required. Cross-compiles to Linux, macOS (ARM + Intel), and Windows.
+- **Tradeoff:** Larger binary size, JS runtime under the hood.
+
+### Option B: Rust
+
+Native rewrite for a smaller, faster binary.
+
+- **Distribution:** ~5MB static binary, easy `brew install`.
+- **Tradeoff:** Must reimplement everything (WebCrypto → Ring, fetch logic, prompts). Web and CLI logic will drift, doubling maintenance.
+
+### Recommendation
+
+**Option A (Bun) for MVP.** The AI logic and encryption are complex enough that code reuse matters more than binary size. Can revisit Rust later if distribution demands it.
 
 ---
 
-## 3. Technology Strategy: The Fork in the Road
+## Feature Roadmap
 
-We have two primary paths for implementation. Each defines a different future for the tool.
+### v0.1: Viewer
+- `difflog login` — authenticate with Profile ID and password
+- `difflog ls` — list past diffs
+- `difflog show <id>` — read a diff in the terminal
 
-### Option A: The "Bun" Way (TypeScript)
-*Leveraging the existing ecosystem.*
+### v0.2: Generator
+- `difflog gen` — full pipeline: fetch feeds, call AI, render, encrypt, sync
+- `--quick` and `--deep` depth flags
 
-Since `difflog` is already a Bun + TypeScript project, this is the path of least resistance and highest consistency.
-
-*   **Pros:**
-    *   **Code Reuse:** We can reuse 90% of the logic in `src/lib/` (feeds, prompts, crypto, types).
-    *   **Single Codebase:** One repo to maintain. Improvements to the "brain" (AI prompts) improve both Web and CLI instantly.
-    *   **Speed:** Bun startup time is nearly instant, making it viable for a CLI.
-    *   **Zero-Dependency Distribution:** Using `bun build --compile`, we can bundle the source code *and* the Bun runtime into a single, standalone executable file.
-        *   **Result:** The user downloads `difflog`. They run `./difflog`. It works. They do **not** need to install Bun, Node, or NPM.
-        *   **Cross-Platform:** From your Linux or Mac machine, you can generate binaries for all platforms:
-            *   `bun-linux-x64` (Linux)
-            *   `bun-darwin-arm64` (Apple Silicon Mac)
-            *   `bun-darwin-x64` (Intel Mac)
-            *   `bun-windows-x64` (Windows)
-*   **Cons:**
-    *   **Binary Size:** Because it includes the runtime, the "Hello World" binary starts at ~90MB (though it compresses well).
-    *   **"System" Feel:** It's still a JS runtime under the hood, which might feel "heavier" than a native binary to purists.
-
-### Option B: The "Rust" Way
-*The "True CLI" experience.*
-
-Rewriting the client in Rust.
-
-*   **Pros:**
-    *   **Distribution:** A single, small (~5MB) static binary. No dependencies. easy `brew install`.
-    *   **Performance:** Unmatched speed and memory footprint.
-    *   **Credibility:** Fits the aesthetic of modern "cool" CLI tools (like `ripgrep`, `bat`, `starship`).
-*   **Cons:**
-    *   **The "Rewrite" Tax:** We have to re-implement *everything*: encryption (WebCrypto vs Ring), fetching logic, and prompt engineering.
-    *   **Drift:** The Web logic and CLI logic will inevitably drift apart, requiring double maintenance for every new feature.
-
-### Recommendation: **Option A (Bun) for MVP**
-Given the complexity of the AI logic and encryption, **Option A** allows us to ship a robust, feature-complete CLI *now*. We can compile it to a standalone binary using `bun build --compile` for easier distribution, bridging the gap with Option B.
+### v0.3: Integrator
+- `difflog summary` — plain text output for scripts
+- `difflog config` — edit profile from the CLI
+- `--json` flag on all commands for piping to `jq`
 
 ---
 
-## 4. Feature Roadmap
+## Design Principles
 
-### v0.1: The "Viewer"
-*   `difflog login`: Authenticate with an existing Profile ID & Password.
-*   `difflog ls`: List past diffs.
-*   `difflog show <id>`: Read a past diff in the terminal.
-
-### v0.2: The "Generator"
-*   `difflog gen`: The full loop. Fetch feeds -> Call Claude -> Render -> Encrypt & Sync.
-*   Support for `--quick` and `--deep` flags.
-
-### v0.3: The "Integrator"
-*   `difflog summary`: Raw text output for script integration.
-*   `difflog config`: Edit profile tracking (languages/tools) from the CLI.
-*   `--json` flag for all commands to allow piping into `jq`.
+- Detect dark/light terminal theme for ANSI colors
+- Minimalist spinners (dots, no ASCII art banners)
+- Silent on success when piped
+- Render markdown headers as bold/colored, hyperlink URLs via OSC 8 where supported
 
 ---
 
-## 5. Aesthetic & Design
+## Distribution
 
-*   **Colors:** Use standard ANSI colors but detect user theme (dark/light).
-*   **Spinners:** Minimalist dots. No loud ASCII art banners.
-*   **Silence:** The tool should be silent on success when piped.
-*   **Markdown:** Render headers as bold/colored. Links should be hyperlinked (OSC 8) where supported, or footnoted.
+### Build Pipeline (GitHub Actions)
 
-**The Golden Rule:** The CLI respects the user's intelligence and their machine's resources.
+Triggered on pushes to `main` (nightly) or new tags (stable releases):
 
----
+1. Cross-compile via `bun build --compile` for 4 targets: `linux-x64`, `darwin-arm64`, `darwin-x64`, `windows-x64`
+2. Upload binaries as artifacts
+3. On tagged release, create GitHub Release with attached binaries
 
-## 6. Distribution & CI/CD
+### Installation
 
-To make "zero-dependency" a reality, we will automate the build process so we never have to manually compile binaries.
-
-### The Build Pipeline (GitHub Actions)
-We will create a workflow (`.github/workflows/cli-release.yml`) that triggers whenever code in `cli/` or `src/` changes.
-
-1.  **Trigger:** Pushes to `main` (for "nightly" builds) or new Tags (for stable releases).
-2.  **Matrix Build:** A single Linux runner will execute the cross-compilation:
-    *   `bun build --compile --target=bun-linux-x64 ...`
-    *   `bun build --compile --target=bun-darwin-arm64 ...`
-    *   `bun build --compile --target=bun-darwin-x64 ...`
-    *   `bun build --compile --target=bun-windows-x64 ...`
-3.  **Artifacts:** The pipeline uploads these 4 binaries as artifacts.
-4.  **Releases:** On a tagged release (e.g., `v1.0.0`), the pipeline automatically creates a GitHub Release and attaches the binaries.
-
-### Installation Methods
-*   **Direct Download:** Users grab the binary from the GitHub Releases page.
-*   **Shell Script:** A simple `curl | sh` script can detect the OS and download the correct binary.
-*   **Homebrew (Future):** A custom tap to allow `brew install difflog`.
+- **Direct download** from GitHub Releases
+- **Shell script** — `curl | sh` that detects OS and downloads the correct binary
+- **Homebrew** (future) — custom tap for `brew install difflog`
