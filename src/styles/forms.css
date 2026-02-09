@@ -1,0 +1,210 @@
+/* Form Inputs & Buttons */
+
+/* Input Components */
+.input-group {
+  margin-bottom: 1rem;
+}
+
+.input-with-action {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.input-with-action .text-input {
+  flex: 1;
+}
+
+.btn-inline-action {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-chip);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  color: var(--text-subtle);
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.btn-inline-action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.input-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-hint);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.text-input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  font-family: inherit;
+  font-size: 1rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-heading);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.text-input:focus {
+  border-color: var(--accent);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.btn-link:hover {
+  color: var(--accent);
+}
+
+/* Button System */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.875rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-muted) 100%);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #000;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.875rem 1.25rem;
+  font-size: 0.85rem;
+  background: transparent;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-danger {
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  background: var(--bg-error);
+  border: 1px solid var(--border-error);
+  border-radius: var(--radius);
+  color: var(--danger);
+  cursor: pointer;
+}
+
+.btn-retry {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--danger) 0%, var(--danger-muted) 100%);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-heading);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-ghost:hover {
+  background: var(--accent-bg);
+}
+
+/* Button Variants */
+.btn-branded {
+  gap: 0.4em;
+}
+
+.btn-branded::before {
+  content: '◆';
+  font-size: 0.7em;
+}
+
+.btn-branded[aria-busy="true"]::before {
+  display: inline-block;
+  animation: diamond-spin 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+/* Button Sizes */
+.btn-lg {
+  padding: 1rem 2rem;
+  font-size: 1rem;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+}
+
+/* Input hint */
+.input-hint {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-disabled);
+}
+
+.input-hint a {
+  color: var(--text-subtle);
+  text-decoration: underline;
+}
+
+.input-hint a:hover {
+  color: var(--accent);
+}
+
+/* Setup Error */
+.setup-error {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 100, 100, 0.1);
+  border: 1px solid rgba(255, 100, 100, 0.3);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  color: var(--danger);
+}

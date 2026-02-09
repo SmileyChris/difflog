@@ -1,0 +1,184 @@
+/* Markdown Rendering Styles */
+
+.md-h1 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0 0 0.5rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--accent-border);
+  letter-spacing: 0.03em;
+}
+
+.md-h2 {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 1.5rem 0 0.75rem 0;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--md-border);
+}
+
+.md-section {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.md-section>summary.md-h2 {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.md-section>summary.md-h2::-webkit-details-marker {
+  display: none;
+}
+
+.md-section-count {
+  font-size: 0.7rem;
+  color: var(--text-hint);
+  font-weight: 400;
+  margin-left: auto;
+}
+
+.md-section>summary.md-h2::after {
+  content: '';
+  display: inline-block;
+  width: 0.35em;
+  height: 0.35em;
+  border-right: 1.5px solid var(--text-hint);
+  border-bottom: 1.5px solid var(--text-hint);
+  opacity: 0.5;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.md-section:not([open])>summary.md-h2::after,
+.md-section.closing>summary.md-h2::after {
+  transform: rotate(-45deg);
+}
+
+.md-section>summary.md-h2:hover {
+  color: var(--accent-hover);
+}
+
+.md-section-content {
+  overflow: hidden;
+}
+
+.md-h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--md-text);
+  margin: 1rem 0 0.5rem 0;
+}
+
+.md-p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0.5rem 0;
+  line-height: 1.65;
+}
+
+.md-list {
+  margin: 0.75rem 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.md-list-item {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0.75rem 0;
+  line-height: 1.6;
+  padding-left: 1.25rem;
+  position: relative;
+  border-left: 2px solid var(--md-border);
+}
+
+.md-bold {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.md-code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--border);
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+}
+
+.md-link {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--md-link-underline);
+  padding-bottom: 1px;
+}
+
+.md-link:hover {
+  color: var(--accent-hover);
+}
+
+.md-link:visited {
+  color: var(--md-link-visited);
+  border-bottom-color: var(--md-link-visited);
+}
+
+.md-score {
+  font-size: 0.8em;
+  color: var(--md-score);
+}
+
+.md-score .md-link {
+  font-size: inherit;
+  opacity: 0.75;
+}
+
+.md-score .md-link:hover {
+  opacity: 1;
+}
+
+.md-hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
+  margin: 1.25rem 0;
+}
+
+.md-sources {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--md-border);
+}
+
+.md-sources .md-h3 {
+  font-size: 0.85rem;
+  color: var(--text-hint);
+  margin: 0 0 0.75rem 0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.md-sources-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: decimal;
+}
+
+.md-source-item {
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+  margin: 0.35rem 0;
+  line-height: 1.5;
+}
+
+.md-source-item .md-link {
+  font-size: 0.8rem;
+}

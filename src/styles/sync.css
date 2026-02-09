@@ -1,0 +1,88 @@
+/* Sync UI Styles */
+
+/* Sync Result */
+.sync-result {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.sync-result-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 1rem;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-muted) 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--bg-base);
+}
+
+.sync-result-text {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.sync-result-text strong {
+  color: var(--accent);
+}
+
+/* Sync Banner */
+.sync-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+}
+
+.sync-banner-icon {
+  font-size: 1.1rem;
+  color: var(--accent);
+  animation: spin 2s linear infinite;
+}
+
+.sync-banner-text {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* Stale Diff Banner */
+.stale-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+}
+
+.stale-banner>span:first-child {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.stale-banner-btn.btn-primary {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+/* Inline sync result */
+.sync-result-inline {
+  padding: 0.75rem;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  color: var(--accent);
+  margin-top: 0.75rem;
+}

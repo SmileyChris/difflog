@@ -189,4 +189,154 @@
 		margin-top: 2.5rem;
 		text-align: center;
 	}
+
+	/* About page content styles */
+	:global(article) {
+		width: 100%;
+	}
+
+	:global(.brand-inline) {
+		color: var(--text-heading);
+		font-weight: 600;
+	}
+
+	:global(.brand-diamond) {
+		color: var(--accent);
+		font-size: 0.5em;
+		vertical-align: middle;
+		margin: 0 0.05em;
+	}
+
+	:global(.about-intro) {
+		font-size: 1rem;
+		color: var(--text-secondary);
+		margin-bottom: 2rem;
+		line-height: 1.6;
+	}
+
+	:global(.about-tldr) {
+		background: var(--bg-card);
+		border: 1px solid var(--accent-border);
+		border-radius: var(--radius-lg);
+		padding: 1.25rem 1.5rem;
+		margin-bottom: 2rem;
+	}
+
+	:global(.about-tldr-title) {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--accent);
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		margin: 0 0 0.75rem 0;
+	}
+
+	:global(.about-tldr-list) {
+		margin: 0;
+		padding-left: 1.25rem;
+		list-style: disc;
+	}
+
+	:global(.about-tldr-list li) {
+		font-size: 0.9rem;
+		color: var(--text-secondary);
+		line-height: 1.5;
+		margin: 0.4rem 0;
+	}
+
+	:global(article section) {
+		margin-bottom: 1.75rem;
+	}
+
+	:global(article section h3) {
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--text-heading);
+		margin: 0 0 0.5rem 0;
+	}
+
+	:global(article section h3::before) {
+		content: '◆';
+		color: var(--accent);
+		margin-right: 0.5rem;
+		font-size: 0.7em;
+	}
+
+	:global(article section h4) {
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: var(--text-heading);
+		margin: 1.25rem 0 0.5rem 0;
+	}
+
+	:global(article section p) {
+		font-size: 0.9rem;
+		color: var(--text-secondary);
+		line-height: 1.6;
+		margin: 0 0 0.75rem 0;
+	}
+
+	:global(article section p:last-child) {
+		margin-bottom: 0;
+	}
+
+	:global(article section ul) {
+		margin: 0.5rem 0;
+		padding-left: 1.25rem;
+		list-style: none;
+	}
+
+	:global(article section li) {
+		font-size: 0.9rem;
+		color: var(--text-secondary);
+		line-height: 1.5;
+		margin: 0.35rem 0;
+		position: relative;
+	}
+
+	:global(article section li::before) {
+		content: '–';
+		color: var(--text-disabled);
+		position: absolute;
+		left: -1rem;
+	}
+
+	:global(article section strong) {
+		color: var(--text-heading);
+		font-weight: 600;
+	}
+
+	:global(.about-updated) {
+		font-size: 0.8rem;
+		color: var(--text-disabled);
+		margin-top: 2rem;
+		text-align: center;
+	}
+
+	:global(.about-centered) {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
+		padding: 3rem 1rem;
+		flex: 1;
+	}
+
+	:global(.about-back) {
+		margin-top: 2.5rem;
+		text-align: center;
+	}
+
+	:global(.about-back-link) {
+		font-family: var(--font-mono);
+		font-size: 0.8rem;
+		color: var(--text-subtle);
+		text-decoration: none;
+		transition: color 0.15s;
+	}
+
+	:global(.about-back-link:hover) {
+		color: var(--accent);
+	}
 </style>

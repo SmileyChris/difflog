@@ -1,0 +1,52 @@
+/* Utility Classes & Misc */
+
+/* Header link */
+.header-link {
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+  text-decoration: none;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius);
+  transition: color 0.15s ease;
+  white-space: nowrap;
+}
+
+.header-link:hover {
+  color: var(--accent);
+}
+
+/* Header link icon */
+.header-link-icon {
+  color: var(--accent);
+}
+
+/* Link utilities */
+.link-subtle {
+  color: var(--text-subtle);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link-subtle:hover {
+  color: var(--accent);
+}
+
+.link-secondary {
+  color: var(--text-subtle);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.link-secondary:hover {
+  color: var(--accent);
+}
+
+/* Heart icon */
+.heart-red {
+  transition: color 0.15s;
+}
+
+a:hover .heart-red {
+  color: #e25555;
+}

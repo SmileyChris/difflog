@@ -178,3 +178,29 @@
 	</div>
 </div>
 
+<style>
+	:global(.diff-container) {
+		background: linear-gradient(
+			180deg,
+			var(--bg-card) 0%,
+			var(--bg-card-bottom) 100%
+		);
+		border-radius: var(--radius-lg);
+		border: 1px solid var(--border);
+		overflow: visible;
+	}
+
+	:global(.diff-title) {
+		padding: 1.5rem 2rem 0;
+		margin: 0;
+		font-size: 1.4rem;
+		font-weight: 700;
+		color: var(--text);
+		letter-spacing: -0.02em;
+	}
+
+	:global(.diff-content) {
+		padding: 1.5rem 2rem 2rem;
+		overflow: visible;
+	}
+</style>

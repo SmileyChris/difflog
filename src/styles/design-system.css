@@ -1,0 +1,70 @@
+/* Design System - CSS Custom Properties */
+
+:root {
+  /* Colors - Accent */
+  --accent: #00d4aa;
+  --accent-muted: #00a888;
+  --accent-bg: #00d4aa15;
+  --accent-border: #00d4aa40;
+  --accent-hover: #00ffcc;
+  --accent-glow: #00d4aa50;
+
+  /* Colors - Backgrounds */
+  --bg-base: #0a0a0f;
+  --bg-surface: #12121a;
+  --bg-card: #16161e;
+  --bg-card-bottom: #111118;
+  --bg-card-hover: #1a1a28;
+  --bg-input: #0a0a0f;
+  --bg-chip: #1a1a24;
+  --bg-error: #3a1a1a;
+
+  /* Colors - Text */
+  --text-primary: #e8e8ed;
+  --text-heading: #fff;
+  --text-secondary: #c8c8d0;
+  --text-muted: #bbb;
+  --text-subtle: #9a9a9a;
+  --text-hint: #7a7a7a;
+  --text-disabled: #6a6a6a;
+  --text-dim: var(--text-muted);
+  --text-dimmest: var(--text-hint);
+
+  /* Colors - Borders */
+  --border: #252530;
+  --border-subtle: #333;
+  --border-mid: #353540;
+  --border-strong: #404050;
+  --border-error: #5a2a2a;
+
+  /* Colors - Semantic */
+  --danger: #ff8888;
+  --danger-muted: #cc4444;
+  --warning: #f59e0b;
+  --warning-bg: #f59e0b1a;
+  --warning-border: #f59e0b4d;
+  --info: #00b4d8;
+  --info-muted: #0096c7;
+  --info-bg: #00b4d81a;
+  --info-border: #00b4d84d;
+  --info-glow: #00b4d866;
+  --success: #10b981;
+  --streak: #ff8c00;
+
+  /* Colors - Markdown */
+  --md-border: #303040;
+  --md-text: #e0e0e0;
+  --md-link-underline: #00d4aa60;
+  --md-link-visited: #606070;
+  --md-score: #808090;
+
+  /* Typography */
+  --font: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}

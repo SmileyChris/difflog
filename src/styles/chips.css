@@ -1,0 +1,79 @@
+/* Chip System */
+
+/* Base Chips */
+.chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  background: var(--bg-chip);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9999px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chip:hover {
+  border-color: var(--text-disabled);
+}
+
+.chip-selected {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Custom Chips */
+.chip-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-right: 0.5rem;
+}
+
+.chip-remove {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.7;
+}
+
+.chip-remove:hover {
+  opacity: 1;
+  filter: none;
+}
+
+.chip-add-inline {
+  display: inline-flex;
+}
+
+.chip-add-input {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  background: var(--bg-chip);
+  border: 1px dashed var(--border-subtle);
+  border-radius: 9999px;
+  color: var(--text-muted);
+  font-family: inherit;
+  width: 120px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.chip-add-input:focus {
+  border-color: var(--accent);
+  color: var(--text-main);
+}
+
+.chip-add-input::placeholder {
+  color: var(--text-disabled);
+}

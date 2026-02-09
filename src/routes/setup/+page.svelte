@@ -1043,6 +1043,131 @@
 <SiteFooter />
 
 <style>
+	/* Wizard-specific styles */
+	:global(main.narrow > header) {
+		text-align: center;
+		margin-bottom: 2rem;
+		display: block;
+		border-bottom: none;
+		padding: 0;
+	}
+
+	.step-indicator {
+		display: flex;
+		justify-content: center;
+		gap: 0.5rem;
+		margin-top: 1.5rem;
+	}
+
+	.step-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--border-subtle);
+		transition: all 0.3s ease;
+	}
+
+	.step-dot-active {
+		background: var(--accent);
+		box-shadow: 0 0 12px var(--accent-glow);
+	}
+
+	.step-dot-complete {
+		background: var(--accent-glow);
+	}
+
+	.setup-content {
+		background: linear-gradient(
+			180deg,
+			var(--bg-card) 0%,
+			var(--bg-card-bottom) 100%
+		);
+		border-radius: var(--radius-lg);
+		border: 1px solid var(--border);
+		padding: 2rem;
+		view-transition-name: setup-step;
+	}
+
+	:global(::view-transition-old(setup-step)),
+	:global(::view-transition-new(setup-step)) {
+		animation-duration: 0.25s;
+		height: 100%;
+		overflow: hidden;
+	}
+
+	:global(::view-transition-group(setup-step)) {
+		animation-duration: 0.25s;
+	}
+
+	.step-title {
+		font-size: 1.25rem;
+		font-weight: 600;
+		margin: 0 0 0.5rem 0;
+		color: var(--text-heading);
+		view-transition-name: step-title;
+	}
+
+	.step-desc {
+		font-size: 0.9rem;
+		color: var(--text-subtle);
+		margin-bottom: 1.5rem;
+		line-height: 1.5;
+		view-transition-name: step-desc;
+	}
+
+	:global(::view-transition-group(step-title)),
+	:global(::view-transition-group(step-desc)) {
+		animation-duration: 0.2s;
+	}
+
+	.setup-footer {
+		display: flex;
+		align-items: center;
+		margin-top: 1.5rem;
+		gap: 1rem;
+		view-transition-name: setup-footer;
+	}
+
+	:global(::view-transition-group(setup-footer)) {
+		animation-duration: 0.2s;
+	}
+
+	.setup-footer-spacer {
+		flex: 1;
+	}
+
+	.step-nav-btns {
+		display: flex;
+		gap: 0.25rem;
+	}
+
+	.btn-step-nav {
+		padding: 0 1rem;
+		height: calc(0.9rem + 1.75rem);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: transparent;
+		border: 1px solid var(--accent-border);
+		border-radius: var(--radius-md);
+		color: var(--accent);
+		font-size: 1.5rem;
+		font-weight: 900;
+		line-height: 1;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.btn-step-nav:hover:not(:disabled) {
+		border-color: var(--accent);
+		background: var(--accent-bg);
+	}
+
+	.btn-step-nav:disabled {
+		opacity: 0.3;
+		cursor: not-allowed;
+	}
+
 	.demo-option {
 		text-align: center;
 		display: flex;
