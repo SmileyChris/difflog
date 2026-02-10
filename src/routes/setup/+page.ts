@@ -1,6 +1,20 @@
 import { profiles, getProfile } from '$lib/stores/profiles.svelte';
 import { LANGUAGES, FRAMEWORKS, TOOLS, TOPICS } from '$lib/utils/constants';
-import { PROVIDERS } from '$lib/utils/providers';
+import { PROVIDERS, STEPS } from '$lib/utils/providers';
+import type { ProviderStep } from '$lib/utils/providers';
+
+function autoSelectProviders(providerStates: Record<string, { key: string; status: string }>) {
+	const selections: Record<ProviderStep, string | null> = { search: null, curation: null, synthesis: null };
+	for (const step of STEPS) {
+		for (const [id, config] of Object.entries(PROVIDERS)) {
+			if (providerStates[id]?.status === 'valid' && config.capabilities.includes(step.id)) {
+				selections[step.id] = id;
+				break;
+			}
+		}
+	}
+	return selections;
+}
 
 export function load({ url }) {
 	const hasExistingProfiles = Object.keys(profiles.value).length > 0;
@@ -50,7 +64,7 @@ export function load({ url }) {
 				topics: customTopics
 			},
 			providerStates,
-			selections: p.providerSelections || { search: null, curation: null, synthesis: null }
+			selections: p.providerSelections || autoSelectProviders(providerStates)
 		};
 	}
 
