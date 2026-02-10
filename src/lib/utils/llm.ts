@@ -234,18 +234,30 @@ const DIFF_SCHEMA: DiffSchema = {
     },
     content: {
       type: 'string',
-      description: 'The full markdown content of the diff, starting with the date line'
+      description: 'The full markdown content of the diff, starting with the date line. Do not include a # title heading — the title is provided separately via the title field.'
     }
   },
   required: ['title', 'content']
 };
 
 /**
- * Extract a title from diff markdown by grabbing the first ## heading text
+ * Extract and strip an H1 title from diff markdown.
+ * Falls back to the first ## heading if no H1 is found.
  */
-function extractTitle(markdown: string): string {
-  const match = markdown.match(/^##\s+(?:\S+\s+)?(.+)$/m);
-  return match ? match[1].trim().slice(0, 60) : '';
+function extractTitle(markdown: string): { title: string; content: string } {
+  const h1Match = markdown.match(/^\s*#(?!#)\s+(.+)\n*/);
+  if (h1Match) {
+    return {
+      title: h1Match[1].trim().slice(0, 60),
+      content: markdown.slice(h1Match[0].length),
+    };
+  }
+  // Fallback: grab first ## heading text but don't strip it
+  const h2Match = markdown.match(/^##\s+(?:\S+\s+)?(.+)$/m);
+  return {
+    title: h2Match ? h2Match[1].trim().slice(0, 60) : '',
+    content: markdown,
+  };
 }
 
 /**
@@ -388,11 +400,8 @@ async function synthesizeWithDeepSeek(
     ? (usage.prompt_tokens * 0.14 + usage.completion_tokens * 0.28) / 1_000_000
     : undefined;
 
-  return {
-    title: extractTitle(content),
-    content,
-    cost,
-  };
+  const { title, content: stripped } = extractTitle(content);
+  return { title, content: stripped, cost };
 }
 
 /**
@@ -451,11 +460,8 @@ async function synthesizeWithGemini(
     ? (usage.promptTokenCount * 0.15 + usage.candidatesTokenCount * 0.60) / 1_000_000
     : undefined;
 
-  return {
-    title: extractTitle(content),
-    content,
-    cost,
-  };
+  const { title, content: stripped } = extractTitle(content);
+  return { title, content: stripped, cost };
 }
 
 /**
@@ -507,9 +513,6 @@ async function synthesizeWithPerplexity(
     ? (usage.prompt_tokens * 3 + usage.completion_tokens * 15) / 1_000_000
     : undefined;
 
-  return {
-    title: extractTitle(content),
-    content,
-    cost,
-  };
+  const { title, content: stripped } = extractTitle(content);
+  return { title, content: stripped, cost };
 }

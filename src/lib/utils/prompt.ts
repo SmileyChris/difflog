@@ -41,9 +41,10 @@ export function buildPrompt(profile: Profile, feedContext?: string, lastDiffDate
     ? `\n\nPREVIOUS DIFF (DO NOT REPEAT):\nThe following is the user's most recent diff. Do NOT repeat any of the same stories, releases, or topics covered below. Find NEW and DIFFERENT developments to report on.\n\n---\n${previousDiff}\n---`
     : '';
 
-  return `Generate a developer intelligence diff in markdown. No preamble — start directly with the date line below.
+  return `Generate a developer intelligence diff in markdown. No preamble — start directly with the content below.
 
 FORMAT:
+- Begin with a single # heading: a short, creative title (3-8 words) that captures the overall theme of this diff — not just the first section
 - Use plain Unicode characters (·, —, →, etc.), NEVER HTML entities (&middot; &mdash; &rarr; etc.)
 - Use real URLs from the feed data or web search — never placeholder or hallucinated links
 - IMPORTANT: Make the headline itself a link. The bold text should BE the link:
