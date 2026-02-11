@@ -52,11 +52,16 @@
 	onclick={handleDialogClick}
 	onclose={handleClose}
 >
+	<header>
+		<div>
+			<h2 class="unlock-title">{title}</h2>
+			{#if subtitle}
+				<p class="unlock-subtitle">{subtitle}</p>
+			{/if}
+		</div>
+		<button class="dialog-close" onclick={close} aria-label="Close">&times;</button>
+	</header>
 	<div class="dialog-body padded">
-		<h2 class="unlock-title">{title}</h2>
-		{#if subtitle}
-			<p class="unlock-subtitle">{subtitle}</p>
-		{/if}
 		{@render children()}
 		{#if error}
 			<div class="unlock-error">{error}</div>
@@ -104,6 +109,30 @@
 		background: var(--bg-surface);
 	}
 
+	header {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 2rem 2rem 0;
+	}
+
+	.dialog-close {
+		flex-shrink: 0;
+		background: none;
+		border: none;
+		cursor: pointer;
+		font-size: 1.5rem;
+		line-height: 1;
+		color: var(--text-disabled);
+		padding: 0;
+		transition: color 0.15s;
+	}
+
+	.dialog-close:hover {
+		color: var(--text-primary);
+	}
+
 	.dialog-body {
 		padding: 1.25rem;
 		overflow-y: auto;
@@ -117,13 +146,13 @@
 		font-size: 1.25rem;
 		font-weight: 600;
 		color: var(--text-heading);
-		margin: 0 0 0.25rem 0;
+		margin: 0;
 	}
 
 	.unlock-subtitle {
 		font-size: 0.9rem;
 		color: var(--accent);
-		margin: 0 0 1.5rem 0;
+		margin: 0.25rem 0 0;
 	}
 
 	.unlock-error {

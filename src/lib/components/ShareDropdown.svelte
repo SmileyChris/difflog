@@ -42,7 +42,6 @@
 		if (!diff) return;
 		if (unshareDiff(diff.id)) {
 			await autoSync();
-			close();
 		}
 	}
 
@@ -86,7 +85,7 @@
 				{#if !isPublic}
 					<div class="visibility-menu-content">
 						{#if canModify}
-							<p class="visibility-menu-desc">Make this diff publicly viewable?</p>
+							<p class="visibility-menu-desc">Make this private diff visible to anyone with the link?</p>
 							<button class="visibility-action-btn" onclick={share}>
 								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 									<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -146,7 +145,7 @@
 		background: none;
 		border: none;
 		padding: 0.35rem 0.5rem;
-		cursor: pointer;
+		cursor: default;
 		display: flex;
 		align-items: center;
 		gap: 0.35rem;
@@ -200,6 +199,7 @@
 		padding: 0.75rem;
 		min-width: 220px;
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+		cursor: default;
 		z-index: 1000;
 	}
 
