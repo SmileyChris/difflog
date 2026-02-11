@@ -53,3 +53,23 @@ export function getCurrentDateFormatted(): string {
     day: 'numeric'
   });
 }
+
+/**
+ * Format diff metadata into a display string
+ * Uses system locale for date formatting
+ * Example: "Thursday, January 29, 2026 · Past 24 hours"
+ */
+export function formatDiffDate(generatedAt: string, windowDays?: number): string {
+  const date = new Date(generatedAt);
+  const dateStr = date.toLocaleDateString(undefined, {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  if (!windowDays) return dateStr;
+
+  const windowStr = windowDays === 1 ? 'Past 24 hours' : `Past ${windowDays} days`;
+  return `${dateStr} · ${windowStr}`;
+}

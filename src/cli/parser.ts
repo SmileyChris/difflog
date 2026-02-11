@@ -5,6 +5,7 @@
 export interface Topic {
 	content: string; // The full bullet point content (including list marker)
 	lines: string[]; // Multi-line topic content
+	links: Array<{ text: string; url: string }>; // All links in the topic
 }
 
 export interface Category {
@@ -15,6 +16,21 @@ export interface Category {
 export interface ParsedDiff {
 	preamble: string; // Everything before first category
 	categories: Category[];
+}
+
+/**
+ * Extract all markdown links from text
+ */
+function extractLinks(text: string): Array<{ text: string; url: string }> {
+	const links: Array<{ text: string; url: string }> = [];
+	const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+	let match;
+
+	while ((match = linkRegex.exec(text)) !== null) {
+		links.push({ text: match[1], url: match[2] });
+	}
+
+	return links;
 }
 
 /**
@@ -53,13 +69,17 @@ export function parseDiff(markdown: string): ParsedDiff {
 		if (line.match(/^\s*[-*]\s/) && currentCategory) {
 			// Save previous topic if exists
 			if (currentTopic) {
+				// Extract all links from complete topic
+				const allText = currentTopic.lines.join('\n');
+				currentTopic.links = extractLinks(allText);
 				currentCategory.topics.push(currentTopic);
 			}
 
 			// Start new topic
 			currentTopic = {
 				content: line,
-				lines: [line]
+				lines: [line],
+				links: []
 			};
 			continue;
 		}
@@ -78,6 +98,9 @@ export function parseDiff(markdown: string): ParsedDiff {
 
 	// Save final topic and category
 	if (currentTopic && currentCategory) {
+		// Extract all links from complete topic
+		const allText = currentTopic.lines.join('\n');
+		currentTopic.links = extractLinks(allText);
 		currentCategory.topics.push(currentTopic);
 	}
 	if (currentCategory) {

@@ -3,6 +3,7 @@
 	import { addStar, removeStar, isDiffPublic, getPublicDiffUrl } from '$lib/stores/operations.svelte';
 	import { type Diff } from '$lib/stores/history.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
+	import { formatDiffDate } from '$lib/utils/time';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -16,11 +17,8 @@
 
 	function formatDateLine(diff: Diff): string {
 		if (!diff.window_days) return '';
-		const date = new Date(diff.generated_at).toLocaleDateString('en-US', {
-			weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
-		});
-		const windowText = diff.window_days === 1 ? 'Past 24 hours' : `Past ${diff.window_days} days`;
-		return `**${date}** \u00b7 ${windowText}\n\n---`;
+		const dateText = formatDiffDate(diff.generated_at, diff.window_days);
+		return `**${dateText}**\n\n---`;
 	}
 
 	const dateLine = $derived(diff ? formatDateLine(diff) : '');

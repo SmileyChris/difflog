@@ -12,13 +12,25 @@ const CYAN = '\x1b[36m';
 const YELLOW = '\x1b[33m';
 const GREEN = '\x1b[32m';
 const MAGENTA = '\x1b[35m';
+const BLUE = '\x1b[34m';
+const BRIGHT_BLUE = '\x1b[94m';
 
 /** Apply inline formatting: bold, code, links */
-function formatInline(text: string): string {
+function formatInline(text: string, highlightLinkIndex?: number): string {
+	let linkCount = 0;
+
 	// Links: [text](url) → text (underlined) + url in dim
 	text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
-		// Use OSC 8 hyperlink if terminal supports it
-		return `\x1b]8;;${url}\x07${UNDERLINE}${label}${RESET}\x1b]8;;\x07`;
+		const isHighlighted = highlightLinkIndex !== undefined && linkCount === highlightLinkIndex;
+		linkCount++;
+
+		if (isHighlighted) {
+			// Highlighted link: bright blue, bold, underlined
+			return `\x1b]8;;${url}\x07${BRIGHT_BLUE}${BOLD}${UNDERLINE}${label}${RESET}\x1b]8;;\x07`;
+		} else {
+			// Regular link: underlined
+			return `\x1b]8;;${url}\x07${UNDERLINE}${label}${RESET}\x1b]8;;\x07`;
+		}
 	});
 
 	// Bold: **text** or __text__
@@ -35,7 +47,11 @@ function formatInline(text: string): string {
 }
 
 /** Render a full markdown string to ANSI-colored terminal output */
-export function renderMarkdown(markdown: string): string {
+export function renderMarkdown(
+	markdown: string,
+	highlightLinkIndex?: number,
+	interactive: boolean = false
+): string {
 	const lines = markdown.split('\n');
 	const output: string[] = [];
 	let inCodeBlock = false;
@@ -84,9 +100,14 @@ export function renderMarkdown(markdown: string): string {
 
 		// List items
 		if (line.match(/^\s*[-*]\s/)) {
-			const indent = line.match(/^(\s*)/)?.[1] || '';
 			const content = line.replace(/^\s*[-*]\s/, '');
-			output.push(`${indent}  ${DIM}•${RESET} ${formatInline(content)}`);
+			if (interactive) {
+				// In interactive mode, just show the content without bullets
+				output.push(formatInline(content, highlightLinkIndex));
+			} else {
+				const indent = line.match(/^(\s*)/)?.[1] || '';
+				output.push(`${indent}  ${DIM}•${RESET} ${formatInline(content, highlightLinkIndex)}`);
+			}
 			continue;
 		}
 
@@ -94,7 +115,7 @@ export function renderMarkdown(markdown: string): string {
 		if (line.match(/^\s*\d+\.\s/)) {
 			const match = line.match(/^(\s*)(\d+)\.\s(.+)/);
 			if (match) {
-				output.push(`${match[1]}  ${DIM}${match[2]}.${RESET} ${formatInline(match[3])}`);
+				output.push(`${match[1]}  ${DIM}${match[2]}.${RESET} ${formatInline(match[3], highlightLinkIndex)}`);
 				continue;
 			}
 		}
@@ -106,7 +127,7 @@ export function renderMarkdown(markdown: string): string {
 		}
 
 		// Regular paragraph text
-		output.push(formatInline(line));
+		output.push(formatInline(line, highlightLinkIndex));
 	}
 
 	return output.join('\n');

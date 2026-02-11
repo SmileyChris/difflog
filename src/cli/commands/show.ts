@@ -1,6 +1,7 @@
 import { getDiffs, getSession } from '../config';
 import { renderMarkdown } from '../render';
 import { startInteractive } from '../interactive';
+import { formatDiffDate } from '../../lib/utils/time';
 
 export function showCommand(args: string[]): void {
 	const session = getSession();
@@ -61,7 +62,31 @@ export function showCommand(args: string[]): void {
 
 	if (isInteractiveTTY) {
 		// Interactive mode
-		startInteractive(diff.content);
+		const title = diff.title || `Diff ${diff.generated_at}`;
+
+		// Get window_days from metadata or parse from content as fallback
+		let windowDays = diff.window_days;
+		if (!windowDays && diff.content) {
+			// Parse from content for backward compatibility
+			const match = diff.content.match(/Past (\d+) days?|Past 24 hours/i);
+			if (match) {
+				windowDays = match[1] ? parseInt(match[1], 10) : 1;
+			}
+		}
+
+		const dateInfo = diff.generated_at ? formatDiffDate(diff.generated_at, windowDays) : '';
+
+		// Calculate diff position in history
+		const diffIndex = diffs.findIndex((d) => d.id === diff.id);
+		const diffPosition =
+			diffIndex >= 0 ? { current: diffIndex + 1, total: diffs.length } : undefined;
+
+		// Check if this diff is from today
+		const isTodayDiff = diff.generated_at
+			? new Date(diff.generated_at).toDateString() === new Date().toDateString()
+			: false;
+
+		startInteractive(diff.content, title, dateInfo, diffPosition, isTodayDiff);
 	} else {
 		// Full mode (piped or --full flag)
 		process.stdout.write(renderMarkdown(diff.content) + '\n');
