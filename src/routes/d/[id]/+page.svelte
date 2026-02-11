@@ -1,44 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { renderMarkdown } from '$lib/utils/markdown';
-	import { SiteFooter, PageHeader } from '$lib/components';
+	import { SiteFooter, PageHeader, DiffContent } from '$lib/components';
+	import type { Diff } from '$lib/utils/sync';
 
 	let { data } = $props();
 
 	const diff = $derived(data.diff);
 	const error = $derived(data.error);
-
-	function formatDateLine(d: typeof diff): string {
-		if (!d?.window_days) return '';
-		const date = new Date(d.generated_at).toLocaleDateString('en-US', {
-			weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
-		});
-		const windowText = d.window_days === 1 ? 'Past 24 hours' : `Past ${d.window_days} days`;
-		return `**${date}** \u00b7 Intelligence Window: ${windowText}\n\n---`;
-	}
-
-	const dateLine = $derived(formatDateLine(diff));
-	const fullContent = $derived(
-		dateLine && diff?.content
-			? `${dateLine}\n\n${diff.content}`
-			: (diff?.content ?? '')
-	);
-	const renderedContent = $derived(fullContent ? renderMarkdown(fullContent) : '');
-
-	let contentElement: HTMLElement | null = $state(null);
-
-	function copyParagraphLink(e: MouseEvent, pIndex: number) {
-		const url = `${window.location.origin}/d/${data.diff!.id}?p=${pIndex}`;
-		navigator.clipboard.writeText(url);
-
-		const toast = document.createElement('span');
-		toast.className = 'copy-toast';
-		toast.textContent = '\u{1F517} Copied';
-		toast.style.left = `${e.clientX}px`;
-		toast.style.top = `${e.clientY}px`;
-		document.body.appendChild(toast);
-		toast.addEventListener('animationend', () => toast.remove());
-	}
+	const diffAsDiff = $derived(diff as unknown as Diff);
 
 	onMount(() => {
 		if (data.scrollToPIndex !== null) {
@@ -55,27 +24,6 @@
 				el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 			}, 200);
 		}
-	});
-
-	$effect(() => {
-		if (!contentElement) return;
-
-		contentElement.querySelectorAll('[data-p]').forEach((el) => {
-			if (!el.querySelector('a')) return;
-
-			const pIndex = parseInt(el.getAttribute('data-p') || '0', 10);
-
-			const btn = document.createElement('button');
-			btn.className = 'copy-link-btn';
-			btn.title = 'Copy link to paragraph';
-			btn.addEventListener('click', (e) => {
-				e.preventDefault();
-				e.stopPropagation();
-				copyParagraphLink(e, pIndex);
-			});
-
-			el.appendChild(btn);
-		});
 	});
 </script>
 
@@ -100,11 +48,11 @@
 		{#if diff.title}
 			<h1 class="public-diff-title">{diff.title}</h1>
 		{/if}
-		<div class="diff-container">
-			<div class="diff-content" bind:this={contentElement}>
-				{@html renderedContent}
-			</div>
-		</div>
+		<DiffContent
+			diff={diffAsDiff}
+			hideBookmarks
+			copyLinkUrl={(pIndex) => `${window.location.origin}/d/${diff.id}?p=${pIndex}`}
+		/>
 	{/if}
 </main>
 

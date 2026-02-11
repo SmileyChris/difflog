@@ -7,11 +7,12 @@
 
 	interface Props {
 		diff: Diff;
-		showBookmarks?: boolean;
+		hideBookmarks?: boolean;
+		copyLinkUrl?: (pIndex: number) => string;
 		titleRow?: Snippet;
 	}
 
-	let { diff, showBookmarks = true, titleRow }: Props = $props();
+	let { diff, hideBookmarks = false, copyLinkUrl, titleRow }: Props = $props();
 
 	function formatDateLine(diff: Diff): string {
 		if (!diff.window_days) return '';
@@ -19,7 +20,7 @@
 			weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
 		});
 		const windowText = diff.window_days === 1 ? 'Past 24 hours' : `Past ${diff.window_days} days`;
-		return `**${date}** \u00b7 Intelligence Window: ${windowText}\n\n---`;
+		return `**${date}** \u00b7 ${windowText}\n\n---`;
 	}
 
 	const dateLine = $derived(diff ? formatDateLine(diff) : '');
@@ -91,11 +92,7 @@
 		}
 	}
 
-	function copyParagraphLink(e: MouseEvent, pIndex: number) {
-		const url = `${getPublicDiffUrl(diff.id)}?p=${pIndex}`;
-		navigator.clipboard.writeText(url);
-
-		// "👁 Copied" that zooms and fades from cursor
+	function showCopyToast(e: MouseEvent) {
 		const toast = document.createElement('span');
 		toast.className = 'copy-toast';
 		toast.textContent = '\u{1F517} Copied';
@@ -103,6 +100,12 @@
 		toast.style.top = `${e.clientY}px`;
 		document.body.appendChild(toast);
 		toast.addEventListener('animationend', () => toast.remove());
+	}
+
+	function copyParagraphLink(e: MouseEvent, pIndex: number) {
+		const url = `${getPublicDiffUrl(diff.id)}?p=${pIndex}`;
+		navigator.clipboard.writeText(url);
+		showCopyToast(e);
 	}
 
 	// Inject paragraph counts into section summaries
@@ -129,7 +132,7 @@
 
 	// Reactively inject bookmark buttons when html, stars, or diff changes
 	$effect(() => {
-		if (!contentElement || !showBookmarks) return;
+		if (!contentElement || hideBookmarks) return;
 
 		// Subscribe to stars changes
 		void stars;
@@ -179,6 +182,33 @@
 			}
 			pendingFocusPIndex = null;
 		}
+	});
+
+	// Inject copy-link buttons when copyLinkUrl is provided
+	$effect(() => {
+		if (!contentElement || !copyLinkUrl) return;
+		void html; // re-run when rendered content changes (new DOM replaces old buttons)
+
+		contentElement.querySelectorAll('.copy-link-btn').forEach((btn) => btn.remove());
+
+		contentElement.querySelectorAll('[data-p]').forEach((el) => {
+			if (!el.querySelector('a')) return;
+
+			const pIndex = parseInt(el.getAttribute('data-p') || '0', 10);
+			const urlFn = copyLinkUrl;
+
+			const btn = document.createElement('button');
+			btn.className = 'copy-link-btn';
+			btn.title = 'Copy link to paragraph';
+			btn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				navigator.clipboard.writeText(urlFn(pIndex));
+				showCopyToast(e);
+			});
+
+			el.appendChild(btn);
+		});
 	});
 </script>
 
