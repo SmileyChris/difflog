@@ -4,6 +4,7 @@
  */
 
 import type { ApiKeys } from './sync';
+import type { DiffPrompt } from './prompt';
 
 export interface JsonSchema {
   type: 'object';
@@ -234,28 +235,42 @@ const DIFF_SCHEMA: DiffSchema = {
     },
     content: {
       type: 'string',
-      description: 'The full markdown content of the diff, starting with the date line. Do not include a # title heading — the title is provided separately via the title field.'
+      description: 'The full markdown content of the diff. Do not include a date line or # title heading — those are provided separately.'
     }
   },
   required: ['title', 'content']
 };
 
 /**
+ * Strip markdown formatting from a title string.
+ */
+function stripMarkdownFormatting(text: string): string {
+  return text
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // [text](url) → text
+    .replace(/\*\*/g, '')                      // bold markers
+    .replace(/\*/g, '')                        // italic markers
+    .trim();
+}
+
+/**
  * Extract and strip an H1 title from diff markdown.
  * Falls back to the first ## heading if no H1 is found.
  */
 function extractTitle(markdown: string): { title: string; content: string } {
-  const h1Match = markdown.match(/^\s*#(?!#)\s+(.+)\n*/);
+  // Use `m` flag — LLMs may put preamble before the H1
+  const h1Match = markdown.match(/^[ \t]*#(?!#)\s+(.+)$/m);
   if (h1Match) {
+    const before = markdown.slice(0, h1Match.index);
+    const after = markdown.slice(h1Match.index! + h1Match[0].length).replace(/^\n+/, '');
     return {
-      title: h1Match[1].trim().slice(0, 60),
-      content: markdown.slice(h1Match[0].length),
+      title: stripMarkdownFormatting(h1Match[1]).slice(0, 60),
+      content: before + after,
     };
   }
   // Fallback: grab first ## heading text but don't strip it
   const h2Match = markdown.match(/^##\s+(?:\S+\s+)?(.+)$/m);
   return {
-    title: h2Match ? h2Match[1].trim().slice(0, 60) : '',
+    title: h2Match ? stripMarkdownFormatting(h2Match[1]).slice(0, 60) : '',
     content: markdown,
   };
 }
@@ -266,7 +281,7 @@ function extractTitle(markdown: string): { title: string; content: string } {
 export async function synthesizeDiff(
   keys: ApiKeys,
   provider: string | null,
-  prompt: string,
+  prompt: DiffPrompt,
   maxTokens: number = 8192
 ): Promise<DiffResult> {
   // Default to anthropic if no provider specified
@@ -297,7 +312,7 @@ export async function synthesizeDiff(
  */
 async function synthesizeWithAnthropic(
   apiKey: string,
-  prompt: string,
+  prompt: DiffPrompt,
   maxTokens: number
 ): Promise<DiffResult> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -311,7 +326,8 @@ async function synthesizeWithAnthropic(
     body: JSON.stringify({
       model: 'claude-sonnet-4-5',
       max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }],
+      system: prompt.system,
+      messages: [{ role: 'user', content: prompt.user }],
       tools: [{
         name: 'submit_diff',
         description: 'Submit the generated developer intelligence diff',
@@ -356,7 +372,7 @@ async function synthesizeWithAnthropic(
  */
 async function synthesizeWithDeepSeek(
   apiKey: string,
-  prompt: string,
+  prompt: DiffPrompt,
   maxTokens: number
 ): Promise<DiffResult> {
   const res = await fetch('https://api.deepseek.com/chat/completions', {
@@ -369,8 +385,8 @@ async function synthesizeWithDeepSeek(
       model: 'deepseek-chat',
       max_tokens: maxTokens,
       messages: [
-        { role: 'system', content: 'You are a developer intelligence reporter. Output markdown directly, no wrappers or code fences.' },
-        { role: 'user', content: prompt }
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user }
       ],
     }),
   });
@@ -409,7 +425,7 @@ async function synthesizeWithDeepSeek(
  */
 async function synthesizeWithGemini(
   apiKey: string,
-  prompt: string,
+  prompt: DiffPrompt,
   maxTokens: number
 ): Promise<DiffResult> {
   const thinkingBudget = 8192;
@@ -420,9 +436,9 @@ async function synthesizeWithGemini(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         systemInstruction: {
-          parts: [{ text: 'You are a developer intelligence reporter. Output markdown directly, no wrappers or code fences.' }],
+          parts: [{ text: prompt.system }],
         },
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: [{ parts: [{ text: prompt.user }] }],
         generationConfig: {
           maxOutputTokens: maxTokens + thinkingBudget,
           thinkingConfig: { thinkingBudget: thinkingBudget },
@@ -469,7 +485,7 @@ async function synthesizeWithGemini(
  */
 async function synthesizeWithPerplexity(
   apiKey: string,
-  prompt: string,
+  prompt: DiffPrompt,
   maxTokens: number
 ): Promise<DiffResult> {
   const res = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -482,8 +498,8 @@ async function synthesizeWithPerplexity(
       model: 'sonar-pro',
       max_tokens: maxTokens,
       messages: [
-        { role: 'system', content: 'You are a developer intelligence reporter. Output markdown directly, no wrappers or code fences.' },
-        { role: 'user', content: prompt }
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user }
       ],
     }),
   });

@@ -3,7 +3,7 @@
  * Handles the orchestration of feed fetching, AI synthesis, and content processing.
  */
 import type { Diff } from '$lib/stores/history.svelte';
-import { buildPrompt } from '$lib/utils/prompt';
+import { buildPrompt, type DiffPrompt } from '$lib/utils/prompt';
 import type { ResolvedMapping, ApiKeys } from '$lib/utils/sync';
 import { getUnmappedItems, resolveSourcesForItem, curateGeneralFeeds, formatItemsForPrompt, formatWebSearchForPrompt, type FeedItem } from '$lib/utils/feeds';
 import { searchWeb } from '$lib/utils/search';
@@ -38,7 +38,7 @@ let _stageCache: {
 	profileHash: string;
 	feedContext: string;
 	webContext: string;
-	prompt: string;
+	prompt: DiffPrompt;
 } | null = null;
 
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
@@ -78,23 +78,26 @@ function calculateWindowDays(lastDiffDate: string | null): number {
 }
 
 /**
- * Clean the raw diff content by removing preamble and finding the actual diff start.
+ * Clean the raw diff content by removing preamble and normalizing entities.
  */
 function cleanDiffContent(rawContent: string): string {
 	let content = rawContent;
+
+	// Strip any echoed date/Intelligence Window line the model may have produced
 	const dateStart = content.indexOf('Intelligence Window');
-	const sectionStart = content.indexOf('## ');
-	let diffStart = -1;
-
 	if (dateStart >= 0) {
-		diffStart = content.lastIndexOf('\n', dateStart);
-		diffStart = diffStart >= 0 ? diffStart + 1 : 0;
-	} else if (sectionStart >= 0) {
-		diffStart = sectionStart;
-	}
-
-	if (diffStart > 0) {
-		content = content.slice(diffStart);
+		// Find the line start
+		let lineStart = content.lastIndexOf('\n', dateStart);
+		lineStart = lineStart >= 0 ? lineStart + 1 : 0;
+		// Find the end of the date block (skip trailing --- separator)
+		let lineEnd = content.indexOf('\n', dateStart);
+		if (lineEnd < 0) lineEnd = content.length;
+		// Check for --- separator after the date line
+		const afterDate = content.slice(lineEnd).replace(/^\n+/, '');
+		if (afterDate.startsWith('---')) {
+			lineEnd = lineEnd + content.slice(lineEnd).indexOf('---') + 3;
+		}
+		content = content.slice(0, lineStart) + content.slice(lineEnd).replace(/^\n+/, '');
 	}
 
 	// Decode HTML entities that some models (e.g. Gemini) emit instead of plain Unicode
@@ -108,7 +111,7 @@ function cleanDiffContent(rawContent: string): string {
 		.replace(/&hellip;/g, '…')
 		.replace(/&amp;/g, '&');
 
-	return content;
+	return content.trim();
 }
 
 /**
@@ -127,7 +130,7 @@ export async function generateDiffContent(options: GenerateOptions): Promise<Gen
 		gemini: profile.apiKeys?.gemini
 	};
 
-	let prompt: string;
+	let prompt: DiffPrompt;
 	const canResume = isCacheValid(options) && _stageCache?.prompt;
 
 	if (canResume && _stageCache) {
@@ -235,10 +238,13 @@ export async function generateDiffContent(options: GenerateOptions): Promise<Gen
 
 	const cleanedContent = cleanDiffContent(rawContent);
 
+	// Prepend the date line — we control this rather than relying on the LLM
+	const content = `${prompt.dateLine}\n\n${cleanedContent}`;
+
 	const entry: Diff = {
 		id: Date.now().toString(),
 		title: title || '',
-		content: cleanedContent,
+		content,
 		generated_at: new Date().toISOString(),
 		duration_seconds: Math.round((Date.now() - startTime) / 1000),
 		cost
