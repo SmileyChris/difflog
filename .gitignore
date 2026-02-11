@@ -1,5 +1,6 @@
 # Build output
 .svelte-kit
+/difflog
 
 # Logs
 logs

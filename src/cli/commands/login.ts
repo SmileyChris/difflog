@@ -1,0 +1,206 @@
+import { saveSession, saveDiffs, saveProfile, clearSession } from '../config';
+import type { Profile, Diff } from '../config';
+import { login, localAwareFetch, BASE } from '../api';
+import { decryptData } from '../../lib/utils/crypto';
+
+interface RelayPayload {
+	profile: Profile;
+	diffs: Diff[];
+}
+const POLL_INTERVAL = 2000;
+const POLL_TIMEOUT = 5 * 60 * 1000;
+
+/** Read a line from stdin. Uses raw mode for masked input when isTTY. */
+async function prompt(label: string, mask = false): Promise<string> {
+	process.stderr.write(label);
+
+	if (!process.stdin.isTTY) {
+		// Piped input: read a line
+		const reader = process.stdin[Symbol.asyncIterator]();
+		const { value } = await reader.next();
+		const line = typeof value === 'string' ? value : new TextDecoder().decode(value);
+		return line.trimEnd();
+	}
+
+	return new Promise((resolve) => {
+		const buf: string[] = [];
+		process.stdin.setRawMode(true);
+		process.stdin.resume();
+		process.stdin.setEncoding('utf-8');
+
+		const onData = (ch: string) => {
+			if (ch === '\r' || ch === '\n') {
+				process.stdin.setRawMode(false);
+				process.stdin.pause();
+				process.stdin.removeListener('data', onData);
+				process.stderr.write('\n');
+				resolve(buf.join(''));
+			} else if (ch === '\x03') {
+				// Ctrl+C
+				process.stdin.setRawMode(false);
+				process.stderr.write('\n');
+				process.exit(130);
+			} else if (ch === '\x7f' || ch === '\b') {
+				// Backspace
+				if (buf.length > 0) {
+					buf.pop();
+					if (mask) process.stderr.write('\b \b');
+				}
+			} else {
+				buf.push(ch);
+				process.stderr.write(mask ? '*' : ch);
+			}
+		};
+
+		process.stdin.on('data', onData);
+	});
+}
+
+function waitForEnter(): Promise<void> {
+	return new Promise((resolve) => {
+		if (!process.stdin.isTTY) {
+			resolve();
+			return;
+		}
+		process.stdin.setRawMode(true);
+		process.stdin.resume();
+		process.stdin.setEncoding('utf-8');
+
+		const onData = (ch: string) => {
+			if (ch === '\r' || ch === '\n') {
+				process.stdin.setRawMode(false);
+				process.stdin.pause();
+				process.stdin.removeListener('data', onData);
+				resolve();
+			} else if (ch === '\x03') {
+				process.stdin.setRawMode(false);
+				process.stderr.write('\n');
+				process.exit(130);
+			}
+		};
+
+		process.stdin.on('data', onData);
+	});
+}
+
+function openBrowser(url: string): void {
+	try {
+		const cmd = process.platform === 'darwin' ? 'open' : 'xdg-open';
+		Bun.spawn([cmd, url], { stdout: 'ignore', stderr: 'ignore' });
+	} catch {
+		// Ignore — URL is printed to stderr regardless
+	}
+}
+
+const SPINNER = ['|', '/', '-', '\\'];
+
+async function pollForRelay(code: string, expires: number): Promise<RelayPayload> {
+	const deadline = Date.now() + POLL_TIMEOUT;
+	let tick = 0;
+
+	while (Date.now() < deadline) {
+		const frame = SPINNER[tick++ % SPINNER.length];
+		process.stderr.write(`\r  ${frame} Waiting for browser login...`);
+
+		let res: Response;
+		try {
+			res = await localAwareFetch(`${BASE}/api/cli/auth/${code}`);
+		} catch (err: any) {
+			throw new Error(`Unable to connect to ${BASE} — ${err.message}`);
+		}
+		if (!res.ok) throw new Error(`Relay error: ${res.status}`);
+
+		const data = (await res.json()) as { pending?: boolean; session?: string };
+
+		if (data.session) {
+			process.stderr.write('\r  Waiting for browser login... done\n');
+			// Encode expires as base64 salt (same as browser)
+			const expiresBytes = new TextEncoder().encode(String(expires));
+			const expiresSalt = btoa(String.fromCharCode(...expiresBytes));
+			return decryptData<RelayPayload>(data.session, code, expiresSalt);
+		}
+
+		await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+	}
+
+	process.stderr.write('\n');
+	throw new Error('Login timed out. Run `difflog login` to try again.');
+}
+
+async function webLogin(noBrowser: boolean): Promise<void> {
+	const code = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+	const expires = Date.now() + POLL_TIMEOUT;
+	const url = `${BASE}/cli/auth?code=${code}&expires=${expires}`;
+
+	// Generate verification code from hash of code + expires
+	const data = new TextEncoder().encode(code + String(expires));
+	const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+	const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+	const verify = hashHex.slice(-4);
+
+	process.stderr.write('\n');
+	process.stderr.write(`  Verification code: ${verify}\n\n`);
+
+	if (noBrowser) {
+		process.stderr.write(`  Open this URL to log in:\n`);
+		process.stderr.write(`  ${url}\n\n`);
+	} else {
+		process.stderr.write(`  Press Enter to open difflog.dev in your browser...`);
+		await waitForEnter();
+		process.stderr.write('\n');
+		openBrowser(url);
+	}
+
+	const { profile, diffs } = await pollForRelay(code, expires);
+
+	clearSession();
+	saveSession({ profileId: profile.id, password: '', passwordSalt: '', salt: '' });
+	saveProfile(profile);
+	saveDiffs(diffs);
+
+	process.stderr.write(`  Logged in as ${profile.name}. ${diffs.length} diff(s) cached.\n`);
+}
+
+async function directLogin(profileId: string, password: string): Promise<void> {
+	process.stderr.write('Logging in...\n');
+
+	const { session, profile, diffs } = await login(profileId, password);
+
+	clearSession();
+	saveSession(session);
+	saveProfile(profile);
+	saveDiffs(diffs);
+
+	process.stderr.write(`Logged in as ${profile.name}. ${diffs.length} diff(s) cached.\n`);
+}
+
+export async function loginCommand(args: string[]): Promise<void> {
+	let profileId: string | undefined;
+	let password: string | undefined;
+	let noBrowser = false;
+
+	// Parse flags
+	for (let i = 0; i < args.length; i++) {
+		if (args[i] === '--profile' && args[i + 1]) {
+			profileId = args[++i];
+		} else if (args[i] === '--password' && args[i + 1]) {
+			password = args[++i];
+		} else if (args[i] === '--no-browser') {
+			noBrowser = true;
+		}
+	}
+
+	try {
+		if (profileId && password) {
+			// Direct login with provided credentials
+			await directLogin(profileId, password);
+		} else {
+			// Web-based login (default interactive flow)
+			await webLogin(noBrowser);
+		}
+	} catch (err: any) {
+		process.stderr.write(`Error: ${err.message}\n`);
+		process.exit(1);
+	}
+}

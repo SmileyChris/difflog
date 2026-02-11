@@ -14,7 +14,9 @@
     "dev:migrate": "wrangler d1 migrations apply difflog-db --local --persist-to=.wrangler/state",
     "docs": "uvx zensical serve",
     "cleanup": "bun run scripts/cleanup-profiles.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "cli": "bun src/cli/main.ts",
+    "cli:build": "bun build src/cli/main.ts --compile --outfile difflog"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
