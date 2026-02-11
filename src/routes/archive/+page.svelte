@@ -7,7 +7,7 @@
 	import { Card, HeaderNav, EmptyState, IconButton, ShareDropdown, SiteFooter, PageHeader } from '$lib/components';
 
 	function goToDiff(diffId: string) {
-		goto(`/?diff=${diffId}`);
+		goto(`/d/${diffId}`);
 	}
 
 	function formatDate(dateStr: string): string {

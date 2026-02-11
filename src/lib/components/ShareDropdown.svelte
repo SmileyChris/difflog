@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { getProfile } from '$lib/stores/profiles.svelte';
 	import { getCachedPassword, autoSync } from '$lib/stores/sync.svelte';
 	import { shareDiff, unshareDiff, getPublicDiffUrl } from '$lib/stores/operations.svelte';
@@ -100,7 +101,10 @@
 				{:else}
 					<div class="visibility-menu-content">
 						<div class="visibility-menu-link-row">
-							<a href={publicUrl} target="_blank" class="public-link">/d/{diff?.id}</a>
+							<button
+								onclick={() => { close(); goto(`/d/${diff.id}`, { state: { viewAsPublic: true } }); }}
+								class="public-link"
+							>/d/{diff?.id}</button>
 							<button
 								class="visibility-menu-btn-icon"
 								onclick={copyLink}
@@ -228,12 +232,10 @@
 		font-family: var(--font-mono);
 		font-size: 0.8rem;
 		color: var(--accent);
-		text-decoration: none;
-	}
-
-	.public-link::after {
-		content: ' \2197';
-		font-size: 0.7em;
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
 	}
 
 	.public-link:hover {

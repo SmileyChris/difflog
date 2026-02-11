@@ -56,7 +56,9 @@
       {/if}
     </button>
 
-    <div class="sync-dropdown">
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="sync-dropdown" onclick={(e) => e.stopPropagation()}>
       {#if syncing.value}
         <div class="sync-dropdown-syncing">
           <span class="sync-dropdown-syncing-icon">&#8635;</span>
@@ -151,7 +153,7 @@
     background: none;
     border: none;
     padding: 0;
-    cursor: pointer;
+    cursor: default;
     text-decoration: none;
   }
 
@@ -219,6 +221,7 @@
     padding: 0.75rem;
     min-width: min(250px, calc(100vw - 2rem));
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    cursor: default;
     z-index: 1000;
 
     /* Hidden state */

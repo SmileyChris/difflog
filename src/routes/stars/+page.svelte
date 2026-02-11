@@ -1,12 +1,13 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { getProfile } from '$lib/stores/profiles.svelte';
 	import { getStars, getStarCountLabel, getStarContent, type Star } from '$lib/stores/stars.svelte';
 	import { removeStar } from '$lib/stores/operations.svelte';
 	import { timeAgo } from '$lib/utils/time';
 	import { Card, HeaderNav, EmptyState, IconButton, SiteFooter, PageHeader } from '$lib/components';
 
-	function starHref(star: Star): string {
-		return `/?diff=${star.diff_id}&p=${star.p_index}`;
+	function goToStar(star: Star) {
+		goto(`/d/${star.diff_id}`, { state: { scrollToPIndex: star.p_index } });
 	}
 
 	const stars = $derived(getStars());
@@ -35,9 +36,9 @@
 					{#if starContent}
 						<div class="bookmark-meta">
 							<span class="diff-title-icon">&#9632;</span>
-							<a href={starHref(star)} class="bookmark-source">
+							<button onclick={() => goToStar(star)} class="bookmark-source">
 								{starContent.diff_title}
-							</a>
+							</button>
 							<span class="bookmark-dot">&middot;</span>
 							<span class="bookmark-date">{timeAgo(starContent.diff_date)}</span>
 						</div>
@@ -91,6 +92,16 @@
 	.bookmark-source {
 		color: var(--accent);
 		font-weight: 500;
+		background: none;
+		border: none;
+		padding: 0;
+		font-size: inherit;
+		font-family: inherit;
+		cursor: pointer;
+	}
+
+	.bookmark-source:hover {
+		text-decoration: underline;
 	}
 
 	.bookmark-dot {

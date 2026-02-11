@@ -1,29 +1,43 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { SiteFooter, PageHeader, DiffContent } from '$lib/components';
-	import type { Diff } from '$lib/utils/sync';
+	import { afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
+	import { getProfile } from '$lib/stores/profiles.svelte';
+	import { getStars, getStarCountLabel } from '$lib/stores/stars.svelte';
+	import { generating } from '$lib/stores/ui.svelte';
+	import { type Diff } from '$lib/stores/history.svelte';
+	import { HeaderNav, DiffView, DiffContent, SiteFooter, PageHeader } from '$lib/components';
 
 	let { data } = $props();
 
-	const diff = $derived(data.diff);
+	const diff = $derived(data.diff as Diff | undefined);
 	const error = $derived(data.error);
-	const diffAsDiff = $derived(diff as unknown as Diff);
+	const isLocal = $derived(data.isLocal === true);
+	const viewAsPublic = $derived((page.state as Record<string, unknown>)?.viewAsPublic === true);
+	const showLocalMode = $derived(isLocal && !viewAsPublic);
 
-	onMount(() => {
-		if (data.scrollToPIndex !== null) {
-			setTimeout(() => {
-				const el = document.querySelector(`[data-p="${data.scrollToPIndex}"]`) as HTMLElement;
-				if (!el) return;
+	afterNavigate(() => {
+		const pIndex = (page.state as Record<string, unknown>)?.scrollToPIndex as number | null
+			?? data.scrollToPIndex
+			?? null;
+		if (pIndex === null) return;
 
-				const section = el.closest('details.md-section');
-				if (section && !section.hasAttribute('open')) {
-					section.setAttribute('open', '');
-				}
+		setTimeout(() => {
+			const el = document.querySelector(`[data-p="${pIndex}"]`) as HTMLElement;
+			if (!el) return;
 
-				el.classList.add('bookmark-highlight-persistent');
-				el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-			}, 200);
-		}
+			const section = el.closest('details.md-section');
+			if (section && !section.hasAttribute('open')) {
+				section.setAttribute('open', '');
+			}
+
+			el.classList.add('bookmark-highlight');
+			el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			el.addEventListener(
+				'animationend',
+				() => el.classList.remove('bookmark-highlight'),
+				{ once: true }
+			);
+		}, 200);
 	});
 </script>
 
@@ -31,30 +45,55 @@
 	<title>{diff?.title ? `${diff.title} - diff·log` : 'diff·log'}</title>
 </svelte:head>
 
-<PageHeader subtitle={diff?.profile_name ? `shared by ${diff.profile_name}` : 'Shared Diff'} />
-
-<main id="content" class="public-diff-page">
-	<!-- Error -->
-	{#if error}
-		<div class="error-box">
-			<div class="error-icon">&#9888;&#65039;</div>
-			<p class="error-text">{error}</p>
-			<a href="/" class="btn-primary" style="margin-top: 1rem;">Go to Home</a>
-		</div>
-	{/if}
-
-	<!-- Diff Content -->
-	{#if diff && !error}
-		{#if diff.title}
-			<h1 class="public-diff-title">{diff.title}</h1>
+{#if showLocalMode}
+	<PageHeader>
+		{#if getStars()?.length > 0}
+			<a href="/stars" class="header-link">
+				<span class="header-link-icon">&#9733;</span> {getStarCountLabel()}
+			</a>
 		{/if}
-		<DiffContent
-			diff={diffAsDiff}
-			hideBookmarks
-			copyLinkUrl={(pIndex) => `${window.location.origin}/d/${diff.id}?p=${pIndex}`}
-		/>
-	{/if}
-</main>
+		<HeaderNav />
+	</PageHeader>
+
+	<main id="content">
+		{#if diff}
+			<DiffView {diff}>
+				{#snippet infoExtra()}
+					{#if generating.value}
+						<a href="/generate" class="btn-ghost btn-branded" aria-busy="true">Generating…</a>
+					{:else}
+						<a href="/" class="btn-ghost">Latest diff &rarr;</a>
+					{/if}
+				{/snippet}
+			</DiffView>
+		{/if}
+	</main>
+{:else}
+	<PageHeader subtitle={viewAsPublic
+		? `shared by ${getProfile()?.name || 'Anonymous'}`
+		: (diff?.profile_name ? `shared by ${diff.profile_name}` : 'Shared Diff')} />
+
+	<main id="content" class="public-diff-page">
+		{#if error}
+			<div class="error-box">
+				<div class="error-icon">&#9888;&#65039;</div>
+				<p class="error-text">{error}</p>
+				<a href="/" class="btn-primary" style="margin-top: 1rem;">Go to Home</a>
+			</div>
+		{/if}
+
+		{#if diff && !error}
+			{#if diff.title}
+				<h1 class="public-diff-title">{diff.title}</h1>
+			{/if}
+			<DiffContent
+				diff={diff as Diff}
+				hideBookmarks
+				copyLinkUrl={(pIndex) => `${window.location.origin}/d/${diff.id}?p=${pIndex}`}
+			/>
+		{/if}
+	</main>
+{/if}
 
 <SiteFooter />
 

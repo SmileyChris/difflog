@@ -1,6 +1,7 @@
 export { default as Card } from './Card.svelte';
 export { default as ChipSelector } from './ChipSelector.svelte';
 export { default as DiffContent } from './DiffContent.svelte';
+export { default as DiffView } from './DiffView.svelte';
 export { default as EmptyState } from './EmptyState.svelte';
 export { default as HeaderNav } from './HeaderNav.svelte';
 export { default as IconButton } from './IconButton.svelte';
