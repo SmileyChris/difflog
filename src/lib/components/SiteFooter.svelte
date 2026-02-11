@@ -2,6 +2,7 @@
 	import { onMount } from "svelte";
 	import { browser, dev } from "$app/environment";
 	import { STORAGE_KEYS } from "$lib/utils/constants";
+	import ModalDialog from "./ModalDialog.svelte";
 
 	const version = __APP_VERSION__;
 
@@ -28,7 +29,7 @@
 		fix: "🐛",
 	};
 
-	let dialogEl: HTMLDialogElement;
+	let dialogEl: ModalDialog;
 	let loading = $state(false);
 	let error = $state("");
 	let data = $state<ChangelogData | null>(null);
@@ -94,11 +95,10 @@
 			}
 		}
 
-		dialogEl?.showModal();
+		dialogEl?.open();
 	}
 
-	function hide() {
-		dialogEl?.close();
+	function onClose() {
 		showAll = false;
 		expandedVersions = [];
 
@@ -177,102 +177,99 @@
 		{/if}
 	</button>
 
-	<dialog bind:this={dialogEl} class="dialog">
-		<header>
-			<h2 class="dialog-title">
-				{hasUnseen ? "What's new in diff·log" : "diff·log changes"}
-			</h2>
-			<button class="dialog-close" onclick={hide}>&times;</button>
-		</header>
-		<div class="dialog-body">
-			{#if loading}
-				<p class="changelog-loading">Loading...</p>
-			{:else if error}
-				<p class="changelog-error">{error}</p>
-			{:else if data}
-				<div class="changelog-versions">
-					{#each visibleVersions as ver (ver.version)}
-						<div class="changelog-version">
-							<div class="changelog-version-date">
-								{formatDate(ver.date)}
-							</div>
-							<p class="changelog-version-summary">
-								<span class="changelog-version-num"
-									>v{ver.version}</span
-								>
-								<span>{ver.summary}</span>
-							</p>
-							{#if ver.description}
-								<p class="changelog-version-desc">
-									<span>{ver.description}</span>
-									{#if !isVersionExpanded(ver) && ver.changes?.length}
-										<a
-											href="#changelog"
-											class="link-secondary"
-											onclick={(e) => {
-												e.preventDefault();
-												toggleVersion(ver);
-											}}
-										>
-											See highlights
-										</a>
-									{/if}
-								</p>
-							{/if}
-							{#if isVersionExpanded(ver)}
-								<ul class="changelog-changes">
-									{#each ver.changes as change (change.text)}
-										<li
-											class="changelog-change"
-											class:is-new={isNewChange(change)}
-										>
-											{#if getChangeIcon(change.type)}
-												<span
-													class="changelog-change-icon"
-													>{getChangeIcon(
-														change.type,
-													)}</span
-												>
-											{/if}
-											{#if getChangeFallback(change.type)}
-												<span
-													class="changelog-change-type"
-													>{getChangeFallback(
-														change.type,
-													)}</span
-												>
-											{/if}
-											<span>{change.text}</span>
-											{#if change.in && (!change.in.endsWith(".0") || isNewChange(change))}
-												<code
-													class="changelog-change-version"
-												>
-													{#if isNewChange(change)}
-														<span
-															class="changelog-dot-inline"
-														></span>
-													{/if}
-													<span>{change.in}</span>
-												</code>
-											{/if}
-										</li>
-									{/each}
-								</ul>
-							{/if}
+	<ModalDialog
+		bind:this={dialogEl}
+		title={hasUnseen ? "What's new in diff·log" : "diff·log changes"}
+		dark
+		onclose={onClose}
+	>
+		{#if loading}
+			<p class="changelog-loading">Loading...</p>
+		{:else if error}
+			<p class="changelog-error">{error}</p>
+		{:else if data}
+			<div class="changelog-versions">
+				{#each visibleVersions as ver (ver.version)}
+					<div class="changelog-version">
+						<div class="changelog-version-date">
+							{formatDate(ver.date)}
 						</div>
-					{/each}
-					{#if !showAll && hiddenCount > 0}
-						<button
-							class="changelog-more"
-							onclick={() => (showAll = true)}
-						>
-							{hiddenCount} older
-						</button>
-					{/if}
-				</div>
-			{/if}
-		</div>
-	</dialog>
+						<p class="changelog-version-summary">
+							<span class="changelog-version-num"
+								>v{ver.version}</span
+							>
+							<span>{ver.summary}</span>
+						</p>
+						{#if ver.description}
+							<p class="changelog-version-desc">
+								<span>{ver.description}</span>
+								{#if !isVersionExpanded(ver) && ver.changes?.length}
+									<a
+										href="#changelog"
+										class="link-secondary"
+										onclick={(e) => {
+											e.preventDefault();
+											toggleVersion(ver);
+										}}
+									>
+										See highlights
+									</a>
+								{/if}
+							</p>
+						{/if}
+						{#if isVersionExpanded(ver)}
+							<ul class="changelog-changes">
+								{#each ver.changes as change (change.text)}
+									<li
+										class="changelog-change"
+										class:is-new={isNewChange(change)}
+									>
+										{#if getChangeIcon(change.type)}
+											<span
+												class="changelog-change-icon"
+												>{getChangeIcon(
+													change.type,
+												)}</span
+											>
+										{/if}
+										{#if getChangeFallback(change.type)}
+											<span
+												class="changelog-change-type"
+												>{getChangeFallback(
+													change.type,
+												)}</span
+											>
+										{/if}
+										<span>{change.text}</span>
+										{#if change.in && (!change.in.endsWith(".0") || isNewChange(change))}
+											<code
+												class="changelog-change-version"
+											>
+												{#if isNewChange(change)}
+													<span
+														class="changelog-dot-inline"
+													></span>
+												{/if}
+												<span>{change.in}</span>
+											</code>
+										{/if}
+									</li>
+								{/each}
+							</ul>
+						{/if}
+					</div>
+				{/each}
+				{#if !showAll && hiddenCount > 0}
+					<button
+						class="changelog-more"
+						onclick={() => (showAll = true)}
+					>
+						{hiddenCount} older
+					</button>
+				{/if}
+			</div>
+		{/if}
+	</ModalDialog>
 </div>
 
 <style>
