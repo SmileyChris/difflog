@@ -1,5 +1,6 @@
 import { getDiffs, getSession } from '../config';
 import { renderMarkdown } from '../render';
+import { startInteractive } from '../interactive';
 
 export function showCommand(args: string[]): void {
 	const session = getSession();
@@ -8,9 +9,20 @@ export function showCommand(args: string[]): void {
 		process.exit(1);
 	}
 
-	const query = args[0];
+	// Parse arguments
+	let query = '';
+	let forceFullMode = false;
+
+	for (const arg of args) {
+		if (arg === '--full' || arg === '-f') {
+			forceFullMode = true;
+		} else {
+			query = arg;
+		}
+	}
+
 	if (!query) {
-		process.stderr.write('Usage: difflog show <number|id>\n');
+		process.stderr.write('Usage: difflog show <number|id> [--full]\n');
 		process.exit(1);
 	}
 
@@ -29,7 +41,7 @@ export function showCommand(args: string[]): void {
 	} else {
 		// Try as UUID prefix match
 		const lower = query.toLowerCase();
-		const matches = diffs.filter(d => d.id.toLowerCase().startsWith(lower));
+		const matches = diffs.filter((d) => d.id.toLowerCase().startsWith(lower));
 		if (matches.length === 1) {
 			diff = matches[0];
 		} else if (matches.length > 1) {
@@ -43,5 +55,15 @@ export function showCommand(args: string[]): void {
 		process.exit(1);
 	}
 
-	process.stdout.write(renderMarkdown(diff.content) + '\n');
+	// Decide on display mode
+	// Interactive requires both stdin (for input) and stdout (for output) to be TTY
+	const isInteractiveTTY = process.stdin.isTTY && process.stdout.isTTY && !forceFullMode;
+
+	if (isInteractiveTTY) {
+		// Interactive mode
+		startInteractive(diff.content);
+	} else {
+		// Full mode (piped or --full flag)
+		process.stdout.write(renderMarkdown(diff.content) + '\n');
+	}
 }

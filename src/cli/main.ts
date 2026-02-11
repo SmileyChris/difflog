@@ -24,14 +24,18 @@ Login flags:
   --password <pw>            Password (skip browser login)
   --no-browser               Print URL only, don't open browser
 
+Show flags:
+  --full, -f                 Full output mode (disable interactive navigation)
+
 Examples:
   difflog                    # Smart default: login or show latest
   difflog login
   difflog login --no-browser
   difflog login --profile UUID --password PW
   difflog ls
-  difflog show 1
-  difflog show 1 | less -R
+  difflog show 1             # Interactive mode (if TTY)
+  difflog show 1 --full      # Full output mode
+  difflog show 1 | less -R   # Auto-detects pipe (full mode)
 `;
 
 const args = process.argv.slice(2);
@@ -66,8 +70,8 @@ if (!command) {
 			process.exit(1);
 		}
 		// Show the first diff (most recent)
+		// Don't call process.exit() here - let interactive mode keep running
 		showCommand(['1']);
-		process.exit(0);
 	}
 } else {
 
