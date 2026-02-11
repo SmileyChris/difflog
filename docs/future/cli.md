@@ -2,11 +2,14 @@
 icon: lucide/terminal
 ---
 
-# CLI Interface
+# CLI Roadmap
 
-**Status:** Conceptual / RFC
+**Status:** In Development
 
 A terminal client for generating and reading diffs without opening a browser.
+
+!!! success "Web-Assisted Login Implemented"
+    See [CLI Usage](../cli.md) for user documentation and [CLI Login Architecture](../architecture/cli-login.md) for technical details.
 
 ---
 
@@ -21,6 +24,9 @@ A terminal client for generating and reading diffs without opening a browser.
 ## Usage Examples
 
 ```bash
+# Zero-friction default: login or show latest diff
+$ difflog
+
 # Morning briefing
 $ difflog gen --today
 
@@ -58,10 +64,10 @@ Native rewrite for a smaller, faster binary.
 
 ## Feature Roadmap
 
-### v0.1: Viewer
-- `difflog login` — authenticate with Profile ID and password
-- `difflog ls` — list past diffs
-- `difflog show <id>` — read a diff in the terminal
+### v0.1: Viewer ✅ Implemented
+- ✅ `difflog login` — web-assisted authentication or direct login with credentials
+- ✅ `difflog ls` — list past diffs
+- ✅ `difflog show <id>` — read a diff in the terminal
 
 ### v0.2: Generator
 - `difflog gen` — full pipeline: fetch feeds, call AI, render, encrypt, sync

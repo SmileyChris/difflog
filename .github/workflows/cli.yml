@@ -1,0 +1,67 @@
+name: CLI Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/cli/**'
+      - 'src/lib/utils/crypto.ts'
+      - 'src/lib/utils/time.ts'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep "const VERSION = " src/cli/main.ts | sed "s/.*'\(.*\)'.*/\1/")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=cli-v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check if release exists
+        id: check
+        run: |
+          if gh release view "${{ steps.version.outputs.tag }}" &>/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun
+        if: steps.check.outputs.exists == 'false'
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        if: steps.check.outputs.exists == 'false'
+        run: bun install
+
+      - name: Build binaries
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          mkdir -p dist/cli
+          bun build src/cli/main.ts --compile --target=bun-linux-x64 --outfile dist/cli/difflog-linux-x64
+          bun build src/cli/main.ts --compile --target=bun-darwin-arm64 --outfile dist/cli/difflog-darwin-arm64
+          bun build src/cli/main.ts --compile --target=bun-darwin-x64 --outfile dist/cli/difflog-darwin-x64
+
+      - name: Create release
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            dist/cli/difflog-linux-x64 \
+            dist/cli/difflog-darwin-arm64 \
+            dist/cli/difflog-darwin-x64 \
+            --title "CLI ${{ steps.version.outputs.version }}" \
+            --generate-notes \
+            --notes-start-tag "$(gh release list --limit 1 --json tagName -q '.[0].tagName // empty' | grep '^cli-v' || echo '')"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

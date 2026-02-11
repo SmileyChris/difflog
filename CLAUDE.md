@@ -15,6 +15,7 @@ bun test             # Run tests
 bun run build        # Production build
 bun run cleanup      # List stale profiles (--days, --remote, --confirm flags)
 bun run db:migrate   # Apply D1 migrations
+bun run docs         # Serve documentation (Zensical/MkDocs)
 ```
 
 ## Architecture
