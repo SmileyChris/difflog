@@ -47,11 +47,15 @@
 
 		if (open) {
 			details.setAttribute('open', '');
+			details.classList.add('opening');
 			const h = content.scrollHeight;
-			content.animate(
+			const anim = content.animate(
 				{ height: ['0px', h + 'px'] },
 				{ duration: ANIM_MS, easing: 'ease' }
 			);
+			anim.onfinish = () => {
+				details.classList.remove('opening');
+			};
 		} else {
 			details.classList.add('closing');
 			const h = content.scrollHeight;

@@ -68,6 +68,12 @@
 }
 
 .md-section-content {
+  overflow: visible;
+}
+
+/* Only clip overflow during collapse/expand animations */
+.md-section.closing .md-section-content,
+.md-section.opening .md-section-content {
   overflow: hidden;
 }
 
