@@ -5,6 +5,7 @@
 import { spawn } from 'node:child_process';
 import { renderMarkdown } from './render';
 import { parseDiff, flattenTopics, type Topic } from './parser';
+import { isTopicRead, markTopicRead, toggleTopicRead } from './config';
 
 const RESET = '\x1b[0m';
 const DIM = '\x1b[2m';
@@ -12,6 +13,7 @@ const BOLD = '\x1b[1m';
 const CYAN = '\x1b[36m';
 const UNDERLINE = '\x1b[4m';
 const GREEN = '\x1b[32m';
+const BRIGHT_YELLOW = '\x1b[93m';
 
 /**
  * Open URL in default browser
@@ -53,10 +55,13 @@ function displayHelp(): void {
 	clearScreen();
 	process.stdout.write(`${BOLD}Keyboard Shortcuts${RESET}\n\n`);
 	process.stdout.write(`${DIM}Navigation${RESET}\n`);
-	process.stdout.write(`  ${CYAN}←  →  j  k${RESET}  Navigate topics\n`);
+	process.stdout.write(`  ${CYAN}←  →  j  k${RESET}  Navigate articles\n`);
 	process.stdout.write(`  ${CYAN}↑  ↓  h  l${RESET}  Navigate categories\n`);
-	process.stdout.write(`  ${CYAN}Home${RESET}       First topic\n`);
-	process.stdout.write(`  ${CYAN}End${RESET}        Last topic\n\n`);
+	process.stdout.write(`  ${CYAN}Home${RESET}       First article\n`);
+	process.stdout.write(`  ${CYAN}End${RESET}        Last article\n\n`);
+	process.stdout.write(`${DIM}Reading${RESET}\n`);
+	process.stdout.write(`  ${CYAN}Space${RESET}      Mark as read & jump to next\n`);
+	process.stdout.write(`  ${CYAN}a${RESET}          Toggle show/hide read articles\n\n`);
 	process.stdout.write(`${DIM}Links${RESET}\n`);
 	process.stdout.write(`  ${CYAN}Tab${RESET}        Cycle through links\n`);
 	process.stdout.write(`  ${CYAN}Enter${RESET}      Open link in browser\n\n`);
@@ -96,12 +101,43 @@ function displayTopic(
 	prevCategories: Array<{ name: string; count: number }>,
 	nextCategories: Array<{ name: string; count: number }>,
 	diffPosition?: { current: number; total: number },
-	isTodayDiff: boolean = false
+	isTodayDiff: boolean = false,
+	isRead: boolean = false,
+	unreadCount: number = 0,
+	showRead: boolean = false,
+	currentUnreadPos: number = 0
 ): void {
 	clearScreen();
 
-	// Diff title (no count - will show unread count in future)
-	process.stdout.write(`${BOLD}${diffTitle}${RESET}\n`);
+	// Diff title with counts
+	if (!showRead && unreadCount > 0) {
+		if (isRead) {
+			// On a read article: just show total unread count
+			process.stdout.write(
+				`${BOLD}${diffTitle}${RESET} ${DIM}[${unreadCount} unread]${RESET}\n`
+			);
+		} else {
+			// On an unread article: show position in unread articles
+			process.stdout.write(
+				`${BOLD}${diffTitle}${RESET} ${DIM}[${currentUnreadPos}/${unreadCount} unread]${RESET}\n`
+			);
+		}
+	} else if (showRead) {
+		// Show all mode: show read/unread breakdown
+		const readCount = globalTotal - unreadCount;
+		if (unreadCount === 0) {
+			// Highlight 0 unread in yellow
+			process.stdout.write(
+				`${BOLD}${diffTitle}${RESET} ${DIM}[${readCount} read, ${RESET}${BRIGHT_YELLOW}0 unread${RESET}${DIM}]${RESET}\n`
+			);
+		} else {
+			process.stdout.write(
+				`${BOLD}${diffTitle}${RESET} ${DIM}[${readCount} read, ${unreadCount} unread]${RESET}\n`
+			);
+		}
+	} else {
+		process.stdout.write(`${BOLD}${diffTitle}${RESET}\n`);
+	}
 
 	// Date info
 	if (dateInfo) {
@@ -127,14 +163,28 @@ function displayTopic(
 		let statusLine = '';
 		if (diffPosition) {
 			const isLatest = diffPosition.current === 1;
-			if (isLatest) {
-				if (isTodayDiff) {
-					statusLine = `${DIM}Latest diff (${diffPosition.current}/${diffPosition.total})  •  ? for keys${RESET}`;
+			if (unreadCount > 0) {
+				const unreadText = `${unreadCount}/${globalTotal} unread`;
+				if (isLatest) {
+					if (isTodayDiff) {
+						statusLine = `${DIM}Latest diff (${diffPosition.current}/${diffPosition.total}) • ${unreadText}  •  ? for keys${RESET}`;
+					} else {
+						statusLine = `${DIM}Latest diff (${diffPosition.current}/${diffPosition.total}) • ${unreadText}  •  g to generate new  •  ? for keys${RESET}`;
+					}
 				} else {
-					statusLine = `${DIM}Latest diff (${diffPosition.current}/${diffPosition.total})  •  g to generate new  •  ? for keys${RESET}`;
+					statusLine = `${DIM}From the archives [${diffPosition.current}/${diffPosition.total}] • ${unreadText}  •  ? for keys${RESET}`;
 				}
 			} else {
-				statusLine = `${DIM}From the archives [${diffPosition.current}/${diffPosition.total}]  •  ? for keys${RESET}`;
+				// All read - no unread count in status line
+				if (isLatest) {
+					if (isTodayDiff) {
+						statusLine = `${DIM}Latest diff (${diffPosition.current}/${diffPosition.total})  •  ? for keys${RESET}`;
+					} else {
+						statusLine = `${DIM}Latest diff (${diffPosition.current}/${diffPosition.total})  •  g to generate new  •  ? for keys${RESET}`;
+					}
+				} else {
+					statusLine = `${DIM}From the archives [${diffPosition.current}/${diffPosition.total}]  •  ? for keys${RESET}`;
+				}
 			}
 		} else {
 			statusLine = `${DIM}? for keys${RESET}`;
@@ -156,13 +206,18 @@ function displayTopic(
 	// Render topic content with highlighted link
 	const topicMarkdown = topic.lines.join('\n').trim();
 	const highlightIndex = topic.links.length > 0 ? linkIndex : undefined;
-	process.stdout.write(renderMarkdown(topicMarkdown, highlightIndex, true) + '\n\n');
+	const rendered = renderMarkdown(topicMarkdown, highlightIndex, true);
+	process.stdout.write(rendered + '\n\n');
 
-	// Show URL for selected link
+	// Show URL for selected link or read indicator
 	if (topic.links.length > 0) {
-		const currentLink = topic.links[linkIndex];
-		const linkHint = topic.links.length > 1 ? ` ${DIM}(tab to cycle)${RESET}` : '';
-		process.stdout.write(`${DIM}↵ ${RESET}${CYAN}${currentLink.url}${RESET}${linkHint}\n`);
+		if (isRead) {
+			process.stdout.write(`${BRIGHT_YELLOW}✓ Article read${RESET}\n`);
+		} else {
+			const currentLink = topic.links[linkIndex];
+			const linkHint = topic.links.length > 1 ? ` ${DIM}(tab to cycle)${RESET}` : '';
+			process.stdout.write(`${DIM}↵ ${RESET}${CYAN}${currentLink.url}${RESET}${linkHint}\n`);
+		}
 	}
 
 	// Next categories (always show 2 lines to prevent shift)
@@ -299,6 +354,7 @@ function getCategoryNavigation(
  * Start interactive viewer
  */
 export function startInteractive(
+	diffId: string,
 	markdown: string,
 	diffTitle: string,
 	dateInfo: string = '',
@@ -320,6 +376,31 @@ export function startInteractive(
 	let currentLinkIndex = 0;
 	let running = true;
 	let showingHelp = false;
+	let showRead = false; // Toggle to show/hide read topics
+
+	// Helper to get visible items based on showRead mode
+	function getVisibleItems() {
+		if (showRead) {
+			return items;
+		}
+		return items.filter((_, index) => !isTopicRead(diffId, index));
+	}
+
+	// Helper to get unread count
+	function getUnreadCount(): number {
+		return items.filter((_, index) => !isTopicRead(diffId, index)).length;
+	}
+
+	// Helper to get current position within unread articles (1-based)
+	function getCurrentUnreadPosition(): number {
+		let position = 0;
+		for (let i = 0; i <= currentIndex; i++) {
+			if (!isTopicRead(diffId, i)) {
+				position++;
+			}
+		}
+		return position;
+	}
 
 	// Ensure we have a TTY
 	if (!process.stdin.isTTY) {
@@ -334,25 +415,55 @@ export function startInteractive(
 
 	hideCursor();
 
-	// Display first topic
-	const item = items[currentIndex];
-	const categoryPos = getCategoryTopicIndex(items, currentIndex);
-	const categoryNav = getCategoryNavigation(items, currentIndex);
-	displayTopic(
-		diffTitle,
-		dateInfo,
-		item.category.header,
-		categoryPos.index,
-		categoryPos.total,
-		item.topic,
-		currentIndex,
-		items.length,
-		currentLinkIndex,
-		categoryNav.prev,
-		categoryNav.next,
-		diffPosition,
-		isTodayDiff
-	);
+	// Helper to display current view
+	function displayCurrentView() {
+		const unreadCount = getUnreadCount();
+		const allRead = unreadCount === 0;
+
+		// If all read and trying to hide read, force show-all mode
+		if (allRead && !showRead) {
+			showRead = true;
+		}
+
+		const item = items[currentIndex];
+		const categoryPos = getCategoryTopicIndex(items, currentIndex);
+		const categoryNav = getCategoryNavigation(items, currentIndex);
+		const currentUnreadPos = getCurrentUnreadPosition();
+		displayTopic(
+			diffTitle,
+			dateInfo,
+			item.category.header,
+			categoryPos.index,
+			categoryPos.total,
+			item.topic,
+			currentIndex,
+			items.length,
+			currentLinkIndex,
+			categoryNav.prev,
+			categoryNav.next,
+			diffPosition,
+			isTodayDiff,
+			isTopicRead(diffId, currentIndex),
+			unreadCount,
+			showRead,
+			currentUnreadPos
+		);
+	}
+
+	// Check if all articles are read
+	const unreadCount = getUnreadCount();
+	const allRead = unreadCount === 0;
+
+	// Display first topic (or first unread if hiding read)
+	if (!showRead && !allRead) {
+		// Jump to first unread
+		while (currentIndex < items.length && isTopicRead(diffId, currentIndex)) {
+			currentIndex++;
+		}
+	}
+
+	// Display initial view
+	displayCurrentView();
 
 	// Handle keypresses
 	const dataHandler = (key: string) => {
@@ -364,6 +475,8 @@ export function startInteractive(
 			const item = items[currentIndex];
 			const categoryPos = getCategoryTopicIndex(items, currentIndex);
 			const categoryNav = getCategoryNavigation(items, currentIndex);
+			const unreadCount = getUnreadCount();
+			const currentUnreadPos = getCurrentUnreadPosition();
 			displayTopic(
 				diffTitle,
 				dateInfo,
@@ -377,7 +490,11 @@ export function startInteractive(
 				categoryNav.prev,
 				categoryNav.next,
 				diffPosition,
-				isTodayDiff
+				isTodayDiff,
+				isTopicRead(diffId, currentIndex),
+				unreadCount,
+				showRead,
+				currentUnreadPos
 			);
 			return;
 		}
@@ -413,6 +530,49 @@ export function startInteractive(
 			return;
 		}
 
+		// Space: mark as read and jump to next unread (or toggle if showing read)
+		if (key === ' ') {
+			if (showRead) {
+				// Just toggle read status without jumping
+				toggleTopicRead(diffId, currentIndex);
+			} else {
+				// Mark as read and jump to next unread
+				markTopicRead(diffId, currentIndex);
+				// Find next unread
+				let nextUnread = -1;
+				for (let i = currentIndex + 1; i < items.length; i++) {
+					if (!isTopicRead(diffId, i)) {
+						nextUnread = i;
+						break;
+					}
+				}
+				if (nextUnread >= 0) {
+					currentIndex = nextUnread;
+					currentLinkIndex = 0;
+				}
+			}
+			displayCurrentView();
+			return;
+		}
+
+		// Toggle show/hide read articles with 'a' key
+		if (key === 'a') {
+			showRead = !showRead;
+			// If toggling to hide-read mode, jump to first unread (if any)
+			if (!showRead) {
+				currentIndex = 0;
+				while (currentIndex < items.length && isTopicRead(diffId, currentIndex)) {
+					currentIndex++;
+				}
+				// Reset to first article if all read
+				if (currentIndex >= items.length) {
+					currentIndex = 0;
+				}
+			}
+			displayCurrentView();
+			return;
+		}
+
 		// Tab: cycle through links
 		if (key === '\t') {
 			const currentItem = items[currentIndex];
@@ -420,6 +580,8 @@ export function startInteractive(
 				currentLinkIndex = (currentLinkIndex + 1) % currentItem.topic.links.length;
 				const categoryPos = getCategoryTopicIndex(items, currentIndex);
 				const categoryNav = getCategoryNavigation(items, currentIndex);
+				const unreadCount = getUnreadCount();
+				const currentUnreadPos = getCurrentUnreadPosition();
 				displayTopic(
 					diffTitle,
 					dateInfo,
@@ -433,7 +595,11 @@ export function startInteractive(
 					categoryNav.prev,
 					categoryNav.next,
 					diffPosition,
-					isTodayDiff
+					isTodayDiff,
+					isTopicRead(diffId, currentIndex),
+					unreadCount,
+					showRead,
+					currentUnreadPos
 				);
 			}
 			return;
@@ -447,6 +613,8 @@ export function startInteractive(
 					(currentLinkIndex - 1 + currentItem.topic.links.length) % currentItem.topic.links.length;
 				const categoryPos = getCategoryTopicIndex(items, currentIndex);
 				const categoryNav = getCategoryNavigation(items, currentIndex);
+				const unreadCount = getUnreadCount();
+				const currentUnreadPos = getCurrentUnreadPosition();
 				displayTopic(
 					diffTitle,
 					dateInfo,
@@ -460,7 +628,11 @@ export function startInteractive(
 					categoryNav.prev,
 					categoryNav.next,
 					diffPosition,
-					isTodayDiff
+					isTodayDiff,
+					isTopicRead(diffId, currentIndex),
+					unreadCount,
+					showRead,
+					currentUnreadPos
 				);
 			}
 			return;
@@ -471,8 +643,16 @@ export function startInteractive(
 
 		// Next topic: Right arrow or j
 		if (key === '\u001b[C' || key === 'j') {
-			if (currentIndex < items.length - 1) {
-				currentIndex++;
+			let nextIndex = currentIndex + 1;
+			// Skip read articles if not showing read AND not all read
+			const allRead = getUnreadCount() === 0;
+			if (!showRead && !allRead) {
+				while (nextIndex < items.length && isTopicRead(diffId, nextIndex)) {
+					nextIndex++;
+				}
+			}
+			if (nextIndex < items.length) {
+				currentIndex = nextIndex;
 				currentLinkIndex = 0; // Reset link index on topic change
 				moved = true;
 			}
@@ -480,39 +660,79 @@ export function startInteractive(
 
 		// Previous topic: Left arrow or k
 		if (key === '\u001b[D' || key === 'k') {
-			if (currentIndex > 0) {
-				currentIndex--;
+			let prevIndex = currentIndex - 1;
+			// Skip read articles if not showing read AND not all read
+			const allRead = getUnreadCount() === 0;
+			if (!showRead && !allRead) {
+				while (prevIndex >= 0 && isTopicRead(diffId, prevIndex)) {
+					prevIndex--;
+				}
+			}
+			if (prevIndex >= 0) {
+				currentIndex = prevIndex;
 				currentLinkIndex = 0; // Reset link index on topic change
 				moved = true;
 			}
 		}
 
-		// Next category: Down arrow or l (hidden)
+		// Next unread in category: Down arrow or l (hidden)
 		if (key === '\u001b[B' || key === 'l') {
-			const nextIndex = getNextCategoryIndex(items, currentIndex);
-			// Don't wrap - only move if we actually found a different category
-			if (nextIndex !== currentIndex) {
+			const allRead = getUnreadCount() === 0;
+			if (!showRead && !allRead) {
+				// In unread mode: find next unread article in same category
 				const currentCategory = items[currentIndex].category;
-				const nextCategory = items[nextIndex].category;
-				if (nextCategory !== currentCategory) {
-					currentIndex = nextIndex;
-					currentLinkIndex = 0;
-					moved = true;
+				let nextIndex = currentIndex + 1;
+				while (nextIndex < items.length && items[nextIndex].category === currentCategory) {
+					if (!isTopicRead(diffId, nextIndex)) {
+						currentIndex = nextIndex;
+						currentLinkIndex = 0;
+						moved = true;
+						break;
+					}
+					nextIndex++;
+				}
+			} else {
+				// In show-all mode: navigate to next category
+				const nextIndex = getNextCategoryIndex(items, currentIndex);
+				if (nextIndex !== currentIndex) {
+					const currentCategory = items[currentIndex].category;
+					const nextCategory = items[nextIndex].category;
+					if (nextCategory !== currentCategory) {
+						currentIndex = nextIndex;
+						currentLinkIndex = 0;
+						moved = true;
+					}
 				}
 			}
 		}
 
-		// Previous category: Up arrow or h (hidden)
+		// Previous unread in category: Up arrow or h (hidden)
 		if (key === '\u001b[A' || key === 'h') {
-			const prevIndex = getPrevCategoryIndex(items, currentIndex);
-			// Don't wrap - only move if we actually found a different category
-			if (prevIndex !== currentIndex) {
+			const allRead = getUnreadCount() === 0;
+			if (!showRead && !allRead) {
+				// In unread mode: find previous unread article in same category
 				const currentCategory = items[currentIndex].category;
-				const prevCategory = items[prevIndex].category;
-				if (prevCategory !== currentCategory) {
-					currentIndex = prevIndex;
-					currentLinkIndex = 0;
-					moved = true;
+				let prevIndex = currentIndex - 1;
+				while (prevIndex >= 0 && items[prevIndex].category === currentCategory) {
+					if (!isTopicRead(diffId, prevIndex)) {
+						currentIndex = prevIndex;
+						currentLinkIndex = 0;
+						moved = true;
+						break;
+					}
+					prevIndex--;
+				}
+			} else {
+				// In show-all mode: navigate to previous category
+				const prevIndex = getPrevCategoryIndex(items, currentIndex);
+				if (prevIndex !== currentIndex) {
+					const currentCategory = items[currentIndex].category;
+					const prevCategory = items[prevIndex].category;
+					if (prevCategory !== currentCategory) {
+						currentIndex = prevIndex;
+						currentLinkIndex = 0;
+						moved = true;
+					}
 				}
 			}
 		}
@@ -535,6 +755,8 @@ export function startInteractive(
 			const item = items[currentIndex];
 			const categoryPos = getCategoryTopicIndex(items, currentIndex);
 			const categoryNav = getCategoryNavigation(items, currentIndex);
+			const unreadCount = getUnreadCount();
+			const currentUnreadPos = getCurrentUnreadPosition();
 			displayTopic(
 				diffTitle,
 				dateInfo,
@@ -548,7 +770,11 @@ export function startInteractive(
 				categoryNav.prev,
 				categoryNav.next,
 				diffPosition,
-				isTodayDiff
+				isTodayDiff,
+				isTopicRead(diffId, currentIndex),
+				unreadCount,
+				showRead,
+				currentUnreadPos
 			);
 		}
 	};

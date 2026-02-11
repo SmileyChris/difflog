@@ -86,7 +86,7 @@ export function showCommand(args: string[]): void {
 			? new Date(diff.generated_at).toDateString() === new Date().toDateString()
 			: false;
 
-		startInteractive(diff.content, title, dateInfo, diffPosition, isTodayDiff);
+		startInteractive(diff.id, diff.content, title, dateInfo, diffPosition, isTodayDiff);
 	} else {
 		// Full mode (piped or --full flag)
 		process.stdout.write(renderMarkdown(diff.content) + '\n');

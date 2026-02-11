@@ -93,3 +93,51 @@ export function getDiffs(): Diff[] {
 export function saveDiffs(diffs: Diff[]): void {
 	writeJson('diffs.json', diffs);
 }
+
+// Read state
+
+export interface ReadState {
+	// Map of diffId to set of read topic indices
+	[diffId: string]: number[];
+}
+
+export function getReadState(): ReadState {
+	return readJson<ReadState>('read-state.json') || {};
+}
+
+export function saveReadState(state: ReadState): void {
+	writeJson('read-state.json', state);
+}
+
+export function isTopicRead(diffId: string, topicIndex: number): boolean {
+	const state = getReadState();
+	return state[diffId]?.includes(topicIndex) ?? false;
+}
+
+export function markTopicRead(diffId: string, topicIndex: number): void {
+	const state = getReadState();
+	if (!state[diffId]) {
+		state[diffId] = [];
+	}
+	if (!state[diffId].includes(topicIndex)) {
+		state[diffId].push(topicIndex);
+		saveReadState(state);
+	}
+}
+
+export function toggleTopicRead(diffId: string, topicIndex: number): boolean {
+	const state = getReadState();
+	if (!state[diffId]) {
+		state[diffId] = [];
+	}
+	const index = state[diffId].indexOf(topicIndex);
+	if (index >= 0) {
+		state[diffId].splice(index, 1);
+		saveReadState(state);
+		return false; // now unread
+	} else {
+		state[diffId].push(topicIndex);
+		saveReadState(state);
+		return true; // now read
+	}
+}
