@@ -15,6 +15,7 @@ interface PublicDiffResponse {
 	title?: string;
 	generated_at: string;
 	profile_name: string;
+	window_days?: number;
 }
 
 function isPublicDiff(encryptedData: string): boolean {
@@ -56,7 +57,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 		}
 
 		// Parse the plaintext JSON content
-		let diffData: { content: string; title?: string; generated_at: string };
+		let diffData: { content: string; title?: string; generated_at: string; window_days?: number };
 		try {
 			diffData = JSON.parse(diff.encrypted_data);
 		} catch {
@@ -76,7 +77,8 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 			content: diffData.content,
 			title: diffData.title,
 			generated_at: diffData.generated_at,
-			profile_name: profile?.name || 'Anonymous'
+			profile_name: profile?.name || 'Anonymous',
+			...(diffData.window_days != null && { window_days: diffData.window_days })
 		};
 
 		return new Response(JSON.stringify(response), {

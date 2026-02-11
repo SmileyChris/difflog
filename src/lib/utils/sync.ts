@@ -94,6 +94,7 @@ export interface Diff {
   duration_seconds?: number;
   cost?: number;
   isPublic?: boolean;
+  window_days?: number;
   [key: string]: unknown;
 }
 

@@ -7,7 +7,23 @@
 
 	const diff = $derived(data.diff);
 	const error = $derived(data.error);
-	const renderedContent = $derived(diff?.content ? renderMarkdown(diff.content) : '');
+
+	function formatDateLine(d: typeof diff): string {
+		if (!d?.window_days) return '';
+		const date = new Date(d.generated_at).toLocaleDateString('en-US', {
+			weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+		});
+		const windowText = d.window_days === 1 ? 'Past 24 hours' : `Past ${d.window_days} days`;
+		return `**${date}** \u00b7 Intelligence Window: ${windowText}\n\n---`;
+	}
+
+	const dateLine = $derived(formatDateLine(diff));
+	const fullContent = $derived(
+		dateLine && diff?.content
+			? `${dateLine}\n\n${diff.content}`
+			: (diff?.content ?? '')
+	);
+	const renderedContent = $derived(fullContent ? renderMarkdown(fullContent) : '');
 
 	let contentElement: HTMLElement | null = $state(null);
 

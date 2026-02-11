@@ -238,16 +238,14 @@ export async function generateDiffContent(options: GenerateOptions): Promise<Gen
 
 	const cleanedContent = cleanDiffContent(rawContent);
 
-	// Prepend the date line — we control this rather than relying on the LLM
-	const content = `${prompt.dateLine}\n\n${cleanedContent}`;
-
 	const entry: Diff = {
 		id: Date.now().toString(),
 		title: title || '',
-		content,
+		content: cleanedContent,
 		generated_at: new Date().toISOString(),
 		duration_seconds: Math.round((Date.now() - startTime) / 1000),
-		cost
+		cost,
+		window_days: calculateWindowDays(lastDiffDate)
 	};
 
 	return { diff: entry };

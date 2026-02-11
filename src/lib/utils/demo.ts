@@ -95,11 +95,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 function buildContent(): string {
-	const date = new Date().toLocaleDateString('en-US', {
-		weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
-	});
-
-	const parts = [`**${date}** · Intelligence Window: Past 3 days\n\n---`];
+	const parts: string[] = [];
 
 	for (const section of SECTIONS) {
 		const picked = shuffle(section.pool).slice(0, section.pick);
@@ -130,5 +126,6 @@ export function createDemoDiff(lastTitle?: string): Diff {
 		content: buildContent(),
 		generated_at: new Date().toISOString(),
 		duration_seconds: 42,
+		window_days: 3,
 	};
 }

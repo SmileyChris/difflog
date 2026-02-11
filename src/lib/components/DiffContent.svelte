@@ -13,7 +13,22 @@
 
 	let { diff, showBookmarks = true, titleRow }: Props = $props();
 
-	const html = $derived(diff?.content ? renderMarkdown(diff.content) : '');
+	function formatDateLine(diff: Diff): string {
+		if (!diff.window_days) return '';
+		const date = new Date(diff.generated_at).toLocaleDateString('en-US', {
+			weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+		});
+		const windowText = diff.window_days === 1 ? 'Past 24 hours' : `Past ${diff.window_days} days`;
+		return `**${date}** \u00b7 Intelligence Window: ${windowText}\n\n---`;
+	}
+
+	const dateLine = $derived(diff ? formatDateLine(diff) : '');
+	const fullContent = $derived(
+		dateLine && diff?.content
+			? `${dateLine}\n\n${diff.content}`
+			: (diff?.content ?? '')
+	);
+	const html = $derived(fullContent ? renderMarkdown(fullContent) : '');
 	const stars = $derived(getStars());
 	const hasSections = $derived(html.includes('class="md-section"'));
 	let contentElement: HTMLElement | null = $state(null);

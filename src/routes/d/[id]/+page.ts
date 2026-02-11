@@ -6,6 +6,7 @@ interface PublicDiff {
 	title?: string;
 	generated_at: string;
 	profile_name: string;
+	window_days?: number;
 }
 
 export const load: PageLoad = async ({ params, fetch, url }) => {

@@ -13,7 +13,6 @@ interface Profile {
 export interface DiffPrompt {
   system: string;
   user: string;
-  dateLine: string;
 }
 
 const DEPTH_INSTRUCTIONS = {
@@ -88,7 +87,5 @@ ${webSection}${feedSection}${sourcesNote}${previousDiffSection}
 
 Generate the diff now. Start with the # title, then ## sections.`;
 
-  const dateLine = `**${currentDate}** \u00b7 Intelligence Window: ${windowText}\n\n---`;
-
-  return { system, user, dateLine };
+  return { system, user };
 }
