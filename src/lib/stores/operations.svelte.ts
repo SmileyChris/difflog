@@ -2,7 +2,7 @@
 // These coordinate actions across profiles, history, stars, and sync
 
 import { browser } from '$app/environment';
-import { timeAgo } from '$lib/utils/time';
+import { timeAgo } from '$lib/utils/time.svelte';
 import { ApiError } from '$lib/utils/api';
 
 import {
@@ -203,6 +203,26 @@ function hasLegacyId(star: Star): star is Star & { id: string } {
 	return 'id' in star && star.id !== undefined;
 }
 
+function cleanupOrphanedStars(): void {
+	if (!browser) return;
+	const stars = getStars();
+	const history = getHistory();
+	if (!activeProfileId.value || stars.length === 0) return;
+
+	const diffIds = new Set(history.map((d: Diff) => d.id));
+	const orphaned = stars.filter((s: Star) => !diffIds.has(s.diff_id));
+	if (orphaned.length > 0) {
+		for (const star of orphaned) {
+			trackDeletedStar(starId(star));
+		}
+		bookmarks.value = {
+			...bookmarks.value,
+			[activeProfileId.value]: stars.filter((s: Star) => diffIds.has(s.diff_id))
+		};
+		console.log(`[Cleanup] Removed ${orphaned.length} orphaned star(s)`);
+	}
+}
+
 function migrateToReferenceStars(): void {
 	if (!browser) return;
 	const stars = getStars();
@@ -265,6 +285,7 @@ export function initApp(): void {
 
 	migrateOldData();
 	migrateToReferenceStars();
+	cleanupOrphanedStars();
 	restoreSessionPassword();
 	checkSyncStatus();
 
