@@ -5,6 +5,15 @@ const SERVICE_NAME = 'difflog-cli';
 const PROVIDERS = ['anthropic', 'serper', 'perplexity', 'deepseek', 'gemini'] as const;
 type Provider = (typeof PROVIDERS)[number];
 
+// ANSI codes
+const RESET = '\x1b[0m';
+const DIM = '\x1b[2m';
+const BOLD = '\x1b[1m';
+const CYAN = '\x1b[36m';
+const GREEN = '\x1b[32m';
+const BRIGHT_YELLOW = '\x1b[93m';
+const RED = '\x1b[31m';
+
 const PROVIDER_LABELS: Record<Provider, string> = {
 	anthropic: 'Anthropic (Claude)',
 	serper: 'Serper (web search)',
@@ -32,19 +41,19 @@ export async function showAiConfig(): Promise<void> {
 
 	const configured = await getConfiguredKeys();
 
-	process.stdout.write('AI Configuration:\n');
-	process.stdout.write('  API Keys:\n');
+	process.stdout.write(`${DIM}AI Configuration:${RESET}\n`);
+	process.stdout.write(`  ${DIM}API Keys:${RESET}\n`);
 	for (const provider of PROVIDERS) {
-		const status = configured.has(provider) ? '✓' : '✗';
+		const status = configured.has(provider) ? `${GREEN}✓${RESET}` : `${DIM}✗${RESET}`;
 		const label = PROVIDER_LABELS[provider];
 		process.stdout.write(`    ${status} ${label}\n`);
 	}
 
 	if (profile.providerSelections) {
-		process.stdout.write('\n  Provider Selections:\n');
-		process.stdout.write(`    Search:    ${profile.providerSelections.search || 'none'}\n`);
-		process.stdout.write(`    Curation:  ${profile.providerSelections.curation || 'none'}\n`);
-		process.stdout.write(`    Synthesis: ${profile.providerSelections.synthesis || 'anthropic'}\n`);
+		process.stdout.write(`\n  ${DIM}Provider Selections:${RESET}\n`);
+		process.stdout.write(`    ${DIM}Search:${RESET}    ${profile.providerSelections.search || 'none'}\n`);
+		process.stdout.write(`    ${DIM}Curation:${RESET}  ${profile.providerSelections.curation || 'none'}\n`);
+		process.stdout.write(`    ${DIM}Synthesis:${RESET} ${profile.providerSelections.synthesis || 'anthropic'}\n`);
 	}
 	process.stdout.write('\n');
 }
@@ -65,7 +74,7 @@ export async function handleAi(args: string[]): Promise<void> {
 		case 'key': {
 			const action = args[1];
 			if (!action) {
-				process.stdout.write('Usage: difflog config ai key <add|rm> <provider> [key]\n');
+				process.stdout.write(`${DIM}Usage: difflog config ai key <add|rm> <provider> [key]${RESET}\n`);
 				return;
 			}
 
@@ -73,33 +82,33 @@ export async function handleAi(args: string[]): Promise<void> {
 				const provider = args[2]?.toLowerCase() as Provider;
 				const key = args[3];
 				if (!provider || !PROVIDERS.includes(provider)) {
-					process.stdout.write(`Invalid provider. Use: ${PROVIDERS.join(', ')}\n`);
+					process.stdout.write(`${BRIGHT_YELLOW}!${RESET} Invalid provider. Use: ${PROVIDERS.join(', ')}\n`);
 					return;
 				}
 				if (!key) {
-					process.stdout.write('Usage: difflog config ai key add <provider> <key>\n');
+					process.stdout.write(`${DIM}Usage: difflog config ai key add <provider> <key>${RESET}\n`);
 					return;
 				}
 				try {
 					await setPassword(SERVICE_NAME, provider, key);
-					process.stdout.write(`✓ Stored ${provider} API key\n`);
+					process.stdout.write(`${GREEN}✓${RESET} Stored ${BOLD}${provider}${RESET} API key\n`);
 				} catch (err) {
-					process.stdout.write(`Error: ${err instanceof Error ? err.message : 'Unknown error'}\n`);
+					process.stdout.write(`${RED}✗${RESET} Error: ${err instanceof Error ? err.message : 'Unknown error'}\n`);
 				}
 			} else if (action === 'rm') {
 				const provider = args[2]?.toLowerCase() as Provider;
 				if (!provider || !PROVIDERS.includes(provider)) {
-					process.stdout.write(`Invalid provider. Use: ${PROVIDERS.join(', ')}\n`);
+					process.stdout.write(`${BRIGHT_YELLOW}!${RESET} Invalid provider. Use: ${PROVIDERS.join(', ')}\n`);
 					return;
 				}
 				try {
 					await deletePassword(SERVICE_NAME, provider);
-					process.stdout.write(`✓ Deleted ${provider} API key\n`);
+					process.stdout.write(`${GREEN}✓${RESET} Deleted ${BOLD}${provider}${RESET} API key\n`);
 				} catch (err) {
-					process.stdout.write(`Error: ${err instanceof Error ? err.message : 'Unknown error'}\n`);
+					process.stdout.write(`${RED}✗${RESET} Error: ${err instanceof Error ? err.message : 'Unknown error'}\n`);
 				}
 			} else {
-				process.stdout.write('Usage: difflog config ai key <add|rm> <provider> [key]\n');
+				process.stdout.write(`${DIM}Usage: difflog config ai key <add|rm> <provider> [key]${RESET}\n`);
 			}
 			break;
 		}
@@ -110,13 +119,13 @@ export async function handleAi(args: string[]): Promise<void> {
 			const synthesis = args[3]?.toLowerCase();
 
 			if (!search || !curation || !synthesis) {
-				process.stdout.write('Usage: difflog config ai set <search|none> <curation> <synthesis>\n');
+				process.stdout.write(`${DIM}Usage: difflog config ai set <search|none> <curation> <synthesis>${RESET}\n`);
 				return;
 			}
 
 			const validProviders = [...PROVIDERS, 'none'];
 			if (!validProviders.includes(search) || !validProviders.includes(curation) || !validProviders.includes(synthesis)) {
-				process.stdout.write(`Invalid provider. Use: ${PROVIDERS.join(', ')}, or 'none' for search\n`);
+				process.stdout.write(`${BRIGHT_YELLOW}!${RESET} Invalid provider. Use: ${PROVIDERS.join(', ')}, or 'none' for search\n`);
 				return;
 			}
 
@@ -127,14 +136,14 @@ export async function handleAi(args: string[]): Promise<void> {
 			};
 
 			saveProfile({ ...profile, providerSelections });
-			process.stdout.write(`✓ Provider selections updated\n`);
-			process.stdout.write(`  Search:    ${providerSelections.search || 'none'}\n`);
-			process.stdout.write(`  Curation:  ${providerSelections.curation}\n`);
-			process.stdout.write(`  Synthesis: ${providerSelections.synthesis}\n`);
+			process.stdout.write(`${GREEN}✓${RESET} Provider selections updated\n`);
+			process.stdout.write(`  ${DIM}Search:${RESET}    ${providerSelections.search || 'none'}\n`);
+			process.stdout.write(`  ${DIM}Curation:${RESET}  ${providerSelections.curation}\n`);
+			process.stdout.write(`  ${DIM}Synthesis:${RESET} ${providerSelections.synthesis}\n`);
 			break;
 		}
 
 		default:
-			process.stdout.write('Usage: difflog config ai [key|set]\n');
+			process.stdout.write(`${DIM}Usage: difflog config ai [key|set]${RESET}\n`);
 	}
 }

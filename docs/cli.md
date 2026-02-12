@@ -96,15 +96,19 @@ This bypasses the browser and authenticates directly with the difflog API. Usefu
 
 ## Quick Start
 
-Once installed, just run:
+**First time?** Create a profile or import one from the web:
 
 ```bash
-difflog
+difflog config  # Create new profile
+# OR
+difflog login   # Import from difflog.dev
 ```
 
-**First time?** You'll be prompted to log in via your browser.
+**Already set up?** Just run:
 
-**Already logged in?** You'll see your most recent diff.
+```bash
+difflog  # Shows your most recent diff
+```
 
 That's it. Zero friction.
 
@@ -118,16 +122,13 @@ That's it. Zero friction.
 
 **Behavior:**
 
-- **Not logged in?** → Automatically starts the login flow
-- **Logged in?** → Shows your most recent diff
+- **No profile?** → Shows getting started options (config or login)
+- **Has profile?** → Shows your most recent diff
 
 **Examples:**
 
 ```bash
-# First time: logs you in
-difflog
-
-# After login: shows latest diff
+# After setup: shows latest diff
 difflog
 
 # Pipe to a markdown reader
@@ -226,14 +227,50 @@ This runs the full AI pipeline (fetch feeds, curate, search, synthesize) using y
 
 Interactive configuration wizard for managing your profile and AI settings.
 
-```bash
-# Full wizard
-difflog config
+**First time?** Running `difflog config` without a profile will create one for you.
 
-# Quick commands
+#### Interactive Wizard
+
+The full wizard provides a terminal-native interface with keyboard navigation:
+
+```bash
+difflog config
+```
+
+**Navigation:**
+- `↑/↓` or `k/j` - Navigate menu items (cycles at top/bottom)
+- `Enter` - Edit selected section
+- `Esc` or `q` - Quit (prompts to save if changes made)
+
+**Section Controls:**
+
+*Topic Selection (Languages/Frameworks/Tools/Topics):*
+- `Space` - Toggle item selection
+- `Enter` - Add custom item
+- `Esc` - Save and return to menu
+- Custom items appear inline with `(custom)` label
+
+*AI Configuration:*
+- `↑/↓` or `k/j` - Navigate providers
+- `←/→` or `h/l` - Select column (search/curation/synthesis)
+- `Space` - Toggle provider for selected column
+- `Enter` - Edit API key for current provider
+- Cyan circle shows exactly what will be toggled
+- Yellow warnings for unset required providers
+
+*Depth & Focus:*
+- `↑/↓` or `k/j` - Navigate depth options
+- `Space` - Select depth
+- `Enter` - Edit custom focus
+- `Esc` - Save and return to menu
+
+#### Quick Commands
+
+For scripting or quick edits without the interactive wizard:
+
+```bash
 difflog config name                              # Edit profile name
 difflog config depth standard                    # Set depth (quick/standard/detailed)
-difflog config topics                            # Show all topics
 difflog config topics add languages rust go      # Add languages
 difflog config topics rm frameworks react        # Remove frameworks
 difflog config topics focus "cloud native"       # Set custom focus
@@ -243,11 +280,18 @@ difflog config ai key rm deepseek                # Remove API key
 difflog config ai set serper deepseek anthropic  # Set providers (search/curation/synthesis)
 ```
 
-**Configuration sections:**
-- **name** - Profile display name
-- **depth** - Generation depth (quick/standard/detailed)
-- **topics** - Languages, frameworks, tools, topics, custom focus
-- **ai** - API keys and provider selections
+#### Configuration Sections (in wizard order)
+
+- **Name** - Profile display name
+- **AI** - API keys and provider selections (search/curation/synthesis)
+- **Languages** - Programming languages you follow
+- **Frameworks** - Frameworks and libraries
+- **Tools** - Development tools and platforms
+- **Topics** - General technology topics
+- **Depth & Focus** - Generation depth (quick/standard/detailed) and custom focus
+
+**Profile Creation:**
+If no profile exists, `difflog config` will prompt for a profile name and create a new local-only profile with default settings (standard depth, DeepSeek for curation, Anthropic for synthesis).
 
 **API Keys Storage:**
 All API keys are stored securely in your OS credential manager:

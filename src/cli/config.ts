@@ -63,6 +63,11 @@ export interface Profile {
 	topics: string[];
 	depth: string;
 	customFocus: string;
+	providerSelections?: {
+		search: string | null;
+		curation: string | null;
+		synthesis: string | null;
+	};
 }
 
 export function getProfile(): Profile | null {

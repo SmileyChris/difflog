@@ -13,8 +13,8 @@ const HELP = `difflog — developer intelligence diffs in your terminal
 
 Usage:
   difflog                    Show latest diff (or login if not authenticated)
+  difflog config             Interactive configuration wizard (creates profile if needed)
   difflog login              Log in via browser (opens difflog.dev)
-  difflog config             Interactive configuration wizard
   difflog generate           Generate a new diff
   difflog ls                 List cached diffs
   difflog show <n|id>        Show a diff by index or UUID prefix
@@ -32,10 +32,10 @@ Show flags:
   --full, -f                 Full output mode (disable interactive navigation)
 
 Config commands:
+  difflog config                                Interactive wizard (matches order below)
   difflog config name                           Edit profile name
-  difflog config depth [quick|standard|detailed]  Show or set depth
-  difflog config topics                         Show all topics
-  difflog config topics add <category> <items...>    Add items
+  difflog config depth [quick|standard|detailed]  Set generation depth
+  difflog config topics add <category> <items...>    Add languages/frameworks/tools/topics
   difflog config topics rm <category> <items...>     Remove items
   difflog config topics focus <string|none>     Set custom focus
   difflog config ai                             Show AI configuration
@@ -44,14 +44,14 @@ Config commands:
   difflog config ai set <search> <curation> <synthesis>  Set providers
 
 Examples:
-  difflog                             # Show latest diff
+  difflog config                      # Interactive wizard: name → depth → topics → AI
   difflog login                       # Login from web
-  difflog config                      # Full wizard
+  difflog config name "My Profile"    # Edit name
   difflog config depth standard       # Set depth
   difflog config topics add languages rust go
+  difflog config topics add frameworks svelte next.js
   difflog config topics focus "cloud native development"
   difflog config ai key add anthropic sk-ant-...
-  difflog config ai set serper deepseek anthropic
   difflog generate                    # Generate new diff
 `;
 
@@ -72,18 +72,17 @@ if (command === '--version' || command === '-v') {
 if (!command) {
 	const session = getSession();
 	if (!session) {
-		// No session: send to login
-		process.stderr.write('Not logged in. Starting login flow...\n\n');
-		loginCommand([]).catch((err) => {
-			process.stderr.write(`Error: ${err.message}\n`);
-			process.exit(1);
-		});
-		// loginCommand is async, so we don't exit here
+		// No session: show options
+		process.stderr.write('No profile found.\n\n');
+		process.stderr.write('Get started:\n');
+		process.stderr.write('  difflog config  — Create a new profile\n');
+		process.stderr.write('  difflog login   — Import profile from difflog.dev\n');
+		process.exit(1);
 	} else {
 		// Has session: show most recent diff
 		const diffs = getDiffs();
 		if (diffs.length === 0) {
-			process.stderr.write('No diffs found. Generate one at difflog.dev or run: difflog login\n');
+			process.stderr.write('No diffs found. Run: difflog generate\n');
 			process.exit(1);
 		}
 		// Show the first diff (most recent)

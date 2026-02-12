@@ -2,6 +2,71 @@ import { getProfile, saveProfile } from '../../config';
 import type { GenerationDepth } from '../../../lib/utils/constants';
 import { showTopics, handleTopics } from './topics';
 import { showAiConfig, handleAi } from './ai';
+import { runInteractiveWizard } from './interactive';
+
+// ANSI codes
+const RESET = '\x1b[0m';
+const DIM = '\x1b[2m';
+const BOLD = '\x1b[1m';
+const CYAN = '\x1b[36m';
+const GREEN = '\x1b[32m';
+const BRIGHT_YELLOW = '\x1b[93m';
+
+export function formatAiConfig(providerSelections: any): string {
+	if (!providerSelections) return `${BRIGHT_YELLOW}curation unset, synthesis unset${RESET}`;
+
+	const parts: string[] = [];
+	const providerGroups: Record<string, string[]> = {};
+
+	// Group by provider
+	if (providerSelections.search) {
+		if (!providerGroups[providerSelections.search]) {
+			providerGroups[providerSelections.search] = [];
+		}
+		providerGroups[providerSelections.search].push('search');
+	}
+
+	if (providerSelections.curation) {
+		if (!providerGroups[providerSelections.curation]) {
+			providerGroups[providerSelections.curation] = [];
+		}
+		providerGroups[providerSelections.curation].push('curation');
+	}
+
+	if (providerSelections.synthesis) {
+		if (!providerGroups[providerSelections.synthesis]) {
+			providerGroups[providerSelections.synthesis] = [];
+		}
+		providerGroups[providerSelections.synthesis].push('synthesis');
+	}
+
+	// Add provider groups: "Anthropic (curation, synthesis)"
+	for (const [provider, caps] of Object.entries(providerGroups)) {
+		parts.push(`${provider} (${caps.join(', ')})`);
+	}
+
+	// Add unset warnings for required capabilities
+	if (!providerSelections.curation) {
+		parts.push(`${BRIGHT_YELLOW}curation unset${RESET}`);
+	}
+	if (!providerSelections.synthesis) {
+		parts.push(`${BRIGHT_YELLOW}synthesis unset${RESET}`);
+	}
+
+	return parts.length > 0 ? parts.join(', ') : `${DIM}none${RESET}`;
+}
+
+function clearScreen() {
+	process.stdout.write('\x1b[2J\x1b[H');
+}
+
+function hideCursor() {
+	process.stdout.write('\x1b[?25l');
+}
+
+function showCursor() {
+	process.stdout.write('\x1b[?25h');
+}
 
 /** Read a line from stdin */
 async function readLine(prompt: string, mask = false): Promise<string> {
@@ -14,6 +79,7 @@ async function readLine(prompt: string, mask = false): Promise<string> {
 		return line.trimEnd();
 	}
 
+	showCursor();
 	return new Promise((resolve) => {
 		const buf: string[] = [];
 		process.stdin.setRawMode(true);
@@ -26,9 +92,11 @@ async function readLine(prompt: string, mask = false): Promise<string> {
 				process.stdin.pause();
 				process.stdin.removeListener('data', onData);
 				process.stdout.write('\n');
+				hideCursor();
 				resolve(buf.join(''));
 			} else if (ch === '\x03') {
 				process.stdin.setRawMode(false);
+				showCursor();
 				process.stdout.write('\n');
 				process.exit(130);
 			} else if (ch === '\x7f' || ch === '\b') {
@@ -46,16 +114,45 @@ async function readLine(prompt: string, mask = false): Promise<string> {
 	});
 }
 
+/** Read a single keypress */
+async function readKey(): Promise<string> {
+	if (!process.stdin.isTTY) {
+		const reader = process.stdin[Symbol.asyncIterator]();
+		const { value } = await reader.next();
+		return typeof value === 'string' ? value : new TextDecoder().decode(value);
+	}
+
+	return new Promise((resolve) => {
+		process.stdin.setRawMode(true);
+		process.stdin.resume();
+		process.stdin.setEncoding('utf-8');
+
+		const onData = (key: string) => {
+			process.stdin.setRawMode(false);
+			process.stdin.pause();
+			process.stdin.removeListener('data', onData);
+			resolve(key);
+		};
+
+		process.stdin.on('data', onData);
+	});
+}
+
 async function showStatus(): Promise<void> {
 	const profile = getProfile();
 	if (!profile) return;
 
-	process.stdout.write('\n');
-	process.stdout.write(`Profile: ${profile.name}\n`);
-	process.stdout.write('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n');
+	clearScreen();
 
-	// Show depth
-	process.stdout.write(`Depth: ${profile.depth || 'standard'}\n\n`);
+	// Title
+	process.stdout.write(`${BOLD}${GREEN}Profile Configuration${RESET}\n\n`);
+	process.stdout.write(`${DIM}Profile:${RESET} ${profile.name}\n\n`);
+
+	// Provider selections
+	process.stdout.write(`${DIM}AI:${RESET} ${formatAiConfig(profile.providerSelections)}\n\n`);
+
+	// Depth
+	process.stdout.write(`${DIM}Depth:${RESET} ${profile.depth || 'standard'}\n\n`);
 
 	// Show topics
 	await showTopics();
@@ -68,10 +165,17 @@ async function editName(): Promise<void> {
 	const profile = getProfile();
 	if (!profile) return;
 
-	const name = await readLine(`Name [${profile.name}]: `);
+	clearScreen();
+	process.stdout.write(`${BOLD}${GREEN}Edit Profile Name${RESET}\n\n`);
+	process.stdout.write(`${DIM}Current:${RESET} ${profile.name}\n\n`);
+
+	const name = await readLine(`${CYAN}New name:${RESET} `);
 	if (name) {
 		saveProfile({ ...profile, name });
-		process.stdout.write('✓ Name updated\n');
+		clearScreen();
+		process.stdout.write(`${GREEN}✓${RESET} Name updated to: ${BOLD}${name}${RESET}\n\n`);
+		process.stdout.write(`${DIM}Press any key to continue...${RESET}`);
+		await readKey();
 	}
 }
 
@@ -83,53 +187,114 @@ async function editDepth(depth?: string): Promise<void> {
 	if (depth) {
 		if (['quick', 'standard', 'detailed'].includes(depth)) {
 			saveProfile({ ...profile, depth: depth as GenerationDepth });
-			process.stdout.write(`✓ Depth set to: ${depth}\n`);
+			process.stdout.write(`${GREEN}✓${RESET} Depth set to: ${BOLD}${depth}${RESET}\n`);
 		} else {
-			process.stdout.write('Invalid depth. Use: quick, standard, or detailed\n');
+			process.stdout.write(`${BRIGHT_YELLOW}!${RESET} Invalid depth. Use: quick, standard, or detailed\n`);
 		}
 		return;
 	}
 
-	// Otherwise show current
-	process.stdout.write(`Current depth: ${profile.depth || 'standard'}\n`);
-}
+	// Interactive depth selection
+	clearScreen();
+	process.stdout.write(`${BOLD}${GREEN}Generation Depth${RESET}\n\n`);
+	process.stdout.write(`${DIM}Current:${RESET} ${profile.depth || 'standard'}\n\n`);
 
-async function runWizard(): Promise<void> {
-	while (true) {
-		await showStatus();
+	const depths: GenerationDepth[] = ['quick', 'standard', 'detailed'];
+	let selected = depths.indexOf(profile.depth || 'standard');
 
-		process.stdout.write('[N]ame  [D]epth  [T]opics  [A]I  [Q]uit\n');
-		const choice = await readLine('> ');
+	hideCursor();
 
-		if (!choice || choice.toLowerCase() === 'q') {
-			process.stdout.write('Goodbye!\n');
-			break;
+	const render = () => {
+		clearScreen();
+		process.stdout.write(`${BOLD}${GREEN}Generation Depth${RESET}\n\n`);
+		process.stdout.write(`${DIM}Use ↑/↓ or j/k to select, Enter to confirm, q to cancel${RESET}\n\n`);
+
+		for (let i = 0; i < depths.length; i++) {
+			const marker = i === selected ? `${CYAN}▸${RESET}` : ' ';
+			const label = i === selected ? `${BOLD}${depths[i]}${RESET}` : depths[i];
+			process.stdout.write(`${marker} ${label}\n`);
 		}
+	};
 
-		switch (choice.toLowerCase()) {
-			case 'n':
-				await editName();
-				break;
-			case 'd':
-				await editDepth();
-				break;
-			case 't':
-				await handleTopics([]);
-				break;
-			case 'a':
-				await handleAi([]);
-				break;
-			default:
-				process.stdout.write('Invalid choice\n');
+	render();
+
+	while (true) {
+		const key = await readKey();
+
+		if (key === '\u001b[A' || key === 'k') {
+			// Up
+			selected = Math.max(0, selected - 1);
+			render();
+		} else if (key === '\u001b[B' || key === 'j') {
+			// Down
+			selected = Math.min(depths.length - 1, selected + 1);
+			render();
+		} else if (key === '\r' || key === '\n') {
+			// Enter
+			saveProfile({ ...profile, depth: depths[selected] });
+			clearScreen();
+			process.stdout.write(`${GREEN}✓${RESET} Depth set to: ${BOLD}${depths[selected]}${RESET}\n\n`);
+			process.stdout.write(`${DIM}Press any key to continue...${RESET}`);
+			showCursor();
+			await readKey();
+			hideCursor();
+			break;
+		} else if (key === 'q' || key === '\u001b') {
+			// Quit/Escape
+			break;
+		} else if (key === '\u0003') {
+			// Ctrl+C
+			showCursor();
+			process.exit(130);
 		}
 	}
 }
 
+
 export async function configCommand(args: string[]): Promise<void> {
-	const profile = getProfile();
+	let profile = getProfile();
+
+	// If no profile exists, create one
 	if (!profile) {
-		process.stdout.write('No profile found. Run: difflog login\n');
-		process.exit(1);
+		clearScreen();
+		process.stdout.write(`${BOLD}${GREEN}Create Profile${RESET}\n\n`);
+
+		const name = await readLine(`${CYAN}Profile name:${RESET} `);
+		if (!name) {
+			process.stderr.write(`\n${BRIGHT_YELLOW}!${RESET} Profile name is required\n`);
+			process.exit(1);
+		}
+
+		// Generate profile ID
+		const { randomBytes } = await import('crypto');
+		const profileId = randomBytes(16).toString('hex');
+
+		// Create minimal profile
+		profile = {
+			id: profileId,
+			name,
+			languages: [],
+			frameworks: [],
+			tools: [],
+			topics: [],
+			customFocus: '',
+			depth: 'standard' as const,
+			providerSelections: {
+				search: null,
+				curation: 'deepseek',
+				synthesis: 'anthropic'
+			}
+		};
+
+		// Create session (no password salt - this is a local-only profile)
+		const { saveSession } = await import('../../config');
+		saveSession({ profileId });
+		saveProfile(profile);
+
+		clearScreen();
+		process.stdout.write(`${GREEN}✓${RESET} Profile created: ${BOLD}${name}${RESET}\n\n`);
+		process.stdout.write(`${DIM}Press any key to continue...${RESET}`);
+		await readKey();
 	}
 
 	const subcommand = args[0];
@@ -150,11 +315,11 @@ export async function configCommand(args: string[]): Promise<void> {
 			return;
 		case undefined:
 			// No subcommand: run full wizard
-			await runWizard();
+			await runInteractiveWizard();
 			return;
 		default:
-			process.stdout.write(`Unknown subcommand: ${subcommand}\n`);
-			process.stdout.write('Usage: difflog config [name|depth|topics|ai]\n');
+			process.stdout.write(`${BRIGHT_YELLOW}!${RESET} Unknown subcommand: ${subcommand}\n`);
+			process.stdout.write(`${DIM}Usage: difflog config [name|depth|topics|ai]${RESET}\n`);
 			process.exit(1);
 	}
 }
