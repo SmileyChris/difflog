@@ -3,7 +3,7 @@
 	import { getHistory, type Diff } from '$lib/stores/history.svelte';
 	import DiffContent from './DiffContent.svelte';
 	import ShareDropdown from './ShareDropdown.svelte';
-	import { timeAgo, daysSince } from '$lib/utils/time';
+	import { timeAgo, daysSince } from '$lib/utils/time.svelte';
 	import type { Snippet } from 'svelte';
 
 	interface Props {

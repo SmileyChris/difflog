@@ -8,7 +8,7 @@
 	import { openSyncDropdown, generating } from '$lib/stores/ui.svelte';
 	import { HeaderNav, DiffView, SiteFooter, PageHeader } from '$lib/components';
 	import StreakCalendar from './StreakCalendar.svelte';
-	import { daysSince } from '$lib/utils/time';
+	import { daysSince } from '$lib/utils/time.svelte';
 
 	let syncBannerDismissed = $state(false);
 

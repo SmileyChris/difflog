@@ -3,11 +3,13 @@
 	import { onMount } from 'svelte';
 	import { onNavigate } from '$app/navigation';
 	import { initApp } from '$lib/stores/operations.svelte';
+	import { startClock } from '$lib/stores/tick.svelte';
 
 	let { children } = $props();
 
 	onMount(() => {
 		initApp();
+		startClock();
 	});
 
 	// Enable View Transitions API

@@ -3,7 +3,7 @@
 	import { getProfile } from '$lib/stores/profiles.svelte';
 	import { getStars, getStarCountLabel, getStarContent, type Star } from '$lib/stores/stars.svelte';
 	import { removeStar } from '$lib/stores/operations.svelte';
-	import { timeAgo } from '$lib/utils/time';
+	import { timeAgo } from '$lib/utils/time.svelte';
 	import { Card, HeaderNav, EmptyState, IconButton, SiteFooter, PageHeader } from '$lib/components';
 
 	function goToStar(star: Star) {

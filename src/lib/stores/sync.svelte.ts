@@ -4,7 +4,7 @@ import { activeProfileId, profiles, getProfile, isDemoProfile, updateProfile as 
 import { histories, getHistory, initHistoryForProfile, deleteHistoryForProfile } from './history.svelte';
 import { bookmarks, getStars, initStarsForProfile, deleteStarsForProfile, removeStarsForDiff, starId } from './stars.svelte';
 import { isGenerating, clearGenerationState, clearStageCache } from './ui.svelte';
-import { timeAgo } from '$lib/utils/time';
+import { timeAgo } from '$lib/utils/time.svelte';
 import { ApiError } from '$lib/utils/api';
 import {
 	getSyncPassword,
