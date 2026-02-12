@@ -150,6 +150,16 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 			updateValues.push(body.stars_hash);
 		}
 
+		if (body.encrypted_api_key) {
+			updateClauses.push('encrypted_api_key = ?');
+			updateValues.push(body.encrypted_api_key);
+		}
+
+		if (body.keys_hash) {
+			updateClauses.push('keys_hash = ?');
+			updateValues.push(body.keys_hash);
+		}
+
 		if (body.resolved_sources) {
 			updateClauses.push('resolved_sources = ?');
 			updateValues.push(JSON.stringify(body.resolved_sources));

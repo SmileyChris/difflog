@@ -210,6 +210,16 @@ export function trackDeletedStar(id: string): void {
 	trackItemChange('star', 'deleted', id);
 }
 
+// Track that API keys or provider selections changed
+export function trackKeysModified(): void {
+	const pending = getPendingSync();
+	const profile = getProfile();
+	if (!pending || !profile?.syncedAt) return;
+	pending.keysModified = true;
+	_pendingSync.value = { ..._pendingSync.value };
+	scheduleAutoSync();
+}
+
 // Update profile with sync tracking
 export function updateProfile(updates: Partial<Profile>): void {
 	updateProfileBase(updates);
@@ -218,6 +228,12 @@ export function updateProfile(updates: Partial<Profile>): void {
 	const hasSyncableChange = syncableFields.some((field) => field in updates);
 	if (hasSyncableChange) {
 		trackProfileModified();
+	}
+
+	const keysFields = ['apiKeys', 'providerSelections'];
+	const hasKeysChange = keysFields.some((field) => field in updates);
+	if (hasKeysChange) {
+		trackKeysModified();
 	}
 }
 
@@ -292,11 +308,15 @@ async function uploadContentInternal(password: string): Promise<{ uploaded: numb
 			password
 		);
 
-		updateProfileBase({
+		const profileUpdate: Partial<Profile> & { syncedAt: string } = {
 			syncedAt: new Date().toISOString(),
 			diffsHash: result.diffsHash,
 			starsHash: result.starsHash
-		});
+		};
+		if (result.keysHash) {
+			profileUpdate.keysHash = result.keysHash;
+		}
+		updateProfileBase(profileUpdate);
 
 		const currentPending = getPendingSync() || createEmptyPending();
 		_pendingSync.value = {
@@ -306,7 +326,8 @@ async function uploadContentInternal(password: string): Promise<{ uploaded: numb
 				modifiedStars: currentPending.modifiedStars.filter((id) => !uploadedPending.modifiedStars.includes(id)),
 				deletedDiffs: currentPending.deletedDiffs.filter((id) => !uploadedPending.deletedDiffs.includes(id)),
 				deletedStars: currentPending.deletedStars.filter((id) => !uploadedPending.deletedStars.includes(id)),
-				profileModified: currentPending.profileModified && !uploadedPending.profileModified
+				profileModified: currentPending.profileModified && !uploadedPending.profileModified,
+				keysModified: currentPending.keysModified && !uploadedPending.keysModified
 			}
 		};
 
@@ -360,12 +381,16 @@ async function downloadContentInternal(password: string): Promise<{ downloaded: 
 			};
 		}
 
-		updateProfileBase({
+		const downloadProfileUpdate: Record<string, unknown> = {
 			syncedAt: new Date().toISOString(),
 			salt: result.salt,
 			diffsHash: result.diffsHash,
 			starsHash: result.starsHash
-		});
+		};
+		if (result.keysHash) {
+			downloadProfileUpdate.keysHash = result.keysHash;
+		}
+		updateProfileBase(downloadProfileUpdate as Partial<Profile>);
 
 		if (activeProfileId.value) {
 			_pendingSync.value = {

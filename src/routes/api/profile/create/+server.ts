@@ -59,6 +59,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				`
 				UPDATE profiles SET
 					name = ?, password_hash = ?, encrypted_api_key = ?, salt = ?,
+					keys_hash = ?,
 					languages = ?, frameworks = ?, tools = ?, topics = ?,
 					depth = ?, custom_focus = ?, updated_at = datetime('now'),
 					content_updated_at = datetime('now')
@@ -70,6 +71,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 					body.password_hash,
 					body.encrypted_api_key,
 					body.salt,
+					body.keys_hash || null,
 					JSON.stringify(body.languages || []),
 					JSON.stringify(body.frameworks || []),
 					JSON.stringify(body.tools || []),
@@ -85,9 +87,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				`
 				INSERT INTO profiles (
 					id, name, password_hash, encrypted_api_key, salt,
+					keys_hash,
 					languages, frameworks, tools, topics, depth, custom_focus,
 					content_updated_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
 			`
 			)
 				.bind(
@@ -96,6 +99,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 					body.password_hash,
 					body.encrypted_api_key,
 					body.salt,
+					body.keys_hash || null,
 					JSON.stringify(body.languages || []),
 					JSON.stringify(body.frameworks || []),
 					JSON.stringify(body.tools || []),

@@ -20,10 +20,10 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 
 	try {
 		const profile = await DB.prepare(
-			'SELECT id, diffs_hash, stars_hash, content_updated_at FROM profiles WHERE id = ?'
+			'SELECT id, diffs_hash, stars_hash, keys_hash, content_updated_at FROM profiles WHERE id = ?'
 		)
 			.bind(id)
-			.first<Pick<ProfileRow, 'id' | 'diffs_hash' | 'stars_hash' | 'content_updated_at'>>();
+			.first<Pick<ProfileRow, 'id' | 'diffs_hash' | 'stars_hash' | 'keys_hash' | 'content_updated_at'>>();
 
 		if (!profile) {
 			return new Response(JSON.stringify({ exists: false }), {
@@ -41,6 +41,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 				exists: true,
 				diffs_hash: profile.diffs_hash,
 				stars_hash: profile.stars_hash,
+				keys_hash: profile.keys_hash,
 				content_updated_at: contentUpdatedAt
 			}),
 			{
