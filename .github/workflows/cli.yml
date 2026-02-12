@@ -4,9 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/cli/**'
-      - 'src/lib/utils/crypto.ts'
-      - 'src/lib/utils/time.ts'
+      - 'package.json'
 
 jobs:
   release:
@@ -16,37 +14,37 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
-      - name: Extract version
+      - name: Check for CLI version bump
         id: version
         run: |
-          VERSION=$(grep "const VERSION = " src/cli/main.ts | sed "s/.*'\(.*\)'.*/\1/")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=cli-v$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Check if release exists
-        id: check
-        run: |
-          if gh release view "${{ steps.version.outputs.tag }}" &>/dev/null; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
+          NEW=$(jq -r '.cliVersion' package.json)
+          if [ -z "$NEW" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          elif gh release view "cli-v$NEW" &>/dev/null; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "version=$NEW" >> "$GITHUB_OUTPUT"
+            echo "tag=cli-v$NEW" >> "$GITHUB_OUTPUT"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Bun
-        if: steps.check.outputs.exists == 'false'
+        if: steps.version.outputs.changed == 'true'
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
       - name: Install dependencies
-        if: steps.check.outputs.exists == 'false'
+        if: steps.version.outputs.changed == 'true'
         run: bun install
 
       - name: Build binaries
-        if: steps.check.outputs.exists == 'false'
+        if: steps.version.outputs.changed == 'true'
         run: |
           mkdir -p dist/cli
           bun build src/cli/main.ts --compile --target=bun-linux-x64 --outfile dist/cli/difflog-linux-x64
@@ -54,14 +52,19 @@ jobs:
           bun build src/cli/main.ts --compile --target=bun-darwin-x64 --outfile dist/cli/difflog-darwin-x64
 
       - name: Create release
-        if: steps.check.outputs.exists == 'false'
+        if: steps.version.outputs.changed == 'true'
         run: |
+          PREV_TAG=$(gh release list --json tagName -q '[.[].tagName | select(startswith("cli-v"))] | .[0] // empty')
+          NOTES_FLAG=""
+          if [ -n "$PREV_TAG" ]; then
+            NOTES_FLAG="--notes-start-tag $PREV_TAG"
+          fi
           gh release create "${{ steps.version.outputs.tag }}" \
             dist/cli/difflog-linux-x64 \
             dist/cli/difflog-darwin-arm64 \
             dist/cli/difflog-darwin-x64 \
             --title "CLI ${{ steps.version.outputs.version }}" \
             --generate-notes \
-            --notes-start-tag "$(gh release list --limit 1 --json tagName -q '.[0].tagName // empty' | grep '^cli-v' || echo '')"
+            $NOTES_FLAG
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

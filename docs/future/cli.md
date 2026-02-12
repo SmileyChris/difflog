@@ -67,16 +67,17 @@ Native rewrite for a smaller, faster binary.
 ### v0.1: Viewer ✅ Implemented
 - ✅ `difflog login` — web-assisted authentication or direct login with credentials
 - ✅ `difflog ls` — list past diffs
-- ✅ `difflog show <id>` — read a diff in the terminal
+- ✅ `difflog show <id>` — interactive diff viewer with read/unread tracking
 
-### v0.2: Generator
-- `difflog gen` — full pipeline: fetch feeds, call AI, render, encrypt, sync
-- `--quick` and `--deep` depth flags
+### v0.2: Generator ✅ Implemented
+- ✅ `difflog generate` — full pipeline: fetch feeds, call AI, render, save
+- ✅ `difflog config` — interactive configuration wizard (profile + AI keys)
+- ✅ OS keychain integration for API key storage
 
 ### v0.3: Integrator
 - `difflog summary` — plain text output for scripts
-- `difflog config` — edit profile from the CLI
 - `--json` flag on all commands for piping to `jq`
+- `--limit` flag for `difflog ls`
 
 ---
 

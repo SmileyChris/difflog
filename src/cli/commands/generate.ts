@@ -1,19 +1,14 @@
 import { getProfile, getDiffs, saveDiffs } from '../config';
 import { generateDiffContent } from '../../lib/actions/generateDiff';
 import type { GenerationDepth } from '../../lib/utils/constants';
+import { isConfigurationComplete, STEPS, type ProviderStep } from '../../lib/utils/providers';
 import { getPassword } from 'cross-keychain';
 
 const API_HOST = process.env.DIFFLOG_API_HOST || 'https://difflog.dev';
 const SERVICE_NAME = 'difflog-cli';
 const PROVIDERS = ['anthropic', 'serper', 'perplexity', 'deepseek', 'gemini'] as const;
 
-async function getApiKeys(): Promise<{
-	anthropic?: string;
-	serper?: string;
-	perplexity?: string;
-	deepseek?: string;
-	gemini?: string;
-}> {
+async function getApiKeys(): Promise<Record<string, string | undefined>> {
 	const keys: Record<string, string | undefined> = {};
 
 	for (const provider of PROVIDERS) {
@@ -44,15 +39,30 @@ export async function generateCommand(): Promise<void> {
 	// Get API keys from OS keychain (with fallback to environment variables)
 	const apiKeys = await getApiKeys();
 
-	// Check if at least one synthesis provider key is available
-	const hasSynthesisKey = !!(apiKeys.anthropic || apiKeys.deepseek || apiKeys.gemini || apiKeys.perplexity);
-	if (!hasSynthesisKey) {
-		process.stderr.write('Error: No AI provider API key found.\n\n');
-		process.stderr.write('Configure API keys:\n');
-		process.stderr.write('  difflog config\n\n');
-		process.stderr.write('Or set environment variables:\n');
-		process.stderr.write('  export ANTHROPIC_API_KEY=sk-ant-...\n\n');
-		process.stderr.write('Then run: difflog generate\n');
+	// Use profile's provider selections
+	const selections = {
+		search: profile.providerSelections?.search ?? null,
+		curation: profile.providerSelections?.curation ?? null,
+		synthesis: profile.providerSelections?.synthesis ?? null
+	};
+
+	// Validate that required steps have keys configured
+	if (!isConfigurationComplete(apiKeys, selections)) {
+		const missing: string[] = [];
+		for (const step of STEPS) {
+			if (!step.required) continue;
+			const provider = selections[step.id as ProviderStep];
+			if (!provider) {
+				missing.push(`${step.label}: no provider selected`);
+			} else if (!apiKeys[provider]) {
+				missing.push(`${step.label}: missing API key for ${provider}`);
+			}
+		}
+		process.stderr.write('Error: AI configuration incomplete.\n\n');
+		for (const m of missing) {
+			process.stderr.write(`  • ${m}\n`);
+		}
+		process.stderr.write('\nRun `difflog config` to configure providers and API keys.\n');
 		process.exit(1);
 	}
 
@@ -65,17 +75,13 @@ export async function generateCommand(): Promise<void> {
 	// Use profile depth or default to 'standard'
 	const depth = (profile.depth as GenerationDepth) || 'standard';
 
-	// Determine synthesis provider based on available keys
-	let synthesisProvider = 'anthropic';
-	if (apiKeys.anthropic) synthesisProvider = 'anthropic';
-	else if (apiKeys.deepseek) synthesisProvider = 'deepseek';
-	else if (apiKeys.gemini) synthesisProvider = 'gemini';
-	else if (apiKeys.perplexity) synthesisProvider = 'perplexity';
-
 	process.stdout.write('Generating diff...\n');
 	process.stdout.write(`Profile: ${profile.name}\n`);
 	process.stdout.write(`Depth: ${depth}\n`);
-	process.stdout.write(`Provider: ${synthesisProvider}\n\n`);
+	process.stdout.write(`Synthesis: ${selections.synthesis}\n`);
+	if (selections.curation) process.stdout.write(`Curation: ${selections.curation}\n`);
+	if (selections.search) process.stdout.write(`Search: ${selections.search}\n`);
+	process.stdout.write('\n');
 
 	try {
 		// Generate the diff using shared logic
@@ -88,7 +94,7 @@ export async function generateCommand(): Promise<void> {
 				topics: profile.topics,
 				depth,
 				resolvedMappings: {}, // TODO: Add support for resolved mappings in CLI
-				providerSelections: { synthesis: synthesisProvider },
+				providerSelections: { synthesis: selections.synthesis || undefined },
 				apiKeys
 			},
 			selectedDepth: depth,

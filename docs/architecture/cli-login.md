@@ -231,6 +231,8 @@ CLI stores decrypted data in `~/.config/difflog/` (Linux/macOS) or `%APPDATA%\di
 - `profile.json` - Profile metadata
 - `diffs.json` - Diff history
 
+API keys extracted during login are stored in the OS keychain — see [CLI Key Storage Architecture](cli-keys.md) for details.
+
 ## Environment Variables
 
 - `DIFFLOG_URL`: Override base URL (default: `https://difflog.dev`)

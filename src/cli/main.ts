@@ -6,8 +6,9 @@ import { lsCommand } from './commands/ls';
 import { showCommand } from './commands/show';
 import { generateCommand } from './commands/generate';
 import { configCommand } from './commands/config/index';
+import pkg from '../../package.json';
 
-const VERSION = '0.1.0';
+const VERSION = pkg.cliVersion;
 
 const HELP = `difflog — developer intelligence diffs in your terminal
 

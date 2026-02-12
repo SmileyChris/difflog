@@ -37,7 +37,7 @@ Requires [Bun](https://bun.sh) to be installed:
 git clone https://github.com/SmileyChris/difflog.git
 cd difflog
 bun install
-bun build:cli
+bun cli:build
 ```
 
 The compiled binary will be at `./dist/difflog`.
@@ -170,10 +170,7 @@ $ difflog ls
 2026-02-08  SvelteKit 3.0, Astro 5.0, Tailwind 4.0
 ```
 
-**Options:**
-
-- `--limit N` - Show only the N most recent diffs (default: 10)
-- `--json` - Output as JSON for piping to `jq`
+Diffs are listed with an index number, relative time, and title. Use the index with `difflog show` to read a specific diff.
 
 ### `difflog show <id>`
 
@@ -388,18 +385,6 @@ difflog show latest | bat -l md
 
 # mdcat
 difflog show latest | mdcat
-```
-
-### JSON Output
-
-Use `--json` for scripting:
-
-```bash
-# Get the 3 most recent diff IDs
-difflog ls --limit 3 --json | jq -r '.[].id'
-
-# Count diffs by month
-difflog ls --json | jq -r '.[].generated_at' | cut -d- -f1-2 | uniq -c
 ```
 
 ### Aliases

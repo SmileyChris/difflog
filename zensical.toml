@@ -19,6 +19,7 @@ nav = [
     { "Sync System" = "architecture/sync.md" },
     { "Encryption" = "architecture/encryption.md" },
     { "CLI Login" = "architecture/cli-login.md" },
+    { "CLI Key Storage" = "architecture/cli-keys.md" },
     { "Public Diff Sharing" = "architecture/public-diff-sharing.md" },
     { "API Endpoints" = "architecture/api.md" },
   ]},
