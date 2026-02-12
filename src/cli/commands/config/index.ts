@@ -1,8 +1,9 @@
-import { getProfile, saveProfile } from '../../config';
+import { getProfile, saveProfile, trackProfileModified } from '../../config';
 import type { GenerationDepth } from '../../../lib/utils/constants';
 import { showTopics, handleTopics } from './topics';
 import { showAiConfig, handleAi } from './ai';
 import { runInteractiveWizard } from './interactive';
+import { syncUpload } from '../../sync';
 
 // ANSI codes
 const RESET = '\x1b[0m';
@@ -172,6 +173,8 @@ async function editName(): Promise<void> {
 	const name = await readLine(`${CYAN}New name:${RESET} `);
 	if (name) {
 		saveProfile({ ...profile, name });
+		trackProfileModified();
+		await syncUpload();
 		clearScreen();
 		process.stdout.write(`${GREEN}✓${RESET} Name updated to: ${BOLD}${name}${RESET}\n\n`);
 		process.stdout.write(`${DIM}Press any key to continue...${RESET}`);
@@ -187,6 +190,8 @@ async function editDepth(depth?: string): Promise<void> {
 	if (depth) {
 		if (['quick', 'standard', 'detailed'].includes(depth)) {
 			saveProfile({ ...profile, depth: depth as GenerationDepth });
+			trackProfileModified();
+			await syncUpload();
 			process.stdout.write(`${GREEN}✓${RESET} Depth set to: ${BOLD}${depth}${RESET}\n`);
 		} else {
 			process.stdout.write(`${BRIGHT_YELLOW}!${RESET} Invalid depth. Use: quick, standard, or detailed\n`);
@@ -232,6 +237,8 @@ async function editDepth(depth?: string): Promise<void> {
 		} else if (key === '\r' || key === '\n') {
 			// Enter
 			saveProfile({ ...profile, depth: depths[selected] });
+			trackProfileModified();
+			await syncUpload();
 			clearScreen();
 			process.stdout.write(`${GREEN}✓${RESET} Depth set to: ${BOLD}${depths[selected]}${RESET}\n\n`);
 			process.stdout.write(`${DIM}Press any key to continue...${RESET}`);

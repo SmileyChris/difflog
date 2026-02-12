@@ -1,8 +1,9 @@
-import { getProfile, getDiffs, saveDiffs } from '../config';
+import { getProfile, getSession, getDiffs, saveDiffs, trackDiffModified } from '../config';
 import { generateDiffContent } from '../../lib/actions/generateDiff';
 import type { GenerationDepth } from '../../lib/utils/constants';
 import { isConfigurationComplete, STEPS, type ProviderStep } from '../../lib/utils/providers';
 import { getPassword } from 'cross-keychain';
+import { canSync, download, upload } from '../sync';
 
 const API_HOST = process.env.DIFFLOG_API_HOST || 'https://difflog.dev';
 const SERVICE_NAME = 'difflog-cli';
@@ -66,6 +67,15 @@ export async function generateCommand(): Promise<void> {
 		process.exit(1);
 	}
 
+	// Sync down before generating to get latest state
+	const session = getSession();
+	if (session && canSync()) {
+		try {
+			const { downloaded } = await download(session);
+			if (downloaded > 0) process.stdout.write(`Synced ${downloaded} diff(s) from server\n`);
+		} catch { /* silent */ }
+	}
+
 	// Get last diff for window calculation
 	const diffs = getDiffs();
 	const lastDiff = diffs[0];
@@ -106,6 +116,12 @@ export async function generateCommand(): Promise<void> {
 		// Save the diff
 		const updatedDiffs = [diff, ...diffs];
 		saveDiffs(updatedDiffs);
+		trackDiffModified(diff.id);
+
+		// Upload to server
+		if (session && canSync()) {
+			try { await upload(session); } catch { /* silent */ }
+		}
 
 		process.stdout.write('\n✓ Diff generated successfully!\n');
 		process.stdout.write(`Title: ${diff.title}\n`);

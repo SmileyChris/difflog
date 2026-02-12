@@ -1,8 +1,9 @@
-import { getProfile, saveProfile, clearProviderSelections } from '../../config';
+import { getProfile, saveProfile, trackProfileModified, trackKeysModified } from '../../config';
 import type { GenerationDepth } from '../../../lib/utils/constants';
 import { getPassword, setPassword, deletePassword } from 'cross-keychain';
 import { estimateDiffCost } from '../../../lib/utils/pricing';
 import { formatAiConfig } from './index';
+import { syncUpload } from '../../sync';
 
 const SERVICE_NAME = 'difflog-cli';
 const PROVIDERS = ['anthropic', 'serper', 'perplexity', 'deepseek', 'gemini'] as const;
@@ -518,7 +519,7 @@ async function editAi(profile: any): Promise<any> {
 					// Remove key
 					await deletePassword(SERVICE_NAME, provider);
 					keys[provider] = undefined;
-					clearProviderSelections(provider);
+					// Clear in-memory selections (persisted when wizard saves profile)
 					if (selections.search === provider) selections.search = null;
 					if (selections.curation === provider) selections.curation = null;
 					if (selections.synthesis === provider) selections.synthesis = null;
@@ -612,11 +613,20 @@ export async function runInteractiveWizard(): Promise<void> {
 
 	hideCursor();
 
-	const cleanup = (save: boolean, showMessage: boolean = true) => {
+	const cleanup = async (save: boolean, showMessage: boolean = true) => {
 		showCursor();
 		clearScreen();
 		if (save) {
+			const hasChanges = hasProfileChanged(originalProfile, profile);
 			saveProfile(profile);
+			if (hasChanges) {
+				trackProfileModified();
+				// Check if provider selections changed (implies keys blob needs re-sync)
+				if (JSON.stringify(originalProfile.providerSelections) !== JSON.stringify(profile.providerSelections)) {
+					trackKeysModified();
+				}
+				await syncUpload();
+			}
 			if (showMessage) {
 				process.stdout.write(`${GREEN}✓${RESET} Configuration saved\n`);
 			}
@@ -655,18 +665,18 @@ export async function runInteractiveWizard(): Promise<void> {
 				const decision = await quitConfirmation(hasChanges);
 
 				if (decision === 'save') {
-					cleanup(true);
+					await cleanup(true);
 					running = false;
 					break;
 				} else if (decision === 'discard') {
-					cleanup(false);
+					await cleanup(false);
 					running = false;
 					break;
 				}
 				// If 'cancel', just continue the loop and re-render
 			} else if (key === '\u0003') {
 				// Ctrl+C - always discard
-				cleanup(false, false);
+				await cleanup(false, false);
 				process.removeListener('SIGINT', sigintHandler);
 				process.exit(0);
 			} else if (key === '\u001b[A' || key === 'k') {

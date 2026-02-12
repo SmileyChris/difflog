@@ -7,6 +7,7 @@ import { lsCommand } from './commands/ls';
 import { showCommand } from './commands/show';
 import { generateCommand } from './commands/generate';
 import { configCommand } from './commands/config/index';
+import { canSync, download } from './sync';
 import pkg from '../../package.json';
 
 const VERSION = pkg.cliVersion;
@@ -82,7 +83,14 @@ if (!command) {
 		process.stderr.write('  difflog login   — Import profile from difflog.dev\n');
 		process.exit(1);
 	} else {
-		// Has session: show most recent diff
+		// Has session: sync down then show most recent diff
+		if (canSync()) {
+			try {
+				const { downloaded } = await download(session);
+				if (downloaded > 0) process.stderr.write(`Synced ${downloaded} new diff(s)\n`);
+			} catch { /* silent */ }
+		}
+
 		const diffs = getDiffs();
 		if (diffs.length === 0) {
 			process.stderr.write('No diffs found. Run: difflog generate\n');

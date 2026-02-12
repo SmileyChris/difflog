@@ -1,5 +1,6 @@
-import { getProfile, saveProfile, clearProviderSelections } from '../../config';
+import { getProfile, saveProfile, clearProviderSelections, trackProfileModified, trackKeysModified } from '../../config';
 import { getPassword, setPassword, deletePassword } from 'cross-keychain';
+import { syncUpload } from '../../sync';
 
 const SERVICE_NAME = 'difflog-cli';
 const PROVIDERS = ['anthropic', 'serper', 'perplexity', 'deepseek', 'gemini'] as const;
@@ -91,7 +92,9 @@ export async function handleAi(args: string[]): Promise<void> {
 				}
 				try {
 					await setPassword(SERVICE_NAME, provider, key);
+					trackKeysModified();
 					process.stdout.write(`${GREEN}✓${RESET} Stored ${BOLD}${provider}${RESET} API key\n`);
+					await syncUpload();
 				} catch (err) {
 					process.stdout.write(`${RED}✗${RESET} Error: ${err instanceof Error ? err.message : 'Unknown error'}\n`);
 				}
@@ -104,7 +107,9 @@ export async function handleAi(args: string[]): Promise<void> {
 				try {
 					await deletePassword(SERVICE_NAME, provider);
 					clearProviderSelections(provider);
+					trackKeysModified();
 					process.stdout.write(`${GREEN}✓${RESET} Deleted ${BOLD}${provider}${RESET} API key\n`);
+					await syncUpload();
 				} catch (err) {
 					process.stdout.write(`${RED}✗${RESET} Error: ${err instanceof Error ? err.message : 'Unknown error'}\n`);
 				}
@@ -137,10 +142,13 @@ export async function handleAi(args: string[]): Promise<void> {
 			};
 
 			saveProfile({ ...profile, providerSelections });
+			trackProfileModified();
+			trackKeysModified();
 			process.stdout.write(`${GREEN}✓${RESET} Provider selections updated\n`);
 			process.stdout.write(`  ${DIM}Search:${RESET}    ${providerSelections.search || 'none'}\n`);
 			process.stdout.write(`  ${DIM}Curation:${RESET}  ${providerSelections.curation}\n`);
 			process.stdout.write(`  ${DIM}Synthesis:${RESET} ${providerSelections.synthesis}\n`);
+			await syncUpload();
 			break;
 		}
 

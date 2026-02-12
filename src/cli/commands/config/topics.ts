@@ -1,4 +1,5 @@
-import { getProfile, saveProfile } from '../../config';
+import { getProfile, saveProfile, trackProfileModified } from '../../config';
+import { syncUpload } from '../../sync';
 
 const CATEGORIES = ['languages', 'frameworks', 'tools', 'topics'] as const;
 type Category = (typeof CATEGORIES)[number];
@@ -61,7 +62,9 @@ export async function handleTopics(args: string[]): Promise<void> {
 			const current = profile[category] || [];
 			const updated = [...new Set([...current, ...items])];
 			saveProfile({ ...profile, [category]: updated });
+			trackProfileModified();
 			process.stdout.write(`${GREEN}✓${RESET} Added to ${category}: ${BOLD}${items.join(', ')}${RESET}\n`);
+			await syncUpload();
 			break;
 		}
 
@@ -79,7 +82,9 @@ export async function handleTopics(args: string[]): Promise<void> {
 			const current = profile[category] || [];
 			const updated = current.filter(item => !items.includes(item));
 			saveProfile({ ...profile, [category]: updated });
+			trackProfileModified();
 			process.stdout.write(`${GREEN}✓${RESET} Removed from ${category}: ${BOLD}${items.join(', ')}${RESET}\n`);
+			await syncUpload();
 			break;
 		}
 
@@ -91,11 +96,14 @@ export async function handleTopics(args: string[]): Promise<void> {
 			}
 			if (focus.toLowerCase() === 'none') {
 				saveProfile({ ...profile, customFocus: '' });
+				trackProfileModified();
 				process.stdout.write(`${GREEN}✓${RESET} Custom focus cleared\n`);
 			} else {
 				saveProfile({ ...profile, customFocus: focus });
+				trackProfileModified();
 				process.stdout.write(`${GREEN}✓${RESET} Custom focus set: ${BOLD}${focus}${RESET}\n`);
 			}
+			await syncUpload();
 			break;
 		}
 

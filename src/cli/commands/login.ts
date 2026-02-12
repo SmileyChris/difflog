@@ -189,7 +189,7 @@ async function webLogin(noBrowser: boolean): Promise<void> {
 	delete profileWithoutKeys.apiKeys;
 
 	clearSession();
-	saveSession({ profileId: profile.id, password: '', passwordSalt: profile.passwordSalt || '', salt: profile.salt || '' });
+	saveSession({ profileId: profile.id, password, passwordSalt: profile.passwordSalt || '', salt: profile.salt || '' });
 	saveProfile(profileWithoutKeys);
 	saveDiffs(diffs);
 

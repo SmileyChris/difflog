@@ -50,6 +50,8 @@ export function clearSession(): void {
 	removeFile('session.json');
 	removeFile('profile.json');
 	removeFile('diffs.json');
+	removeFile('pending.json');
+	removeFile('sync-meta.json');
 }
 
 export function clearAll(): void {
@@ -57,6 +59,8 @@ export function clearAll(): void {
 	removeFile('profile.json');
 	removeFile('diffs.json');
 	removeFile('read-state.json');
+	removeFile('pending.json');
+	removeFile('sync-meta.json');
 }
 
 // Profile
@@ -163,4 +167,76 @@ export function toggleTopicRead(diffId: string, topicIndex: number): boolean {
 		saveReadState(state);
 		return true; // now read
 	}
+}
+
+// Pending changes (sync tracking)
+
+export interface PendingChanges {
+	modifiedDiffs: string[];
+	deletedDiffs: string[];
+	profileModified: boolean;
+	keysModified: boolean;
+}
+
+export function getPendingChanges(): PendingChanges {
+	return readJson<PendingChanges>('pending.json') || {
+		modifiedDiffs: [],
+		deletedDiffs: [],
+		profileModified: false,
+		keysModified: false
+	};
+}
+
+export function savePendingChanges(pending: PendingChanges): void {
+	writeJson('pending.json', pending);
+}
+
+export function clearPendingChanges(): void {
+	removeFile('pending.json');
+}
+
+export function trackDiffModified(diffId: string): void {
+	const pending = getPendingChanges();
+	pending.deletedDiffs = pending.deletedDiffs.filter(id => id !== diffId);
+	if (!pending.modifiedDiffs.includes(diffId)) {
+		pending.modifiedDiffs.push(diffId);
+	}
+	savePendingChanges(pending);
+}
+
+export function trackDiffDeleted(diffId: string): void {
+	const pending = getPendingChanges();
+	pending.modifiedDiffs = pending.modifiedDiffs.filter(id => id !== diffId);
+	if (!pending.deletedDiffs.includes(diffId)) {
+		pending.deletedDiffs.push(diffId);
+	}
+	savePendingChanges(pending);
+}
+
+export function trackProfileModified(): void {
+	const pending = getPendingChanges();
+	pending.profileModified = true;
+	savePendingChanges(pending);
+}
+
+export function trackKeysModified(): void {
+	const pending = getPendingChanges();
+	pending.keysModified = true;
+	savePendingChanges(pending);
+}
+
+// Sync metadata
+
+export interface SyncMeta {
+	diffsHash?: string;
+	keysHash?: string;
+	lastSyncedAt?: string;
+}
+
+export function getSyncMeta(): SyncMeta {
+	return readJson<SyncMeta>('sync-meta.json') || {};
+}
+
+export function saveSyncMeta(meta: SyncMeta): void {
+	writeJson('sync-meta.json', meta);
 }
