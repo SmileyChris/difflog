@@ -201,29 +201,61 @@ difflog show 2026-02-12 | less -R
 difflog show 2026-02-12 | glow -
 ```
 
-### `difflog gen` _(Coming Soon)_
+### `difflog generate`
 
 Generate a new diff directly from the terminal.
 
 ```bash
-difflog gen
-difflog gen --focus "TypeScript"
-difflog gen --deep
+difflog generate
 ```
 
-This will run the full AI pipeline (fetch feeds, curate, search, synthesize) using your profile settings and cached API keys.
+This runs the full AI pipeline (fetch feeds, curate, search, synthesize) using your profile settings and API keys from the OS keychain.
 
-### `difflog config` _(Coming Soon)_
+**Requirements:**
+- At least one AI provider API key configured (see `difflog config ai`)
+- Active profile from `difflog login`
 
-View and edit your profile from the CLI.
+**Where to get API keys:**
+- [Anthropic](https://console.anthropic.com/) (recommended)
+- [Serper](https://serper.dev/) (optional, for web search)
+- [DeepSeek](https://platform.deepseek.com/)
+- [Google AI](https://ai.google.dev/)
+- [Perplexity](https://www.perplexity.ai/)
+
+### `difflog config`
+
+Interactive configuration wizard for managing your profile and AI settings.
 
 ```bash
-# View current profile
+# Full wizard
 difflog config
 
-# Edit profile
-difflog config --edit
+# Quick commands
+difflog config name                              # Edit profile name
+difflog config depth standard                    # Set depth (quick/standard/detailed)
+difflog config topics                            # Show all topics
+difflog config topics add languages rust go      # Add languages
+difflog config topics rm frameworks react        # Remove frameworks
+difflog config topics focus "cloud native"       # Set custom focus
+difflog config ai                                # Show AI config
+difflog config ai key add anthropic sk-ant-...   # Add API key
+difflog config ai key rm deepseek                # Remove API key
+difflog config ai set serper deepseek anthropic  # Set providers (search/curation/synthesis)
 ```
+
+**Configuration sections:**
+- **name** - Profile display name
+- **depth** - Generation depth (quick/standard/detailed)
+- **topics** - Languages, frameworks, tools, topics, custom focus
+- **ai** - API keys and provider selections
+
+**API Keys Storage:**
+All API keys are stored securely in your OS credential manager:
+- **macOS**: Keychain
+- **Linux**: Secret Service (GNOME Keyring / KDE Wallet)
+- **Windows**: Credential Manager
+
+Keys are never stored in plaintext configuration files.
 
 ## How It Works
 
@@ -239,18 +271,30 @@ The CLI uses the same encryption and sync system as the web app:
 sequenceDiagram
     participant CLI
     participant Browser
-    participant Server
+    participant KV as Cloudflare KV
+    participant API as difflog.dev API
 
     CLI->>Browser: Open auth URL with code
     Browser->>Browser: Show verification code
     Browser->>Browser: User selects profile
-    Browser->>Server: Upload encrypted session
-    CLI->>Server: Poll for session
-    Server->>CLI: Return encrypted session
-    CLI->>CLI: Decrypt and save locally
+    Browser->>KV: Store encrypted profileId
+    CLI->>KV: Poll for profileId
+    KV->>CLI: Return encrypted profileId
+    CLI->>CLI: Decrypt profileId
+    CLI->>CLI: Prompt for password
+    CLI->>API: Fetch profile (with password hash)
+    API->>CLI: Return encrypted API keys + profile
+    CLI->>CLI: Decrypt API keys
+    CLI->>Keychain: Store API keys in OS keychain
+    CLI->>CLI: Save profile locally
 ```
 
-The server never sees your plaintext credentials. The session data is encrypted in the browser using the auth code as a key, stored temporarily in Cloudflare KV, and deleted after the CLI retrieves it.
+**Key security features:**
+- Only the profile ID passes through the relay (KV), not the full profile or credentials
+- API keys are encrypted server-side with your password
+- CLI prompts for password to decrypt keys
+- Keys stored in OS credential manager (Keychain/Credential Manager/Secret Service)
+- Relay data expires after 5 minutes and is deleted after retrieval
 
 ## Configuration
 
@@ -259,14 +303,31 @@ The CLI stores data in standard OS locations:
 | Platform | Location |
 |----------|----------|
 | Linux | `~/.config/difflog/` |
-| macOS | `~/Library/Application Support/difflog/` |
+| macOS | `~/.config/difflog/` |
 | Windows | `%APPDATA%\difflog\` |
 
 **Files:**
 
-- `session.json` - Authentication credentials
-- `profile.json` - Profile metadata (name, languages, frameworks, etc.)
+- `session.json` - Authentication session (profile ID, password salt)
+- `profile.json` - Profile metadata (name, languages, frameworks, topics, depth, provider selections)
 - `diffs.json` - Cached diff history
+- `read-state.json` - Article read/unread tracking for interactive viewer
+
+**API Keys:**
+
+API keys are **NOT** stored in configuration files. They are securely stored in your OS credential manager:
+
+- **macOS**: Keychain (`difflog-cli` service)
+- **Linux**: Secret Service / GNOME Keyring / KDE Wallet
+- **Windows**: Credential Manager
+
+Use `difflog config ai` to manage API keys.
+
+**Single Profile Design:**
+
+The CLI currently supports **one active profile** at a time. This keeps things simple for terminal workflows. To switch profiles, run `difflog login` again with a different profile.
+
+The web app supports multiple profiles, but the CLI simplifies to a single-profile model for now.
 
 ## Tips & Tricks
 
@@ -369,7 +430,7 @@ Yes. Shared profiles use the same client-side encryption as the web app. Local p
 
 **Q: Can I use multiple profiles?**
 
-Not yet. The CLI currently supports one active profile. Run `difflog login` again to switch profiles.
+Not currently. The CLI uses a single-profile design for simplicity. To switch profiles, run `difflog login` again and select a different profile. Your API keys (stored in the OS keychain) are shared across profiles, so you won't need to re-enter them.
 
 **Q: How do I log out?**
 
@@ -383,6 +444,30 @@ rm ~/.config/difflog/session.json
 del %APPDATA%\difflog\session.json
 ```
 
+**Q: Where are my API keys stored?**
+
+API keys are stored in your operating system's secure credential manager, not in plaintext files:
+
+- **macOS**: Keychain Access (search for "difflog-cli")
+- **Linux**: GNOME Keyring or KDE Wallet
+- **Windows**: Credential Manager (Control Panel → Credential Manager)
+
+Use `difflog config ai` to add or remove keys.
+
+**Q: How do I remove all my API keys?**
+
+```bash
+# From CLI
+difflog config ai key rm anthropic
+difflog config ai key rm serper
+# ... etc for each provider
+
+# Or manually through your OS:
+# macOS: Keychain Access → search "difflog-cli" → delete items
+# Linux: Seahorse → search "difflog-cli" → delete items
+# Windows: Credential Manager → search "difflog-cli" → remove credentials
+```
+
 **Q: How big is the binary?**
 
 About 90 MB. It's a standalone Bun executable with the JavaScript runtime bundled. No external dependencies required.
@@ -393,8 +478,9 @@ See [CLI Interface](future/cli.md) for planned features:
 
 - [x] `difflog login` - Web-assisted authentication
 - [x] `difflog ls` - List diffs
-- [x] `difflog show` - Read diffs
-- [ ] `difflog gen` - Generate new diffs
-- [ ] `difflog config` - Edit profile from CLI
+- [x] `difflog show` - Interactive diff viewer with read/unread tracking
+- [x] `difflog generate` - Generate new diffs from CLI
+- [x] `difflog config` - Configuration wizard (profile + AI)
 - [ ] `difflog summary` - Plain text summaries for scripts
 - [ ] `--json` output on all commands
+- [ ] Multi-profile support

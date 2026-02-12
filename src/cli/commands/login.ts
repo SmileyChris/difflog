@@ -2,11 +2,14 @@ import { saveSession, saveDiffs, saveProfile, clearSession } from '../config';
 import type { Profile, Diff } from '../config';
 import { login, localAwareFetch, BASE } from '../api';
 import { decryptData } from '../../lib/utils/crypto';
+import { importProfile } from '../../lib/utils/sync';
+import { setPassword } from 'cross-keychain';
 
 interface RelayPayload {
-	profile: Profile;
-	diffs: Diff[];
+	profileId: string;
 }
+
+const SERVICE_NAME = 'difflog-cli';
 const POLL_INTERVAL = 2000;
 const POLL_TIMEOUT = 5 * 60 * 1000;
 
@@ -152,11 +155,42 @@ async function webLogin(noBrowser: boolean): Promise<void> {
 		openBrowser(url);
 	}
 
-	const { profile, diffs } = await pollForRelay(code, expires);
+	const { profileId } = await pollForRelay(code, expires);
+
+	// Prompt for password to decrypt API keys
+	process.stderr.write('\n');
+	const password = await prompt('  Enter profile password: ', true);
+	process.stderr.write('\n');
+
+	// Use import flow to fetch profile and decrypt keys
+	process.stderr.write('  Fetching profile...\n');
+	const { profile, diffs } = await importProfile(profileId, password);
+
+	// Store API keys in OS keychain
+	if (profile.apiKeys) {
+		let keysStored = 0;
+		for (const [provider, key] of Object.entries(profile.apiKeys)) {
+			if (key) {
+				try {
+					await setPassword(SERVICE_NAME, provider, key);
+					keysStored++;
+				} catch (err) {
+					process.stderr.write(`  Warning: Failed to store ${provider} key in keychain\n`);
+				}
+			}
+		}
+		if (keysStored > 0) {
+			process.stderr.write(`  ✓ Stored ${keysStored} API key(s) in OS keychain\n`);
+		}
+	}
+
+	// Save profile without API keys (they're in keychain now)
+	const profileWithoutKeys = { ...profile };
+	delete profileWithoutKeys.apiKeys;
 
 	clearSession();
-	saveSession({ profileId: profile.id, password: '', passwordSalt: '', salt: '' });
-	saveProfile(profile);
+	saveSession({ profileId: profile.id, password: '', passwordSalt: profile.passwordSalt || '', salt: profile.salt || '' });
+	saveProfile(profileWithoutKeys);
 	saveDiffs(diffs);
 
 	process.stderr.write(`  Logged in as ${profile.name}. ${diffs.length} diff(s) cached.\n`);

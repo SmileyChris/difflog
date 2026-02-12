@@ -4,6 +4,8 @@ import { getSession, getDiffs } from './config';
 import { loginCommand } from './commands/login';
 import { lsCommand } from './commands/ls';
 import { showCommand } from './commands/show';
+import { generateCommand } from './commands/generate';
+import { configCommand } from './commands/config/index';
 
 const VERSION = '0.1.0';
 
@@ -12,6 +14,8 @@ const HELP = `difflog — developer intelligence diffs in your terminal
 Usage:
   difflog                    Show latest diff (or login if not authenticated)
   difflog login              Log in via browser (opens difflog.dev)
+  difflog config             Interactive configuration wizard
+  difflog generate           Generate a new diff
   difflog ls                 List cached diffs
   difflog show <n|id>        Show a diff by index or UUID prefix
 
@@ -27,15 +31,28 @@ Login flags:
 Show flags:
   --full, -f                 Full output mode (disable interactive navigation)
 
+Config commands:
+  difflog config name                           Edit profile name
+  difflog config depth [quick|standard|detailed]  Show or set depth
+  difflog config topics                         Show all topics
+  difflog config topics add <category> <items...>    Add items
+  difflog config topics rm <category> <items...>     Remove items
+  difflog config topics focus <string|none>     Set custom focus
+  difflog config ai                             Show AI configuration
+  difflog config ai key add <provider> <key>    Add API key
+  difflog config ai key rm <provider>           Remove API key
+  difflog config ai set <search> <curation> <synthesis>  Set providers
+
 Examples:
-  difflog                    # Smart default: login or show latest
-  difflog login
-  difflog login --no-browser
-  difflog login --profile UUID --password PW
-  difflog ls
-  difflog show 1             # Interactive mode (if TTY)
-  difflog show 1 --full      # Full output mode
-  difflog show 1 | less -R   # Auto-detects pipe (full mode)
+  difflog                             # Show latest diff
+  difflog login                       # Login from web
+  difflog config                      # Full wizard
+  difflog config depth standard       # Set depth
+  difflog config topics add languages rust go
+  difflog config topics focus "cloud native development"
+  difflog config ai key add anthropic sk-ant-...
+  difflog config ai set serper deepseek anthropic
+  difflog generate                    # Generate new diff
 `;
 
 const args = process.argv.slice(2);
@@ -78,6 +95,20 @@ if (!command) {
 	switch (command) {
 		case 'login':
 			loginCommand(args.slice(1)).catch((err) => {
+				process.stderr.write(`Error: ${err.message}\n`);
+				process.exit(1);
+			});
+			break;
+
+		case 'generate':
+			generateCommand().catch((err) => {
+				process.stderr.write(`Error: ${err.message}\n`);
+				process.exit(1);
+			});
+			break;
+
+		case 'config':
+			configCommand(args.slice(1)).catch((err) => {
 				process.stderr.write(`Error: ${err.message}\n`);
 				process.exit(1);
 			});

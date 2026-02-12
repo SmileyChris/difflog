@@ -109,21 +109,17 @@
 			return;
 		}
 
+		// Only shared profiles can be sent to CLI
+		if (!profile.passwordSalt) {
+			error = 'Only shared profiles can be used with CLI. Share this profile first.';
+			return;
+		}
+
 		submitting = true;
 		try {
-			const diffs = histories.value[profileId] ?? [];
+			// Send only the profile ID - CLI will fetch it using import flow
 			const payload = {
-				profile: {
-					id: profile.id,
-					name: profile.name,
-					languages: profile.languages ?? [],
-					frameworks: profile.frameworks ?? [],
-					tools: profile.tools ?? [],
-					topics: profile.topics ?? [],
-					depth: profile.depth || 'standard',
-					customFocus: profile.customFocus || ''
-				},
-				diffs
+				profileId: profile.id
 			};
 
 			// Encode expires as base64 salt (crypto expects base64-encoded salt)
@@ -178,7 +174,9 @@
 							type="button"
 							class="cli-profile-card"
 							class:selected={profileId === p.id}
-							onclick={() => { profileId = p.id; }}
+							class:disabled={!p.passwordSalt}
+							disabled={!p.passwordSalt}
+							onclick={() => { if (p.passwordSalt) profileId = p.id; }}
 						>
 							<div class="cli-profile-icon">
 								<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
@@ -298,6 +296,16 @@
 	.cli-profile-card.selected {
 		border-color: var(--accent);
 		box-shadow: 0 0 0 1px var(--accent-border);
+	}
+
+	.cli-profile-card.disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.cli-profile-card.disabled:hover {
+		border-color: var(--border);
+		background: var(--bg-card);
 	}
 
 	.cli-profile-icon {
