@@ -4,7 +4,6 @@
 	import { browser } from "$app/environment";
 	import { getProfile, isDemoProfile } from "$lib/stores/profiles.svelte";
 	import { getHistory } from "$lib/stores/history.svelte";
-	import { getStars } from "$lib/stores/stars.svelte";
 	import { updateProfile, autoSync } from "$lib/stores/sync.svelte";
 	import {
 		generating,
@@ -17,7 +16,6 @@
 	import {
 		addDiff,
 		deleteDiff,
-		removeStar,
 	} from "$lib/stores/operations.svelte";
 	import { PageHeader, HeaderNav, SiteFooter } from "$lib/components";
 	import {
@@ -26,7 +24,7 @@
 		WAIT_TIPS,
 		type GenerationDepth,
 	} from "$lib/utils/constants";
-	import { getCurrentDateFormatted } from "$lib/utils/time";
+	import { getCurrentDateFormatted } from "$lib/utils/time.svelte";
 	import type { ResolvedMapping } from "$lib/utils/sync";
 
 	let scanIndex = $state(0);
@@ -153,14 +151,7 @@
 				history.length > 0 &&
 				new Date(history[0].generated_at).toDateString() === today
 			) {
-				const oldDiffId = history[0].id;
-				const starsToRemove = getStars().filter(
-					(s) => s.diff_id === oldDiffId,
-				);
-				for (const star of starsToRemove) {
-					removeStar(star.diff_id, star.p_index);
-				}
-				deleteDiff(oldDiffId);
+				deleteDiff(history[0].id);
 			}
 			addDiff(createDemoDiff(getHistory()[0]?.title));
 			generating.value = false;
@@ -224,14 +215,7 @@
 				history.length > 0 &&
 				new Date(history[0].generated_at).toDateString() === today
 			) {
-				const oldDiffId = history[0].id;
-				const starsToRemove = getStars().filter(
-					(s) => s.diff_id === oldDiffId,
-				);
-				for (const star of starsToRemove) {
-					removeStar(star.diff_id, star.p_index);
-				}
-				deleteDiff(oldDiffId);
+				deleteDiff(history[0].id);
 			}
 			addDiff(result.diff);
 			autoSync();

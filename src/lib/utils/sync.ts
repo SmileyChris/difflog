@@ -20,16 +20,19 @@ export interface PendingChanges {
   deletedDiffs: string[];
   deletedStars: string[];
   profileModified?: boolean;
+  keysModified?: boolean;
 }
 
 export interface SyncStatus {
   exists: boolean;
   diffs_hash?: string;
   stars_hash?: string;
+  keys_hash?: string;
   content_updated_at?: string;
   error?: string;
   localDiffsHash?: string | null;
   localStarsHash?: string | null;
+  localKeysHash?: string | null;
   needsSync?: boolean;
   hasPassword?: boolean;
 }
@@ -58,6 +61,69 @@ export interface ProviderSelections {
   search?: string | null;
   curation?: string | null;
   synthesis?: string | null;
+}
+
+/** Shape of the expanded encrypted blob (apiKeys + providerSelections) */
+interface EncryptedKeysBlob {
+  apiKeys: Record<string, string>;
+  providerSelections?: ProviderSelections;
+}
+
+/**
+ * Compute a deterministic hash over API keys and provider selections
+ */
+export async function computeKeysHash(
+  apiKeys?: ApiKeys,
+  providerSelections?: ProviderSelections
+): Promise<string> {
+  const payload = {
+    apiKeys: apiKeys ? Object.fromEntries(
+      Object.entries(apiKeys).filter(([, v]) => v).sort()
+    ) : {},
+    providerSelections: providerSelections ? Object.fromEntries(
+      Object.entries(providerSelections).filter(([, v]) => v != null).sort()
+    ) : {}
+  };
+  const data = new TextEncoder().encode(JSON.stringify(payload));
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return uint8ToBase64(new Uint8Array(hashBuffer));
+}
+
+/**
+ * Build the filtered apiKeys record (non-empty values only) for encryption
+ */
+function buildApiKeysRecord(apiKeys?: ApiKeys): Record<string, string> {
+  const record: Record<string, string> = {};
+  if (apiKeys) {
+    Object.entries(apiKeys).forEach(([key, value]) => {
+      if (value) record[key] = value;
+    });
+  }
+  return record;
+}
+
+/**
+ * Infer provider selections from available API keys (legacy fallback)
+ */
+function inferProviderSelections(apiKeys: Record<string, string>): ProviderSelections {
+  const selections: ProviderSelections = {};
+  if (apiKeys.anthropic) {
+    selections.search = 'anthropic';
+    selections.curation = 'anthropic';
+    selections.synthesis = 'anthropic';
+  } else if (apiKeys.deepseek) {
+    selections.curation = 'deepseek';
+    selections.synthesis = 'deepseek';
+  } else if (apiKeys.gemini) {
+    selections.curation = 'gemini';
+    selections.synthesis = 'gemini';
+  }
+  if (apiKeys.serper) {
+    selections.search = 'serper';
+  } else if (apiKeys.perplexity) {
+    selections.search = 'perplexity';
+  }
+  return selections;
 }
 
 /**
@@ -172,7 +238,8 @@ export function createEmptyPending(): PendingChanges {
     modifiedStars: [],
     deletedDiffs: [],
     deletedStars: [],
-    profileModified: false
+    profileModified: false,
+    keysModified: false
   };
 }
 
@@ -213,6 +280,7 @@ export function trackChange(
 export function hasPendingChanges(pending: PendingChanges | null): boolean {
   if (!pending) return false;
   return pending.profileModified ||
+    pending.keysModified ||
     pending.modifiedDiffs.length > 0 ||
     pending.modifiedStars.length > 0 ||
     pending.deletedDiffs.length > 0 ||
@@ -241,10 +309,12 @@ export async function checkStatus(
       exists: boolean;
       diffs_hash?: string;
       stars_hash?: string;
+      keys_hash?: string;
       error?: string;
     };
     let localDiffsHash: string | null = null;
     let localStarsHash: string | null = null;
+    let localKeysHash: string | null = null;
     let needsSync = false;
 
     if (status.exists && profile.salt && password) {
@@ -254,8 +324,11 @@ export async function checkStatus(
         // Map stars to temporary objects with ID for hashing
         const starsWithIds = stars.map(s => ({ ...s, id: starId(s) }));
         localStarsHash = await computeContentHash(starsWithIds);
+        localKeysHash = await computeKeysHash(profile.apiKeys, profile.providerSelections);
 
-        needsSync = localDiffsHash !== status.diffs_hash || localStarsHash !== status.stars_hash;
+        needsSync = localDiffsHash !== status.diffs_hash ||
+          localStarsHash !== status.stars_hash ||
+          localKeysHash !== status.keys_hash;
       } catch (e) {
         console.error('Failed to compute local hashes:', e);
       }
@@ -265,6 +338,7 @@ export async function checkStatus(
       ...status,
       localDiffsHash,
       localStarsHash,
+      localKeysHash,
       needsSync,
       hasPassword: !!password
     };
@@ -285,16 +359,15 @@ export async function shareProfile(
   const anthropicKey = getAnthropicKey(profile);
   if (!anthropicKey) throw new Error('Profile missing API key');
 
-  // Encrypt all API keys, not just Anthropic
-  const apiKeysToEncrypt: Record<string, string> = {};
-  if (profile.apiKeys) {
-    // Filter out undefined values
-    Object.entries(profile.apiKeys).forEach(([key, value]) => {
-      if (value) apiKeysToEncrypt[key] = value;
-    });
-  }
+  // Build expanded blob: apiKeys + providerSelections
+  const apiKeysRecord = buildApiKeysRecord(profile.apiKeys);
+  const blob: EncryptedKeysBlob = {
+    apiKeys: apiKeysRecord,
+    providerSelections: profile.providerSelections
+  };
 
-  const { encrypted, salt } = await encryptApiKeys(apiKeysToEncrypt, password);
+  const { encrypted, salt } = await encryptApiKeys(blob as unknown as Record<string, string>, password);
+  const keysHash = await computeKeysHash(profile.apiKeys, profile.providerSelections);
   const existingPasswordSalt = profile.passwordSalt;
   const passwordHash = await hashPasswordForTransport(password, existingPasswordSalt);
 
@@ -304,6 +377,7 @@ export async function shareProfile(
     password_hash: passwordHash,
     encrypted_api_key: encrypted,
     salt,
+    keys_hash: keysHash,
     languages: profile.languages,
     frameworks: profile.frameworks,
     tools: profile.tools,
@@ -344,26 +418,29 @@ export async function importProfile(
     custom_focus?: string;
   }>(`/api/profile/${id}?password_hash=${encodeURIComponent(passwordHash)}`);
 
-  // Decrypt all API keys (handles both old and new format)
-  const apiKeys = await decryptApiKeys(data.encrypted_api_key, data.salt, password);
+  // Decrypt the blob — try expanded format first, fall back to legacy
+  let apiKeys: Record<string, string>;
+  let providerSelections: ProviderSelections = {};
 
-  // Set default provider selections based on available keys
-  const providerSelections: ProviderSelections = {};
-  if (apiKeys.anthropic) {
-    providerSelections.search = 'anthropic';
-    providerSelections.curation = 'anthropic';
-    providerSelections.synthesis = 'anthropic';
-  } else if (apiKeys.deepseek) {
-    providerSelections.curation = 'deepseek';
-    providerSelections.synthesis = 'deepseek';
-  } else if (apiKeys.gemini) {
-    providerSelections.curation = 'gemini';
-    providerSelections.synthesis = 'gemini';
-  }
-  if (apiKeys.serper) {
-    providerSelections.search = 'serper';
-  } else if (apiKeys.perplexity) {
-    providerSelections.search = 'perplexity';
+  try {
+    const decrypted = await decryptData<EncryptedKeysBlob | Record<string, string>>(
+      data.encrypted_api_key, password, data.salt
+    );
+
+    if (decrypted && typeof decrypted === 'object' && 'apiKeys' in decrypted) {
+      // New expanded format: { apiKeys, providerSelections }
+      const blob = decrypted as EncryptedKeysBlob;
+      apiKeys = blob.apiKeys;
+      providerSelections = blob.providerSelections || {};
+    } else {
+      // Legacy format: Record<string, string> (just API keys)
+      apiKeys = decrypted as Record<string, string>;
+      providerSelections = inferProviderSelections(apiKeys);
+    }
+  } catch {
+    // Fallback: try decryptApiKeys which handles single-key format too
+    apiKeys = await decryptApiKeys(data.encrypted_api_key, data.salt, password);
+    providerSelections = inferProviderSelections(apiKeys);
   }
 
   const profile: Profile = {
@@ -396,7 +473,7 @@ export async function uploadContent(
   stars: Star[],
   pending: PendingChanges,
   password: string
-): Promise<{ uploaded: number; diffsHash: string; starsHash: string }> {
+): Promise<{ uploaded: number; diffsHash: string; starsHash: string; keysHash?: string }> {
   const salt = profile.salt;
   if (!salt) throw new Error('Profile missing encryption salt');
 
@@ -480,6 +557,19 @@ export async function uploadContent(
     custom_focus: profile.customFocus,
   } : undefined;
 
+  // Re-encrypt and include keys blob if keys/providers changed
+  let encryptedApiKey: string | undefined;
+  let keysHash: string | undefined;
+  if (pending.keysModified) {
+    const apiKeysRecord = buildApiKeysRecord(profile.apiKeys);
+    const blob: EncryptedKeysBlob = {
+      apiKeys: apiKeysRecord,
+      providerSelections: profile.providerSelections
+    };
+    encryptedApiKey = await encryptData(blob, password, salt);
+    keysHash = await computeKeysHash(profile.apiKeys, profile.providerSelections);
+  }
+
   await postJson(`/api/profile/${profileId}/sync`, {
     password_hash: passwordHash,
     diffs: diffsToUpload,
@@ -488,13 +578,15 @@ export async function uploadContent(
     deleted_star_ids: pending.deletedStars,
     diffs_hash: diffsHash,
     stars_hash: starsHash,
+    encrypted_api_key: encryptedApiKey,
+    keys_hash: keysHash,
     profile: profileData,
   });
 
   const uploaded = pending.modifiedDiffs.length + pending.modifiedStars.length +
     pending.deletedDiffs.length + pending.deletedStars.length;
 
-  return { uploaded, diffsHash, starsHash };
+  return { uploaded, diffsHash, starsHash, keysHash };
 }
 
 /**
@@ -516,6 +608,7 @@ export async function downloadContent(
   stars: Star[];
   diffsHash: string;
   starsHash: string;
+  keysHash?: string;
   profileUpdates?: Partial<Profile>;
   remainingPending: PendingChanges;
   salt: string;
@@ -528,12 +621,16 @@ export async function downloadContent(
 
   const passwordHash = await hashPasswordForTransport(password, passwordSalt);
 
+  const localKeysHash = profile.keysHash;
+
   const data = await postJson<{
     salt?: string;
     diffs: { id: string; encrypted_data: string }[];
     stars: { id: string; encrypted_data: string }[];
     diffs_skipped?: boolean;
     stars_skipped?: boolean;
+    encrypted_api_key?: string;
+    keys_skipped?: boolean;
     profile?: {
       name: string;
       languages: string[];
@@ -546,7 +643,8 @@ export async function downloadContent(
   }>(`/api/profile/${profileId}/content`, {
     password_hash: passwordHash,
     diffs_hash: localDiffsHash,
-    stars_hash: localStarsHash
+    stars_hash: localStarsHash,
+    keys_hash: localKeysHash
   });
 
   const salt = data.salt || profile.salt!;
@@ -567,6 +665,27 @@ export async function downloadContent(
       depth: data.profile.depth as GenerationDepth,
       customFocus: data.profile.custom_focus,
     };
+  }
+
+  // Decrypt and merge keys blob if server returned one and no local key changes pending
+  if (data.encrypted_api_key && !pending.keysModified) {
+    try {
+      const decrypted = await decryptData<EncryptedKeysBlob | Record<string, string>>(
+        data.encrypted_api_key, password, salt
+      );
+      if (!profileUpdates) profileUpdates = {};
+      if (decrypted && typeof decrypted === 'object' && 'apiKeys' in decrypted) {
+        const blob = decrypted as EncryptedKeysBlob;
+        profileUpdates.apiKeys = blob.apiKeys as ApiKeys;
+        profileUpdates.providerSelections = blob.providerSelections;
+      } else {
+        // Legacy format
+        profileUpdates.apiKeys = decrypted as ApiKeys;
+        profileUpdates.providerSelections = inferProviderSelections(decrypted as Record<string, string>);
+      }
+    } catch (e) {
+      console.error('Failed to decrypt keys blob:', e);
+    }
   }
 
   // Get pending deletions so we don't re-add items we're about to delete
@@ -655,6 +774,11 @@ export async function downloadContent(
   const starsWithIds = filteredStars.map(s => ({ ...s, id: starId(s) }));
   const starsHash = await computeContentHash(starsWithIds);
 
+  // Compute keys hash from the final state (after potential merge from server)
+  const finalApiKeys = profileUpdates?.apiKeys || profile.apiKeys;
+  const finalProviderSelections = profileUpdates?.providerSelections || profile.providerSelections;
+  const keysHash = await computeKeysHash(finalApiKeys, finalProviderSelections);
+
   // Keep all pending modifications - they still need to be uploaded even if server has the item
   // (e.g., local changes like isPublic flag need to be pushed to server)
   const remainingPending: PendingChanges = {
@@ -662,7 +786,8 @@ export async function downloadContent(
     modifiedStars: [...pending.modifiedStars],
     deletedDiffs: pending.deletedDiffs,
     deletedStars: pending.deletedStars,
-    profileModified: hasLocalProfileChanges
+    profileModified: hasLocalProfileChanges,
+    keysModified: pending.keysModified
   };
 
   return {
@@ -671,6 +796,7 @@ export async function downloadContent(
     stars: filteredStars,
     diffsHash,
     starsHash,
+    keysHash,
     salt,
     decryptionErrors,
     profileUpdates,
@@ -705,14 +831,13 @@ export async function updatePassword(
   const newPasswordHash = await hashPasswordForTransport(newPassword);
   const newPasswordSalt = newPasswordHash.split(':')[0];
 
-  // Re-encrypt all API keys with new password + new salt
-  const apiKeysToEncrypt: Record<string, string> = {};
-  if (profile.apiKeys) {
-    Object.entries(profile.apiKeys).forEach(([key, value]) => {
-      if (value) apiKeysToEncrypt[key] = value;
-    });
-  }
-  const newEncryptedApiKey = await encryptApiKeysWithSalt(apiKeysToEncrypt, newPassword, newSalt);
+  // Re-encrypt API keys + provider selections with new password + new salt
+  const apiKeysRecord = buildApiKeysRecord(profile.apiKeys);
+  const blob: EncryptedKeysBlob = {
+    apiKeys: apiKeysRecord,
+    providerSelections: profile.providerSelections
+  };
+  const newEncryptedApiKey = await encryptData(blob, newPassword, newSalt);
 
   // Re-encrypt all diffs with new password + new salt
   const encryptedDiffs: { id: string; encrypted_data: string }[] = [];

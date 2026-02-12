@@ -18,6 +18,7 @@ export interface ProfileRow {
 	resolved_sources: string | null;
 	diffs_hash: string | null;
 	stars_hash: string | null;
+	keys_hash: string | null;
 	content_hash: string | null;
 	content_updated_at: string | null;
 	failed_attempts: number;
@@ -48,6 +49,7 @@ export interface CreateProfileRequest {
 	password_hash: string;
 	encrypted_api_key: string;
 	salt: string;
+	keys_hash?: string;
 	languages?: string[];
 	frameworks?: string[];
 	tools?: string[];
@@ -86,6 +88,9 @@ export interface SyncRequest {
 	// Client-computed hashes over all local content
 	diffs_hash?: string;
 	stars_hash?: string;
+	// Encrypted API keys + provider selections blob
+	encrypted_api_key?: string;
+	keys_hash?: string;
 	resolved_sources?: any;
 	profile?: {
 		name?: string;
@@ -103,6 +108,7 @@ export interface ContentRequest {
 	// Optional: skip fetching collections where local hash matches server
 	diffs_hash?: string;
 	stars_hash?: string;
+	keys_hash?: string;
 }
 
 export interface ContentResponse {
@@ -111,6 +117,9 @@ export interface ContentResponse {
 	// Indicates which collections were skipped (hash matched)
 	diffs_skipped?: boolean;
 	stars_skipped?: boolean;
+	// Encrypted API keys + provider selections blob (included when keys_hash differs)
+	encrypted_api_key?: string;
+	keys_skipped?: boolean;
 	content_hash: string | null;
 	salt: string;
 	// Profile metadata for sync

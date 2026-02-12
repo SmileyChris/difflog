@@ -1,9 +1,12 @@
+import { getNow } from '$lib/stores/tick.svelte';
+
 /**
- * Returns a human-readable relative time string
+ * Returns a human-readable relative time string.
+ * Reads the reactive tick so $derived / template expressions auto-update.
  */
 export function timeAgo(dateStr: string): string {
   const date = new Date(dateStr);
-  const now = new Date();
+  const now = new Date(getNow());
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
@@ -38,7 +41,7 @@ export function isToday(dateStr: string): boolean {
  * Get the number of days since a date
  */
 export function daysSince(dateStr: string): number {
-  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const diffMs = getNow() - new Date(dateStr).getTime();
   return Math.floor(diffMs / 86400000);
 }
 
