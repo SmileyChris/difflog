@@ -1,7 +1,7 @@
 import {
-  encryptApiKey,
-  encryptApiKeyWithSalt,
-  decryptApiKey,
+  encryptApiKeys,
+  encryptApiKeysWithSalt,
+  decryptApiKeys,
   hashPasswordForTransport,
   encryptData,
   decryptData,
@@ -285,7 +285,16 @@ export async function shareProfile(
   const anthropicKey = getAnthropicKey(profile);
   if (!anthropicKey) throw new Error('Profile missing API key');
 
-  const { encrypted, salt } = await encryptApiKey(anthropicKey, password);
+  // Encrypt all API keys, not just Anthropic
+  const apiKeysToEncrypt: Record<string, string> = {};
+  if (profile.apiKeys) {
+    // Filter out undefined values
+    Object.entries(profile.apiKeys).forEach(([key, value]) => {
+      if (value) apiKeysToEncrypt[key] = value;
+    });
+  }
+
+  const { encrypted, salt } = await encryptApiKeys(apiKeysToEncrypt, password);
   const existingPasswordSalt = profile.passwordSalt;
   const passwordHash = await hashPasswordForTransport(password, existingPasswordSalt);
 
@@ -335,13 +344,33 @@ export async function importProfile(
     custom_focus?: string;
   }>(`/api/profile/${id}?password_hash=${encodeURIComponent(passwordHash)}`);
 
-  const apiKey = await decryptApiKey(data.encrypted_api_key, data.salt, password);
+  // Decrypt all API keys (handles both old and new format)
+  const apiKeys = await decryptApiKeys(data.encrypted_api_key, data.salt, password);
+
+  // Set default provider selections based on available keys
+  const providerSelections: ProviderSelections = {};
+  if (apiKeys.anthropic) {
+    providerSelections.search = 'anthropic';
+    providerSelections.curation = 'anthropic';
+    providerSelections.synthesis = 'anthropic';
+  } else if (apiKeys.deepseek) {
+    providerSelections.curation = 'deepseek';
+    providerSelections.synthesis = 'deepseek';
+  } else if (apiKeys.gemini) {
+    providerSelections.curation = 'gemini';
+    providerSelections.synthesis = 'gemini';
+  }
+  if (apiKeys.serper) {
+    providerSelections.search = 'serper';
+  } else if (apiKeys.perplexity) {
+    providerSelections.search = 'perplexity';
+  }
 
   const profile: Profile = {
     id: data.id,
     name: data.name,
-    apiKeys: { anthropic: apiKey },
-    providerSelections: { search: 'anthropic', curation: 'anthropic', synthesis: 'anthropic' },
+    apiKeys,
+    providerSelections,
     salt: data.salt,
     passwordSalt: shareData.password_salt,
     languages: data.languages || [],
@@ -676,8 +705,14 @@ export async function updatePassword(
   const newPasswordHash = await hashPasswordForTransport(newPassword);
   const newPasswordSalt = newPasswordHash.split(':')[0];
 
-  // Re-encrypt API key with new password + new salt
-  const newEncryptedApiKey = await encryptApiKeyWithSalt(anthropicKey, newPassword, newSalt);
+  // Re-encrypt all API keys with new password + new salt
+  const apiKeysToEncrypt: Record<string, string> = {};
+  if (profile.apiKeys) {
+    Object.entries(profile.apiKeys).forEach(([key, value]) => {
+      if (value) apiKeysToEncrypt[key] = value;
+    });
+  }
+  const newEncryptedApiKey = await encryptApiKeysWithSalt(apiKeysToEncrypt, newPassword, newSalt);
 
   // Re-encrypt all diffs with new password + new salt
   const encryptedDiffs: { id: string; encrypted_data: string }[] = [];

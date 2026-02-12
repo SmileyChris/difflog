@@ -57,7 +57,7 @@ A saved configuration that personalizes your diffs.
 {
   id: string;              // UUID
   name: string;            // Display name
-  apiKeys?: {              // API keys per provider (stored locally)
+  apiKeys?: {              // API keys per provider (encrypted and synced)
     anthropic?: string;
     serper?: string;
     perplexity?: string;

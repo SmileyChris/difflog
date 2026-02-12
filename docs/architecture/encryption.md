@@ -73,33 +73,33 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
 
 ## Encrypting Data
 
-### API Key Encryption
+### API Keys Encryption
 
-When sharing a profile, the API key is encrypted:
+When sharing a profile, all API keys are encrypted as a JSON object:
 
 ```typescript
-async function encryptApiKey(apiKey: string, password: string) {
+async function encryptApiKeys(apiKeys: Record<string, string>, password: string) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const key = await deriveKey(password, salt);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const saltBase64 = uint8ToBase64(salt);
 
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    encoder.encode(apiKey)
-  );
-
-  // Prepend IV to encrypted data
-  const combined = new Uint8Array(iv.length + encrypted.byteLength);
-  combined.set(iv);
-  combined.set(new Uint8Array(encrypted), iv.length);
+  // Encrypt the entire apiKeys object as JSON
+  const encrypted = await encryptData(apiKeys, password, saltBase64);
 
   return {
-    encrypted: base64(combined),
-    salt: base64(salt)
+    encrypted,
+    salt: saltBase64
   };
 }
 ```
+
+**Supported Keys:**
+- `anthropic` - Anthropic API key
+- `serper` - Serper API key (web search)
+- `perplexity` - Perplexity API key (web search + synthesis)
+- `deepseek` - DeepSeek API key (curation + synthesis)
+- `gemini` - Google Gemini API key (curation + synthesis)
+
+All keys are encrypted together and stored as a single encrypted blob on the server. When importing a profile on another device, all keys are restored.
 
 ### Content Encryption
 

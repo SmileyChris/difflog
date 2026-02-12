@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "3.1",
+      "date": "2026-02-12",
+      "summary": "Full multi-provider sync",
+      "description": "All API keys now sync across devices with end-to-end encryption. Set up your providers once and have them available everywhere.",
+      "changes": [
+        { "type": "feature", "text": "All API keys (Anthropic, DeepSeek, Gemini, Perplexity, Serper) now sync with encryption", "in": "3.1.0" }
+      ]
+    },
+    {
       "version": "3.0",
       "date": "2026-02-06",
       "summary": "Rebuilt from the ground up",

@@ -71,6 +71,9 @@ Create or re-upload a profile. Used for initial share. If the profile already ex
 }
 ```
 
+!!! note "`encrypted_api_key` Format"
+    The `encrypted_api_key` field contains **all API keys** (Anthropic, DeepSeek, Gemini, Perplexity, Serper) encrypted as a JSON object. The field name is singular for backward compatibility, but it stores multiple keys.
+
 **Response** (201):
 ```json
 {
@@ -81,7 +84,7 @@ Create or re-upload a profile. Used for initial share. If the profile already ex
 
 ## `GET /api/profile/{id}?password_hash=...`
 
-Get full profile data including encrypted API key. Requires password. Supports `include_data=true` query param to also return encrypted diffs and stars.
+Get full profile data including encrypted API keys. Requires password. Supports `include_data=true` query param to also return encrypted diffs and stars.
 
 **Response:**
 ```json
@@ -246,7 +249,7 @@ Quick sync check — compares client hashes against server to determine if sync 
 
 ## `POST /api/profile/{id}/password`
 
-Change sync password. Re-encrypts all data (API key, diffs, stars) with the new password client-side, then uploads everything in an atomic batch.
+Change sync password. Re-encrypts all data (all API keys, diffs, stars) with the new password client-side, then uploads everything in an atomic batch.
 
 **Request:**
 ```json

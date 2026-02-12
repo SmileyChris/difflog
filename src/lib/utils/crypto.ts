@@ -31,59 +31,32 @@ export async function deriveKey(password: string, salt: Uint8Array): Promise<Cry
 }
 
 /**
- * Encrypt an API key using a password-derived key
+ * Encrypt all API keys (as JSON object) using a password-derived key
  * Returns base64-encoded encrypted data and salt
  */
-export async function encryptApiKey(
-  apiKey: string,
+export async function encryptApiKeys(
+  apiKeys: Record<string, string>,
   password: string
 ): Promise<{ encrypted: string; salt: string }> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const key = await deriveKey(password, salt);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encoder = new TextEncoder();
-
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    encoder.encode(apiKey)
-  );
-
-  // Prepend IV to encrypted data for storage
-  const combined = new Uint8Array(iv.length + encrypted.byteLength);
-  combined.set(iv);
-  combined.set(new Uint8Array(encrypted), iv.length);
-
+  const saltBase64 = uint8ToBase64(salt);
+  const encrypted = await encryptData(apiKeys, password, saltBase64);
   return {
-    encrypted: uint8ToBase64(combined),
-    salt: uint8ToBase64(salt)
+    encrypted,
+    salt: saltBase64
   };
 }
 
 /**
- * Encrypt an API key using a password-derived key with an existing salt
+ * Encrypt all API keys (as JSON object) using a password-derived key with an existing salt
  * Used for re-encryption during password changes
  */
-export async function encryptApiKeyWithSalt(
-  apiKey: string,
+export async function encryptApiKeysWithSalt(
+  apiKeys: Record<string, string>,
   password: string,
   salt: string
 ): Promise<string> {
-  const saltBytes = base64ToUint8(salt);
-  const key = await deriveKey(password, saltBytes);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    new TextEncoder().encode(apiKey)
-  );
-
-  const combined = new Uint8Array(iv.length + encrypted.byteLength);
-  combined.set(iv);
-  combined.set(new Uint8Array(encrypted), iv.length);
-
-  return uint8ToBase64(combined);
+  return encryptData(apiKeys, password, salt);
 }
 
 /**
@@ -108,6 +81,30 @@ export async function decryptApiKey(
   );
 
   return new TextDecoder().decode(decrypted);
+}
+
+/**
+ * Decrypt all API keys (from JSON object) using a password-derived key
+ * Handles both old format (single string) and new format (JSON object)
+ */
+export async function decryptApiKeys(
+  encrypted: string,
+  salt: string,
+  password: string
+): Promise<Record<string, string>> {
+  try {
+    // Try to decrypt as JSON object (new format)
+    const apiKeys = await decryptData<Record<string, string>>(encrypted, password, salt);
+    return apiKeys;
+  } catch {
+    // Fallback to old format (single Anthropic key as string)
+    try {
+      const anthropicKey = await decryptApiKey(encrypted, salt, password);
+      return { anthropic: anthropicKey };
+    } catch (e) {
+      throw new Error('Failed to decrypt API keys');
+    }
+  }
 }
 
 /**

@@ -54,7 +54,7 @@ sequenceDiagram
     participant DB as D1 Database
 
     C->>C: Generate password hash (new salt)
-    C->>C: Encrypt API key with AES-GCM
+    C->>C: Encrypt all API keys with AES-GCM
     C->>S: POST /api/profile/create
     S->>DB: Insert profile
     S-->>C: Success + profile ID
@@ -80,7 +80,7 @@ sequenceDiagram
     C->>S: GET /api/profile/{id}?password_hash=...
     S->>DB: Verify password hash
     S-->>C: Encrypted profile data
-    C->>C: Decrypt API key
+    C->>C: Decrypt all API keys
     C->>C: Store profile + passwordSalt
     C->>S: POST /api/profile/{id}/content
     S-->>C: Encrypted diffs and stars
@@ -350,7 +350,7 @@ The `syncedAt` property indicates sync status:
 ## Security Considerations
 
 !!! note "End-to-End Encryption"
-    All content (diffs, stars, API keys) is [encrypted client-side](encryption.md) before upload. The server only stores encrypted blobs.
+    All content (diffs, stars, and all API keys - Anthropic, DeepSeek, Gemini, Perplexity, Serper) is [encrypted client-side](encryption.md) before upload. The server only stores encrypted blobs.
 
 !!! warning "Password Salt Exposure"
     The password salt is exposed via [`GET /api/share/{id}`](api.md#get-apishareid) to enable import. This is safe because:
