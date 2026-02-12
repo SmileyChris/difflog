@@ -1,4 +1,4 @@
-import { getProfile, saveProfile } from '../../config';
+import { getProfile, saveProfile, clearProviderSelections } from '../../config';
 import { getPassword, setPassword, deletePassword } from 'cross-keychain';
 
 const SERVICE_NAME = 'difflog-cli';
@@ -103,6 +103,7 @@ export async function handleAi(args: string[]): Promise<void> {
 				}
 				try {
 					await deletePassword(SERVICE_NAME, provider);
+					clearProviderSelections(provider);
 					process.stdout.write(`${GREEN}✓${RESET} Deleted ${BOLD}${provider}${RESET} API key\n`);
 				} catch (err) {
 					process.stdout.write(`${RED}✗${RESET} Error: ${err instanceof Error ? err.message : 'Unknown error'}\n`);

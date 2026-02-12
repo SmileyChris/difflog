@@ -2,6 +2,7 @@
 
 import { getSession, getDiffs } from './config';
 import { loginCommand } from './commands/login';
+import { logoutCommand } from './commands/logout';
 import { lsCommand } from './commands/ls';
 import { showCommand } from './commands/show';
 import { generateCommand } from './commands/generate';
@@ -16,6 +17,7 @@ Usage:
   difflog                    Show latest diff (or login if not authenticated)
   difflog config             Interactive configuration wizard (creates profile if needed)
   difflog login              Log in via browser (opens difflog.dev)
+  difflog logout             Remove profile, diffs, and API keys
   difflog generate           Generate a new diff
   difflog ls                 List cached diffs
   difflog show <n|id>        Show a diff by index or UUID prefix
@@ -95,6 +97,13 @@ if (!command) {
 	switch (command) {
 		case 'login':
 			loginCommand(args.slice(1)).catch((err) => {
+				process.stderr.write(`Error: ${err.message}\n`);
+				process.exit(1);
+			});
+			break;
+
+		case 'logout':
+			logoutCommand().catch((err) => {
 				process.stderr.write(`Error: ${err.message}\n`);
 				process.exit(1);
 			});

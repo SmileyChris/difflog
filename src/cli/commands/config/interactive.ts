@@ -1,4 +1,4 @@
-import { getProfile, saveProfile } from '../../config';
+import { getProfile, saveProfile, clearProviderSelections } from '../../config';
 import type { GenerationDepth } from '../../../lib/utils/constants';
 import { getPassword, setPassword, deletePassword } from 'cross-keychain';
 import { estimateDiffCost } from '../../../lib/utils/pricing';
@@ -518,7 +518,7 @@ async function editAi(profile: any): Promise<any> {
 					// Remove key
 					await deletePassword(SERVICE_NAME, provider);
 					keys[provider] = undefined;
-					// Clear selections using this provider
+					clearProviderSelections(provider);
 					if (selections.search === provider) selections.search = null;
 					if (selections.curation === provider) selections.curation = null;
 					if (selections.synthesis === provider) selections.synthesis = null;

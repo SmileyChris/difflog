@@ -52,6 +52,13 @@ export function clearSession(): void {
 	removeFile('diffs.json');
 }
 
+export function clearAll(): void {
+	removeFile('session.json');
+	removeFile('profile.json');
+	removeFile('diffs.json');
+	removeFile('read-state.json');
+}
+
 // Profile
 
 export interface Profile {
@@ -76,6 +83,17 @@ export function getProfile(): Profile | null {
 
 export function saveProfile(profile: Profile): void {
 	writeJson('profile.json', profile);
+}
+
+export function clearProviderSelections(provider: string): void {
+	const profile = getProfile();
+	if (!profile?.providerSelections) return;
+	const sel = profile.providerSelections;
+	let changed = false;
+	if (sel.search === provider) { sel.search = null; changed = true; }
+	if (sel.curation === provider) { sel.curation = null; changed = true; }
+	if (sel.synthesis === provider) { sel.synthesis = null; changed = true; }
+	if (changed) saveProfile(profile);
 }
 
 // Diffs

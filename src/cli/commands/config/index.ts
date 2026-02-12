@@ -281,8 +281,8 @@ export async function configCommand(args: string[]): Promise<void> {
 			depth: 'standard' as const,
 			providerSelections: {
 				search: null,
-				curation: 'deepseek',
-				synthesis: 'anthropic'
+				curation: null,
+				synthesis: null
 			}
 		};
 
