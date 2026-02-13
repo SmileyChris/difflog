@@ -306,36 +306,7 @@ The CLI uses the same encryption and sync system as the web app:
 2. **Client-side encryption**: All synced data is encrypted with your password
 3. **Shared codebase**: Uses the same TypeScript code as the web app, compiled to a standalone binary
 
-### Web Login Flow
-
-```mermaid
-sequenceDiagram
-    participant CLI
-    participant Browser
-    participant KV as Cloudflare KV
-    participant API as difflog.dev API
-
-    CLI->>Browser: Open auth URL with code
-    Browser->>Browser: Show verification code
-    Browser->>Browser: User selects profile
-    Browser->>KV: Store encrypted profileId
-    CLI->>KV: Poll for profileId
-    KV->>CLI: Return encrypted profileId
-    CLI->>CLI: Decrypt profileId
-    CLI->>CLI: Prompt for password
-    CLI->>API: Fetch profile (with password hash)
-    API->>CLI: Return encrypted API keys + profile
-    CLI->>CLI: Decrypt API keys
-    CLI->>Keychain: Store API keys in OS keychain
-    CLI->>CLI: Save profile locally
-```
-
-**Key security features:**
-- Only the profile ID passes through the relay (KV), not the full profile or credentials
-- API keys are encrypted server-side with your password
-- CLI prompts for password to decrypt keys
-- Keys stored in OS credential manager (Keychain/Credential Manager/Secret Service)
-- Relay data expires after 5 minutes and is deleted after retrieval
+For details on the web login flow, see [CLI Login Architecture](architecture/cli-login.md). For API key storage, see [CLI Key Storage](architecture/cli-keys.md).
 
 ## Configuration
 
