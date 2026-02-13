@@ -31,6 +31,13 @@
 		else if (dialog) dialog.close();
 	});
 
+	// Clear error when inputs change
+	$effect(() => {
+		profileId;
+		password;
+		if (error) error = '';
+	});
+
 	// Clean up scanner when modal closes
 	$effect(() => {
 		if (!open && scanning) {
@@ -147,6 +154,7 @@
 
 	function handleClose() {
 		stopScanner();
+		password = '';
 		open = false;
 		error = '';
 		onclose();
@@ -157,7 +165,7 @@
 	bind:this={dialog}
 	title="Import Shared Profile"
 	subtitle="Sync a profile that's been uploaded to the server from another device."
-	{error}
+	error={scanning ? '' : error}
 	size="sm"
 	dark={true}
 	onclose={handleClose}

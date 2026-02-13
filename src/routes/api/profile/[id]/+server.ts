@@ -5,8 +5,8 @@
  */
 
 import type { RequestHandler } from './$types';
-import type { ProfileRow, ProfileResponse } from '../../types';
-import { verifyPassword, resetFailedAttempts } from '../../auth';
+import type { ProfileResponse } from '../../types';
+import { getProfileOrError, verifyAndUpgrade } from '../../auth';
 
 export const GET: RequestHandler = async ({ url, params, platform }) => {
 	const DB = platform?.env?.DB;
@@ -30,24 +30,12 @@ export const GET: RequestHandler = async ({ url, params, platform }) => {
 			});
 		}
 
-		// Fetch profile
-		const profile = await DB.prepare('SELECT * FROM profiles WHERE id = ?')
-			.bind(id)
-			.first<ProfileRow>();
+		const lookup = await getProfileOrError(DB, id);
+		if (lookup.error) return lookup.error;
+		const profile = lookup.profile;
 
-		if (!profile) {
-			return new Response(JSON.stringify({ error: 'Profile not found' }), {
-				status: 404,
-				headers: { 'Content-Type': 'application/json' }
-			});
-		}
-
-		// Verify password with rate limiting
-		const authError = await verifyPassword(DB, profile, id, passwordHash);
-		if (authError) return authError;
-
-		// Reset failed attempts on success
-		await resetFailedAttempts(DB, id);
+		const auth = await verifyAndUpgrade(DB, profile, id, passwordHash, { resetAttempts: true });
+		if (auth.error) return auth.error;
 
 		// Append Z to timestamp so JS parses as UTC
 		const contentUpdatedAt = profile.content_updated_at
@@ -122,21 +110,11 @@ export const PUT: RequestHandler = async ({ request, params, platform }) => {
 			});
 		}
 
-		// Fetch profile
-		const profile = await DB.prepare('SELECT * FROM profiles WHERE id = ?')
-			.bind(id)
-			.first<ProfileRow>();
+		const lookup = await getProfileOrError(DB, id);
+		if (lookup.error) return lookup.error;
 
-		if (!profile) {
-			return new Response(JSON.stringify({ error: 'Profile not found' }), {
-				status: 404,
-				headers: { 'Content-Type': 'application/json' }
-			});
-		}
-
-		// Verify password with rate limiting
-		const authError = await verifyPassword(DB, profile, id, password_hash);
-		if (authError) return authError;
+		const auth = await verifyAndUpgrade(DB, lookup.profile, id, password_hash);
+		if (auth.error) return auth.error;
 
 		// Build update query dynamically
 		const allowedFields = [
@@ -206,20 +184,11 @@ export const DELETE: RequestHandler = async ({ url, params, platform }) => {
 			});
 		}
 
-		const profile = await DB.prepare('SELECT * FROM profiles WHERE id = ?')
-			.bind(id)
-			.first<ProfileRow>();
+		const lookup = await getProfileOrError(DB, id);
+		if (lookup.error) return lookup.error;
 
-		if (!profile) {
-			return new Response(JSON.stringify({ error: 'Profile not found' }), {
-				status: 404,
-				headers: { 'Content-Type': 'application/json' }
-			});
-		}
-
-		// Verify password with rate limiting
-		const authError = await verifyPassword(DB, profile, id, passwordHash);
-		if (authError) return authError;
+		const auth = await verifyAndUpgrade(DB, lookup.profile, id, passwordHash);
+		if (auth.error) return auth.error;
 
 		// Delete profile (cascades to diffs and stars)
 		await DB.prepare('DELETE FROM profiles WHERE id = ?').bind(id).run();

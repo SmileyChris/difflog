@@ -5,9 +5,9 @@
  */
 
 import type { RequestHandler } from './$types';
-import type { ProfileRow, SyncRequest } from '../../../types';
+import type { SyncRequest } from '../../../types';
 import { STORAGE_LIMITS } from '../../../types';
-import { verifyPassword } from '../../../auth';
+import { getProfileOrError, verifyAndUpgrade } from '../../../auth';
 
 export const POST: RequestHandler = async ({ request, params, platform }) => {
 	const DB = platform?.env?.DB;
@@ -30,21 +30,11 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 			});
 		}
 
-		// Fetch profile
-		const profile = await DB.prepare('SELECT * FROM profiles WHERE id = ?')
-			.bind(profileId)
-			.first<ProfileRow>();
+		const lookup = await getProfileOrError(DB, profileId);
+		if (lookup.error) return lookup.error;
 
-		if (!profile) {
-			return new Response(JSON.stringify({ error: 'Profile not found' }), {
-				status: 404,
-				headers: { 'Content-Type': 'application/json' }
-			});
-		}
-
-		// Verify password with rate limiting
-		const authError = await verifyPassword(DB, profile, profileId, body.password_hash);
-		if (authError) return authError;
+		const auth = await verifyAndUpgrade(DB, lookup.profile, profileId, body.password_hash);
+		if (auth.error) return auth.error;
 
 		// Build batch statements
 		const statements: D1PreparedStatement[] = [];

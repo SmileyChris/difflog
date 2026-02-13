@@ -19,6 +19,7 @@ export interface ProfileRow {
 	diffs_hash: string | null;
 	stars_hash: string | null;
 	keys_hash: string | null;
+	password_salt: string | null;
 	content_hash: string | null;
 	content_updated_at: string | null;
 	failed_attempts: number;

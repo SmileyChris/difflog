@@ -6,16 +6,7 @@
 
 import type { RequestHandler } from './$types';
 import type { CreateProfileRequest, ProfileRow } from '../../types';
-
-// Simple timing-safe comparison
-function timingSafeEqual(a: string, b: string): boolean {
-	if (a.length !== b.length) return false;
-	let result = 0;
-	for (let i = 0; i < a.length; i++) {
-		result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-	}
-	return result === 0;
-}
+import { verifyAndUpgrade, hashPasswordWithSalt } from '../../auth';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	const DB = platform?.env?.DB;
@@ -41,34 +32,38 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		const id = body.id || crypto.randomUUID();
 
 		// Check if profile already exists
-		const existing = await DB.prepare('SELECT password_hash FROM profiles WHERE id = ?')
+		const existing = await DB.prepare('SELECT * FROM profiles WHERE id = ?')
 			.bind(id)
-			.first<Pick<ProfileRow, 'password_hash'>>();
+			.first<ProfileRow>();
 
 		if (existing) {
-			// Profile exists - verify password before allowing update
-			if (!timingSafeEqual(existing.password_hash, body.password_hash)) {
-				return new Response(JSON.stringify({ error: 'Invalid password' }), {
-					status: 401,
-					headers: { 'Content-Type': 'application/json' }
-				});
-			}
+			// Profile exists - verify password with rate limiting
+			const auth = await verifyAndUpgrade(DB, existing, id, body.password_hash, {
+				upgrade: false
+			});
+			if (auth.error) return auth.error;
+
+			// Hash the new password server-side
+			const { hash: serverHash, clientSalt } = await hashPasswordWithSalt(body.password_hash);
 
 			// Password matches - update (including new password_hash if password changed)
 			await DB.prepare(
 				`
 				UPDATE profiles SET
-					name = ?, password_hash = ?, encrypted_api_key = ?, salt = ?,
+					name = ?, password_hash = ?, password_salt = ?, encrypted_api_key = ?, salt = ?,
 					keys_hash = ?,
 					languages = ?, frameworks = ?, tools = ?, topics = ?,
-					depth = ?, custom_focus = ?, updated_at = datetime('now'),
+					depth = ?, custom_focus = ?,
+					failed_attempts = 0, lockout_until = NULL,
+					updated_at = datetime('now'),
 					content_updated_at = datetime('now')
 				WHERE id = ?
 			`
 			)
 				.bind(
 					body.name,
-					body.password_hash,
+					serverHash,
+					clientSalt,
 					body.encrypted_api_key,
 					body.salt,
 					body.keys_hash || null,
@@ -82,21 +77,24 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				)
 				.run();
 		} else {
-			// New profile - insert
+			// New profile - hash password server-side before storing
+			const { hash: serverHash, clientSalt } = await hashPasswordWithSalt(body.password_hash);
+
 			await DB.prepare(
 				`
 				INSERT INTO profiles (
-					id, name, password_hash, encrypted_api_key, salt,
+					id, name, password_hash, password_salt, encrypted_api_key, salt,
 					keys_hash,
 					languages, frameworks, tools, topics, depth, custom_focus,
 					content_updated_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
 			`
 			)
 				.bind(
 					id,
 					body.name,
-					body.password_hash,
+					serverHash,
+					clientSalt,
 					body.encrypted_api_key,
 					body.salt,
 					body.keys_hash || null,

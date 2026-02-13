@@ -40,14 +40,19 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 		}
 
 		// Get password_salt for import flow (salt is public, hash is not)
-		const fullProfile = await DB.prepare(`
-			SELECT password_hash FROM profiles WHERE id = ?
+		const saltRow = await DB.prepare(`
+			SELECT password_salt, password_hash FROM profiles WHERE id = ?
 		`)
 			.bind(id)
-			.first<{ password_hash: string }>();
+			.first<{ password_salt: string | null; password_hash: string }>();
 
-		// Extract just the salt portion (before the colon)
-		const passwordSalt = fullProfile?.password_hash?.split(':')[0] || null;
+		// Use dedicated column, fall back to parsing legacy password_hash format
+		let passwordSalt: string | null = null;
+		if (saltRow?.password_salt) {
+			passwordSalt = saltRow.password_salt;
+		} else if (saltRow?.password_hash && !saltRow.password_hash.startsWith('v2:')) {
+			passwordSalt = saltRow.password_hash.split(':')[0] || null;
+		}
 
 		const response: ShareResponse = {
 			id: profile.id,

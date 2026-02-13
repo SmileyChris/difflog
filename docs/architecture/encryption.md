@@ -14,7 +14,7 @@ diff·log uses client-side encryption to protect sensitive data. The server only
 | Diffs | Yes | AES-256-GCM |
 | Stars | Yes | AES-256-GCM |
 | Profile metadata | No | Plaintext |
-| Password | Hashed | SHA-256 |
+| Password | Hashed | SHA-256 (transport) + PBKDF2 (server) |
 
 ### Profile Metadata (Unencrypted)
 
@@ -149,7 +149,11 @@ async function decryptData<T>(encrypted: string, password: string, salt: string)
 
 ## Password Hashing
 
-Passwords are hashed for authentication (not encryption):
+Password hashing uses two layers for authentication (not encryption):
+
+### Transport Hash (Client-Side)
+
+The client hashes the password with SHA-256 before sending it over the wire:
 
 ```typescript
 async function hashPasswordForTransport(password: string, salt?: string) {
@@ -160,11 +164,36 @@ async function hashPasswordForTransport(password: string, salt?: string) {
 }
 ```
 
-### Hash Format
-
-The password hash is stored as: `{salt}:{hash}`
+Transport hash format: `{clientSalt}:{base64(SHA-256)}`
 
 Example: `zi7g35hMWZ4GjQlu32aFQg==:T1j5DDOgm4xOh+l9WBl8bpcHrkpJaTtdC+FGPWpymD4=`
+
+### Server-Side Hash (Stored in DB)
+
+The server applies PBKDF2 (100,000 iterations, SHA-256) to the transport hash before storing:
+
+```typescript
+async function hashPasswordServer(transportHash: string): Promise<string> {
+  const serverSalt = crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', encoder.encode(transportHash), 'PBKDF2', false, ['deriveBits']
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: serverSalt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, 256
+  );
+  return `v2:${base64(serverSalt)}:${base64(derivedBits)}`;
+}
+```
+
+Stored hash format: `v2:{base64(serverSalt)}:{base64(derivedKey)}`
+
+The `v2:` prefix distinguishes server-hashed passwords from legacy v1 hashes (plain transport hashes). Legacy hashes are automatically upgraded to v2 on successful authentication.
+
+### Why Two Layers?
+
+- **Client-side SHA-256**: Prevents the raw password from being sent to the server, even over TLS
+- **Server-side PBKDF2**: Ensures that a database breach doesn't expose passwords to offline cracking. Without this, the single-round SHA-256 transport hash could be cracked at billions of guesses/sec
 
 ## Content Hash
 
