@@ -379,25 +379,6 @@
 		text-align: center;
 	}
 
-	:global(.btn-copy) {
-		padding: 0.75rem 1rem;
-		font-size: 0.8rem;
-		font-weight: 500;
-		color: var(--info);
-		background: var(--info-bg);
-		border: 1px solid var(--info-border);
-		border-radius: var(--radius);
-		cursor: pointer;
-		transition: all 0.15s ease;
-		white-space: nowrap;
-	}
-
-	:global(.btn-copy:hover) {
-		background: var(--info-border);
-		border-color: var(--info);
-		filter: none;
-	}
-
 	.profiles-list {
 		display: flex;
 		flex-direction: column;

@@ -113,6 +113,7 @@
 		display: flex;
 		align-items: flex-start;
 		justify-content: space-between;
+		flex-wrap: nowrap;
 		gap: 1rem;
 		padding: 2rem 2rem 0;
 	}
