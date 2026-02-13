@@ -668,29 +668,23 @@ export function startInteractive(
 			}
 		}
 
-		// Next unread in category: Down arrow or l (hidden)
+		// Next category: Down arrow or l (hidden)
 		if (key === '\u001b[B' || key === 'l') {
-			const allRead = getUnreadCount() === 0;
-			if (!showRead && !allRead) {
-				// In unread mode: find next unread article in same category
+			const nextIndex = getNextCategoryIndex(items, currentIndex);
+			if (nextIndex !== currentIndex) {
 				const currentCategory = items[currentIndex].category;
-				let nextIndex = currentIndex + 1;
-				while (nextIndex < items.length && items[nextIndex].category === currentCategory) {
-					if (!isTopicRead(diffId, nextIndex)) {
-						currentIndex = nextIndex;
-						currentLinkIndex = 0;
-						moved = true;
-						break;
-					}
-					nextIndex++;
-				}
-			} else {
-				// In show-all mode: navigate to next category
-				const nextIndex = getNextCategoryIndex(items, currentIndex);
-				if (nextIndex !== currentIndex) {
-					const currentCategory = items[currentIndex].category;
-					const nextCategory = items[nextIndex].category;
-					if (nextCategory !== currentCategory) {
+				if (items[nextIndex].category !== currentCategory) {
+					if (!showRead && getUnreadCount() > 0) {
+						// In unread mode: find first unread in next categories
+						for (let i = nextIndex; i < items.length; i++) {
+							if (!isTopicRead(diffId, i)) {
+								currentIndex = i;
+								currentLinkIndex = 0;
+								moved = true;
+								break;
+							}
+						}
+					} else {
 						currentIndex = nextIndex;
 						currentLinkIndex = 0;
 						moved = true;
@@ -699,29 +693,37 @@ export function startInteractive(
 			}
 		}
 
-		// Previous unread in category: Up arrow or h (hidden)
+		// Previous category: Up arrow or h (hidden)
 		if (key === '\u001b[A' || key === 'h') {
-			const allRead = getUnreadCount() === 0;
-			if (!showRead && !allRead) {
-				// In unread mode: find previous unread article in same category
+			const prevIndex = getPrevCategoryIndex(items, currentIndex);
+			if (prevIndex !== currentIndex) {
 				const currentCategory = items[currentIndex].category;
-				let prevIndex = currentIndex - 1;
-				while (prevIndex >= 0 && items[prevIndex].category === currentCategory) {
-					if (!isTopicRead(diffId, prevIndex)) {
-						currentIndex = prevIndex;
-						currentLinkIndex = 0;
-						moved = true;
-						break;
-					}
-					prevIndex--;
-				}
-			} else {
-				// In show-all mode: navigate to previous category
-				const prevIndex = getPrevCategoryIndex(items, currentIndex);
-				if (prevIndex !== currentIndex) {
-					const currentCategory = items[currentIndex].category;
-					const prevCategory = items[prevIndex].category;
-					if (prevCategory !== currentCategory) {
+				if (items[prevIndex].category !== currentCategory) {
+					if (!showRead && getUnreadCount() > 0) {
+						// In unread mode: find first unread in prev category
+						const prevCategory = items[prevIndex].category;
+						let found = false;
+						for (let i = prevIndex; i < items.length && items[i].category === prevCategory; i++) {
+							if (!isTopicRead(diffId, i)) {
+								currentIndex = i;
+								currentLinkIndex = 0;
+								moved = true;
+								found = true;
+								break;
+							}
+						}
+						// If no unread in prev category, keep searching backwards
+						if (!found) {
+							for (let i = prevIndex - 1; i >= 0; i--) {
+								if (!isTopicRead(diffId, i)) {
+									currentIndex = i;
+									currentLinkIndex = 0;
+									moved = true;
+									break;
+								}
+							}
+						}
+					} else {
 						currentIndex = prevIndex;
 						currentLinkIndex = 0;
 						moved = true;
