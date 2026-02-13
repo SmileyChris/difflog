@@ -8,7 +8,6 @@ This section outlines potential features, long-term goals, and experimental idea
 
 ## Planned Features
 
-- **CLI Interface**: A native terminal client for generating and reading diffs (see [CLI Interface](cli.md)).
 - **Team Profiles**: Shared configuration for engineering teams to stay aligned on their specific stack (see [Team Profiles](teams.md)).
 - **IDE Integration**: Extensions for VS Code and Neovim to bring diffs directly into the editor.
 

@@ -468,13 +468,8 @@ About 90 MB. It's a standalone Bun executable with the JavaScript runtime bundle
 
 ## Roadmap
 
-See [CLI Interface](future/cli.md) for planned features:
+Planned:
 
-- [x] `difflog login` - Web-assisted authentication
-- [x] `difflog ls` - List diffs
-- [x] `difflog show` - Interactive diff viewer with read/unread tracking
-- [x] `difflog generate` - Generate new diffs from CLI
-- [x] `difflog config` - Configuration wizard (profile + AI)
-- [ ] `difflog summary` - Plain text summaries for scripts
+- [ ] `difflog summary` — plain text summaries for scripts
 - [ ] `--json` output on all commands
 - [ ] Multi-profile support

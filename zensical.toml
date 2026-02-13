@@ -26,7 +26,6 @@ nav = [
   { "Operations" = "operations/index.md" },
   { "Future" = [
     { "Roadmap" = "future/index.md" },
-    { "CLI Roadmap" = "future/cli.md" },
     { "Team Profiles" = "future/teams.md" }
   ]},
 ]
