@@ -1,10 +1,16 @@
 import { getDiffs, getSession } from '../config';
 import { timeAgo } from '../time';
+import { BIN, showHelp } from '../ui';
 
-export function lsCommand(): void {
+export function lsCommand(args: string[]): void {
+	showHelp(args, `List cached diffs
+
+Usage: ${BIN} ls
+`);
+
 	const session = getSession();
 	if (!session) {
-		process.stderr.write('Not logged in. Run: difflog login\n');
+		process.stderr.write(`Not logged in. Run: ${BIN} login\n`);
 		process.exit(1);
 	}
 

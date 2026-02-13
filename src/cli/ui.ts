@@ -1,3 +1,9 @@
+import { basename } from 'path';
+
+// Binary name: reflects actual invocation (compiled binary name, or 'bun cli' when run via bun)
+const argv0 = basename(process.argv[0]);
+export const BIN = ['bun', 'node'].includes(argv0) ? 'bun cli' : argv0;
+
 // ANSI codes
 export const RESET = '\x1b[0m';
 export const DIM = '\x1b[2m';
@@ -15,6 +21,14 @@ export const BRIGHT_BLUE = '\x1b[94m';
 
 // Keychain service name
 export const SERVICE_NAME = 'difflog-cli';
+
+/** Print help text and exit if args contain --help or -h */
+export function showHelp(args: string[], text: string): void {
+	if (args.includes('--help') || args.includes('-h')) {
+		process.stdout.write(text);
+		process.exit(0);
+	}
+}
 
 /** Read a line from stdin. Uses raw mode for masked input when isTTY. */
 export async function prompt(label: string, mask = false): Promise<string> {

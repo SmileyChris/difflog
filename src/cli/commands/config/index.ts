@@ -4,7 +4,7 @@ import { showTopics, handleTopics } from './topics';
 import { showAiConfig, handleAi } from './ai';
 import { runInteractiveWizard } from './interactive';
 import { syncUpload } from '../../sync';
-import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW } from '../../ui';
+import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW, BIN, showHelp } from '../../ui';
 
 export function formatAiConfig(providerSelections: any): string {
 	if (!providerSelections) return `${BRIGHT_YELLOW}curation unset, synthesis unset${RESET}`;
@@ -252,6 +252,30 @@ async function editDepth(depth?: string): Promise<void> {
 
 
 export async function configCommand(args: string[]): Promise<void> {
+	showHelp(args, `Configure your profile, topics, and AI providers
+
+Usage: ${BIN} config [command]
+
+Commands:
+  ${BIN} config                                Interactive wizard
+  ${BIN} config name                           Edit profile name
+  ${BIN} config depth [quick|standard|detailed]  Set generation depth
+  ${BIN} config topics add <category> <items...>    Add languages/frameworks/tools/topics
+  ${BIN} config topics rm <category> <items...>     Remove items
+  ${BIN} config topics focus <string|none>     Set custom focus
+  ${BIN} config ai                             Show AI configuration
+  ${BIN} config ai key add <provider> <key>    Add API key
+  ${BIN} config ai key rm <provider>           Remove API key
+  ${BIN} config ai set <search> <curation> <synthesis>  Set providers
+
+Examples:
+  ${BIN} config                      # Interactive wizard
+  ${BIN} config name "My Profile"    # Edit name
+  ${BIN} config depth standard       # Set depth
+  ${BIN} config topics add languages rust go
+  ${BIN} config ai key add anthropic sk-ant-...
+`);
+
 	let profile = getProfile();
 
 	// If no profile exists, create one
@@ -319,7 +343,7 @@ export async function configCommand(args: string[]): Promise<void> {
 			return;
 		default:
 			process.stdout.write(`${BRIGHT_YELLOW}!${RESET} Unknown subcommand: ${subcommand}\n`);
-			process.stdout.write(`${DIM}Usage: difflog config [name|depth|topics|ai]${RESET}\n`);
+			process.stdout.write(`${DIM}Usage: ${BIN} config [name|depth|topics|ai]${RESET}\n`);
 			process.exit(1);
 	}
 }

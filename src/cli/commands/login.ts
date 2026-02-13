@@ -4,7 +4,7 @@ import { login, localAwareFetch, BASE } from '../api';
 import { decryptData } from '../../lib/utils/crypto';
 import { importProfile } from '../../lib/utils/sync';
 import { setPassword } from 'cross-keychain';
-import { SERVICE_NAME, prompt } from '../ui';
+import { SERVICE_NAME, BIN, showHelp, prompt } from '../ui';
 
 interface RelayPayload {
 	profileId: string;
@@ -81,7 +81,7 @@ async function pollForRelay(code: string, expires: number): Promise<RelayPayload
 	}
 
 	process.stderr.write('\n');
-	throw new Error('Login timed out. Run `difflog login` to try again.');
+	throw new Error(`Login timed out. Run \`${BIN} login\` to try again.`);
 }
 
 async function webLogin(noBrowser: boolean): Promise<void> {
@@ -164,6 +164,16 @@ async function directLogin(profileId: string, password: string): Promise<void> {
 }
 
 export async function loginCommand(args: string[]): Promise<void> {
+	showHelp(args, `Log in via browser or with credentials
+
+Usage: ${BIN} login [flags]
+
+Flags:
+  --profile <id>      Profile ID (skip browser login)
+  --password <pw>      Password (skip browser login)
+  --no-browser         Print URL only, don't open browser
+`);
+
 	let profileId: string | undefined;
 	let password: string | undefined;
 	let noBrowser = false;

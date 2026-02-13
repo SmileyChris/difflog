@@ -4,11 +4,17 @@ import type { GenerationDepth } from '../../lib/utils/constants';
 import { isConfigurationComplete, STEPS, type ProviderStep } from '../../lib/utils/providers';
 import { canSync, download, upload } from '../sync';
 import { BASE } from '../api';
+import { BIN, showHelp } from '../ui';
 
-export async function generateCommand(): Promise<void> {
+export async function generateCommand(args: string[]): Promise<void> {
+	showHelp(args, `Generate a new diff based on your profile
+
+Usage: ${BIN} generate
+`);
+
 	const profile = getProfile();
 	if (!profile) {
-		process.stderr.write('No profile found. Run: difflog login\n');
+		process.stderr.write(`No profile found. Run: ${BIN} login\n`);
 		process.exit(1);
 	}
 
@@ -38,7 +44,7 @@ export async function generateCommand(): Promise<void> {
 		for (const m of missing) {
 			process.stderr.write(`  • ${m}\n`);
 		}
-		process.stderr.write('\nRun `difflog config` to configure providers and API keys.\n');
+		process.stderr.write(`\nRun \`${BIN} config\` to configure providers and API keys.\n`);
 		process.exit(1);
 	}
 
@@ -104,7 +110,7 @@ export async function generateCommand(): Promise<void> {
 		if (diff.cost) {
 			process.stdout.write(`Cost: $${diff.cost.toFixed(4)}\n`);
 		}
-		process.stdout.write('\nRun `difflog` to view it.\n');
+		process.stdout.write(`\nRun \`${BIN}\` to view it.\n`);
 	} catch (error) {
 		process.stderr.write(`\nError generating diff: ${error instanceof Error ? error.message : 'Unknown error'}\n`);
 		process.exit(1);

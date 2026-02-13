@@ -2,11 +2,20 @@ import { getDiffs, getSession } from '../config';
 import { renderMarkdown } from '../render';
 import { startInteractive } from '../interactive';
 import { formatDiffDate } from '../time';
+import { BIN, showHelp } from '../ui';
 
 export function showCommand(args: string[]): void {
+	showHelp(args, `Show a diff by index or UUID prefix
+
+Usage: ${BIN} show <number|id> [flags]
+
+Flags:
+  -f, --full           Full output mode (disable interactive navigation)
+`);
+
 	const session = getSession();
 	if (!session) {
-		process.stderr.write('Not logged in. Run: difflog login\n');
+		process.stderr.write(`Not logged in. Run: ${BIN} login\n`);
 		process.exit(1);
 	}
 
@@ -23,7 +32,7 @@ export function showCommand(args: string[]): void {
 	}
 
 	if (!query) {
-		process.stderr.write('Usage: difflog show <number|id> [--full]\n');
+		process.stderr.write(`Usage: ${BIN} show <number|id> [--full]\n`);
 		process.exit(1);
 	}
 

@@ -1,7 +1,7 @@
 import { getProfile, clearAll } from '../config';
 import { deletePassword } from 'cross-keychain';
 import { PROVIDER_IDS } from '../../lib/utils/providers';
-import { RESET, DIM, GREEN, BRIGHT_YELLOW, SERVICE_NAME } from '../ui';
+import { RESET, DIM, GREEN, BRIGHT_YELLOW, SERVICE_NAME, BIN, showHelp } from '../ui';
 
 async function confirm(message: string): Promise<boolean> {
 	process.stdout.write(`${message} [y/N] `);
@@ -22,7 +22,12 @@ async function confirm(message: string): Promise<boolean> {
 	});
 }
 
-export async function logoutCommand(): Promise<void> {
+export async function logoutCommand(args: string[]): Promise<void> {
+	showHelp(args, `Remove profile, diffs, and API keys from this machine
+
+Usage: ${BIN} logout
+`);
+
 	const profile = getProfile();
 	if (!profile) {
 		process.stderr.write('No profile found. Nothing to remove.\n');
@@ -53,5 +58,5 @@ export async function logoutCommand(): Promise<void> {
 	clearAll();
 
 	process.stdout.write(`${GREEN}✓${RESET} Profile, diffs, and API keys removed.\n`);
-	process.stdout.write(`${DIM}Run 'difflog login' or 'difflog config' to set up again.${RESET}\n`);
+	process.stdout.write(`${DIM}Run '${BIN} login' or '${BIN} config' to set up again.${RESET}\n`);
 }

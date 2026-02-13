@@ -2,7 +2,7 @@ import { getProfile, saveProfile, clearProviderSelections, trackProfileModified,
 import { getPassword, setPassword, deletePassword } from 'cross-keychain';
 import { syncUpload } from '../../sync';
 import { PROVIDER_IDS } from '../../../lib/utils/providers';
-import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW, RED, SERVICE_NAME } from '../../ui';
+import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW, RED, SERVICE_NAME, BIN } from '../../ui';
 
 const PROVIDERS = PROVIDER_IDS;
 type Provider = (typeof PROVIDERS)[number];
@@ -67,7 +67,7 @@ export async function handleAi(args: string[]): Promise<void> {
 		case 'key': {
 			const action = args[1];
 			if (!action) {
-				process.stdout.write(`${DIM}Usage: difflog config ai key <add|rm> <provider> [key]${RESET}\n`);
+				process.stdout.write(`${DIM}Usage: ${BIN} config ai key <add|rm> <provider> [key]${RESET}\n`);
 				return;
 			}
 
@@ -79,7 +79,7 @@ export async function handleAi(args: string[]): Promise<void> {
 					return;
 				}
 				if (!key) {
-					process.stdout.write(`${DIM}Usage: difflog config ai key add <provider> <key>${RESET}\n`);
+					process.stdout.write(`${DIM}Usage: ${BIN} config ai key add <provider> <key>${RESET}\n`);
 					return;
 				}
 				try {
@@ -106,7 +106,7 @@ export async function handleAi(args: string[]): Promise<void> {
 					process.stdout.write(`${RED}✗${RESET} Error: ${err instanceof Error ? err.message : 'Unknown error'}\n`);
 				}
 			} else {
-				process.stdout.write(`${DIM}Usage: difflog config ai key <add|rm> <provider> [key]${RESET}\n`);
+				process.stdout.write(`${DIM}Usage: ${BIN} config ai key <add|rm> <provider> [key]${RESET}\n`);
 			}
 			break;
 		}
@@ -117,7 +117,7 @@ export async function handleAi(args: string[]): Promise<void> {
 			const synthesis = args[3]?.toLowerCase();
 
 			if (!search || !curation || !synthesis) {
-				process.stdout.write(`${DIM}Usage: difflog config ai set <search|none> <curation> <synthesis>${RESET}\n`);
+				process.stdout.write(`${DIM}Usage: ${BIN} config ai set <search|none> <curation> <synthesis>${RESET}\n`);
 				return;
 			}
 
@@ -145,6 +145,6 @@ export async function handleAi(args: string[]): Promise<void> {
 		}
 
 		default:
-			process.stdout.write(`${DIM}Usage: difflog config ai [key|set]${RESET}\n`);
+			process.stdout.write(`${DIM}Usage: ${BIN} config ai [key|set]${RESET}\n`);
 	}
 }

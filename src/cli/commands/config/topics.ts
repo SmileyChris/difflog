@@ -1,6 +1,6 @@
 import { getProfile, saveProfile, trackProfileModified } from '../../config';
 import { syncUpload } from '../../sync';
-import { RESET, DIM, BOLD, GREEN, BRIGHT_YELLOW } from '../../ui';
+import { RESET, DIM, BOLD, GREEN, BRIGHT_YELLOW, BIN } from '../../ui';
 
 const CATEGORIES = ['languages', 'frameworks', 'tools', 'topics'] as const;
 type Category = (typeof CATEGORIES)[number];
@@ -45,7 +45,7 @@ export async function handleTopics(args: string[]): Promise<void> {
 			const category = args[1] as Category;
 			const items = args.slice(2);
 			if (!category || !CATEGORIES.includes(category)) {
-				process.stdout.write(`${DIM}Usage: difflog config topics add <languages|frameworks|tools|topics> <items...>${RESET}\n`);
+				process.stdout.write(`${DIM}Usage: ${BIN} config topics add <languages|frameworks|tools|topics> <items...>${RESET}\n`);
 				return;
 			}
 			if (items.length === 0) {
@@ -65,7 +65,7 @@ export async function handleTopics(args: string[]): Promise<void> {
 			const category = args[1] as Category;
 			const items = args.slice(2);
 			if (!category || !CATEGORIES.includes(category)) {
-				process.stdout.write(`${DIM}Usage: difflog config topics rm <languages|frameworks|tools|topics> <items...>${RESET}\n`);
+				process.stdout.write(`${DIM}Usage: ${BIN} config topics rm <languages|frameworks|tools|topics> <items...>${RESET}\n`);
 				return;
 			}
 			if (items.length === 0) {
@@ -84,7 +84,7 @@ export async function handleTopics(args: string[]): Promise<void> {
 		case 'focus': {
 			const focus = args.slice(1).join(' ');
 			if (!focus) {
-				process.stdout.write(`${DIM}Usage: difflog config topics focus <string|none>${RESET}\n`);
+				process.stdout.write(`${DIM}Usage: ${BIN} config topics focus <string|none>${RESET}\n`);
 				return;
 			}
 			if (focus.toLowerCase() === 'none') {
@@ -101,6 +101,6 @@ export async function handleTopics(args: string[]): Promise<void> {
 		}
 
 		default:
-			process.stdout.write(`${DIM}Usage: difflog config topics [add|rm|focus]${RESET}\n`);
+			process.stdout.write(`${DIM}Usage: ${BIN} config topics [add|rm|focus]${RESET}\n`);
 	}
 }

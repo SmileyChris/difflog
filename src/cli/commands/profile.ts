@@ -7,7 +7,7 @@ import { computeKeysHash } from '../../lib/utils/sync';
 import type { ProviderSelections, ApiKeys, EncryptedKeysBlob } from '../../lib/utils/sync';
 import { formatAiConfig } from './config/index';
 import { timeAgo } from '../time';
-import { RESET, DIM, BOLD, GREEN, RED, BRIGHT_YELLOW, prompt } from '../ui';
+import { RESET, DIM, BOLD, GREEN, RED, BRIGHT_YELLOW, BIN, showHelp, prompt } from '../ui';
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 	const res = await localAwareFetch(url, init);
@@ -21,7 +21,7 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 async function showInfo(session: Session): Promise<void> {
 	const profile = getProfile();
 	if (!profile) {
-		process.stderr.write('No profile data found. Run: difflog config\n');
+		process.stderr.write(`No profile data found. Run: ${BIN} config\n`);
 		process.exit(1);
 	}
 
@@ -53,20 +53,20 @@ async function showInfo(session: Session): Promise<void> {
 async function shareCommand(session: Session): Promise<void> {
 	if (canSync()) {
 		process.stderr.write('Profile is already shared.\n');
-		process.stderr.write('Use `difflog profile password` to change your sync password.\n');
-		process.stderr.write('Use `difflog profile unshare` to remove from server.\n');
+		process.stderr.write(`Use \`${BIN} profile password\` to change your sync password.\n`);
+		process.stderr.write(`Use \`${BIN} profile unshare\` to remove from server.\n`);
 		process.exit(1);
 	}
 
 	const profile = getProfile();
 	if (!profile) {
-		process.stderr.write('No profile data found. Run: difflog config\n');
+		process.stderr.write(`No profile data found. Run: ${BIN} config\n`);
 		process.exit(1);
 	}
 
 	const apiKeys = await getApiKeys();
 	if (Object.keys(apiKeys).length === 0) {
-		process.stderr.write('No API keys configured. Run: difflog config ai key add <provider> <key>\n');
+		process.stderr.write(`No API keys configured. Run: ${BIN} config ai key add <provider> <key>\n`);
 		process.exit(1);
 	}
 
@@ -134,12 +134,12 @@ async function shareCommand(session: Session): Promise<void> {
 	});
 
 	process.stderr.write(`\n  ${GREEN}✓${RESET} Profile shared to difflog.dev\n`);
-	process.stderr.write(`  ${DIM}You can now sync with \`difflog login\` on other machines.${RESET}\n\n`);
+	process.stderr.write(`  ${DIM}You can now sync with \`${BIN} login\` on other machines.${RESET}\n\n`);
 }
 
 async function passwordCommand(session: Session): Promise<void> {
 	if (!canSync()) {
-		process.stderr.write('Profile is not shared. Run `difflog profile share` first.\n');
+		process.stderr.write(`Profile is not shared. Run \`${BIN} profile share\` first.\n`);
 		process.exit(1);
 	}
 
@@ -261,13 +261,24 @@ async function unshareCommand(session: Session): Promise<void> {
 
 	process.stderr.write(`\n  ${GREEN}✓${RESET} Profile removed from server\n`);
 	process.stderr.write(`  ${DIM}Your local profile and diffs are still here.${RESET}\n`);
-	process.stderr.write(`  ${DIM}Run \`difflog profile share\` to re-share.${RESET}\n\n`);
+	process.stderr.write(`  ${DIM}Run \`${BIN} profile share\` to re-share.${RESET}\n\n`);
 }
 
 export async function profileCommand(args: string[]): Promise<void> {
+	showHelp(args, `Show profile info and manage cloud sync
+
+Usage: ${BIN} profile [command]
+
+Commands:
+  ${BIN} profile              Show profile info and sync status
+  ${BIN} profile share        Share profile to difflog.dev (enables sync)
+  ${BIN} profile password     Change sync password
+  ${BIN} profile unshare      Remove profile from server (revert to local-only)
+`);
+
 	const session = getSession();
 	if (!session) {
-		process.stderr.write('No profile found. Run: difflog config\n');
+		process.stderr.write(`No profile found. Run: ${BIN} config\n`);
 		process.exit(1);
 	}
 
@@ -282,7 +293,7 @@ export async function profileCommand(args: string[]): Promise<void> {
 			return unshareCommand(session);
 		default:
 			process.stderr.write(`Unknown subcommand: ${args[0]}\n`);
-			process.stderr.write('Usage: difflog profile [share|password|unshare]\n');
+			process.stderr.write(`Usage: ${BIN} profile [share|password|unshare]\n`);
 			process.exit(1);
 	}
 }
