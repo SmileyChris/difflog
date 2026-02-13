@@ -42,6 +42,26 @@ bun cli:build
 
 The compiled binary will be at `./dist/difflog`.
 
+## Quick Start
+
+**First time?** Create a profile or import one from the web:
+
+```bash
+difflog config  # Create new profile
+# OR
+difflog login   # Import from difflog.dev
+```
+
+**Already set up?** Just run:
+
+```bash
+difflog  # Shows your most recent diff
+```
+
+That's it. Zero friction.
+
+---
+
 ## Authentication
 
 ### Web-Assisted Login (Recommended)
@@ -93,26 +113,6 @@ This bypasses the browser and authenticates directly with the difflog API. Usefu
 
 !!! warning "Shared Profiles Only"
     Direct login requires a shared profile with a sync password. Local-only profiles don't have passwords and must use web-assisted login.
-
-## Quick Start
-
-**First time?** Create a profile or import one from the web:
-
-```bash
-difflog config  # Create new profile
-# OR
-difflog login   # Import from difflog.dev
-```
-
-**Already set up?** Just run:
-
-```bash
-difflog  # Shows your most recent diff
-```
-
-That's it. Zero friction.
-
----
 
 ## Commands
 
