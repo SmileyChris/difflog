@@ -22,17 +22,22 @@ The system uses two different salts:
 
 | Salt | Purpose | Stored |
 |------|---------|--------|
-| **Password Salt** | Hashing password for authentication | In `password_hash` field (format: `salt:hash`) |
+| **Password Salt** (client) | SHA-256 transport hash | In `password_salt` column |
+| **Server Salt** | PBKDF2 server-side hash | In `password_hash` field (v2 format) |
 | **Encryption Salt** | AES-GCM encryption of content | In `salt` field |
 
 !!! warning "Important"
-    These are different values. The password salt is for auth verification, the encryption salt is for encrypting API keys and content.
+    These are different values. The password salt is for constructing the transport hash, the server salt protects against DB breach cracking, and the encryption salt is for encrypting API keys and content.
 
 ### Password Hashing
 
-Passwords are hashed client-side before transmission:
+Passwords are hashed in two layers — see [Encryption: Password Hashing](encryption.md#password-hashing) for details:
+
+1. **Client-side**: SHA-256 with client salt → transport hash (`clientSalt:base64(digest)`)
+2. **Server-side**: PBKDF2 (100k iterations) with server salt → stored hash (`v2:serverSalt:base64(derivedKey)`)
 
 ```typescript
+// Client: hash before sending
 async function hashPasswordForTransport(password: string, salt?: string): Promise<string> {
   const saltValue = salt || generateRandomSalt(); // (1)!
   const data = encoder.encode(saltValue + password);
@@ -42,6 +47,8 @@ async function hashPasswordForTransport(password: string, salt?: string): Promis
 ```
 
 1. If no salt provided, generates random 16-byte salt. For auth verification, **must** use the existing salt from the server.
+
+Legacy profiles with v1 hashes (plain transport hashes) are automatically upgraded to v2 on successful authentication.
 
 ## Sync Flow
 
