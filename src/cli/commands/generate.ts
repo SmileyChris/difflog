@@ -1,34 +1,10 @@
-import { getProfile, getSession, getDiffs, saveDiffs, trackDiffModified } from '../config';
+import { getProfile, getSession, getDiffs, saveDiffs, trackDiffModified, getApiKeys } from '../config';
 import { generateDiffContent } from '../../lib/actions/generateDiff';
 import type { GenerationDepth } from '../../lib/utils/constants';
 import { isConfigurationComplete, STEPS, type ProviderStep } from '../../lib/utils/providers';
-import { getPassword } from 'cross-keychain';
 import { canSync, download, upload } from '../sync';
 
 const API_HOST = process.env.DIFFLOG_API_HOST || 'https://difflog.dev';
-const SERVICE_NAME = 'difflog-cli';
-const PROVIDERS = ['anthropic', 'serper', 'perplexity', 'deepseek', 'gemini'] as const;
-
-async function getApiKeys(): Promise<Record<string, string | undefined>> {
-	const keys: Record<string, string | undefined> = {};
-
-	for (const provider of PROVIDERS) {
-		try {
-			const keychainValue = await getPassword(SERVICE_NAME, provider);
-			if (keychainValue) {
-				keys[provider] = keychainValue;
-			} else {
-				const envVar = `${provider.toUpperCase()}_API_KEY`;
-				keys[provider] = process.env[envVar];
-			}
-		} catch {
-			const envVar = `${provider.toUpperCase()}_API_KEY`;
-			keys[provider] = process.env[envVar];
-		}
-	}
-
-	return keys;
-}
 
 export async function generateCommand(): Promise<void> {
 	const profile = getProfile();

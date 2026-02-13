@@ -1,7 +1,7 @@
 import { getDiffs, getSession } from '../config';
 import { renderMarkdown } from '../render';
 import { startInteractive } from '../interactive';
-import { formatDiffDate } from '../../lib/utils/time';
+import { formatDiffDate } from '../time';
 
 export function showCommand(args: string[]): void {
 	const session = getSession();

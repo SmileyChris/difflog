@@ -1,13 +1,10 @@
-import { getSession, getProfile, getDiffs, saveDiffs, saveProfile, getPendingChanges, clearPendingChanges, getSyncMeta, saveSyncMeta } from './config';
+import { getSession, getProfile, getDiffs, saveDiffs, saveProfile, getPendingChanges, clearPendingChanges, getSyncMeta, saveSyncMeta, getApiKeys } from './config';
 import type { Session, Profile, Diff, PendingChanges, SyncMeta } from './config';
 import { localAwareFetch, BASE } from './api';
 import { encryptData, decryptData, hashPasswordForTransport, computeContentHash } from '../lib/utils/crypto';
 import { computeKeysHash } from '../lib/utils/sync';
 import type { ProviderSelections, ApiKeys } from '../lib/utils/sync';
-import { getPassword, setPassword } from 'cross-keychain';
-
-const SERVICE_NAME = 'difflog-cli';
-const PROVIDERS = ['anthropic', 'serper', 'perplexity', 'deepseek', 'gemini'] as const;
+import { setPassword } from 'cross-keychain';
 
 interface EncryptedKeysBlob {
 	apiKeys: Record<string, string>;
@@ -36,19 +33,6 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 		throw new Error(data.error || `Request failed: ${res.status}`);
 	}
 	return res.json() as Promise<T>;
-}
-
-async function getApiKeys(): Promise<Record<string, string>> {
-	const keys: Record<string, string> = {};
-	for (const provider of PROVIDERS) {
-		try {
-			const key = await getPassword(SERVICE_NAME, provider);
-			if (key) keys[provider] = key;
-		} catch {
-			// skip
-		}
-	}
-	return keys;
 }
 
 /** Upload pending local changes to the server */

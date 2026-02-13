@@ -7,6 +7,7 @@ import { lsCommand } from './commands/ls';
 import { showCommand } from './commands/show';
 import { generateCommand } from './commands/generate';
 import { configCommand } from './commands/config/index';
+import { profileCommand } from './commands/profile';
 import { canSync, download } from './sync';
 import pkg from '../../package.json';
 
@@ -17,6 +18,7 @@ const HELP = `difflog — developer intelligence diffs in your terminal
 Usage:
   difflog                    Show latest diff (or login if not authenticated)
   difflog config             Interactive configuration wizard (creates profile if needed)
+  difflog profile            Show profile info and sync status
   difflog login              Log in via browser (opens difflog.dev)
   difflog logout             Remove profile, diffs, and API keys
   difflog generate           Generate a new diff
@@ -34,6 +36,12 @@ Login flags:
 
 Show flags:
   --full, -f                 Full output mode (disable interactive navigation)
+
+Profile commands:
+  difflog profile                         Show profile info and sync status
+  difflog profile share                   Share profile to difflog.dev (enables sync)
+  difflog profile password                Change sync password
+  difflog profile unshare                 Remove profile from server (revert to local-only)
 
 Config commands:
   difflog config                                Interactive wizard (matches order below)
@@ -126,6 +134,13 @@ if (!command) {
 
 		case 'config':
 			configCommand(args.slice(1)).catch((err) => {
+				process.stderr.write(`Error: ${err.message}\n`);
+				process.exit(1);
+			});
+			break;
+
+		case 'profile':
+			profileCommand(args.slice(1)).catch((err) => {
 				process.stderr.write(`Error: ${err.message}\n`);
 				process.exit(1);
 			});

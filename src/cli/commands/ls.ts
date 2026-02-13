@@ -1,5 +1,5 @@
 import { getDiffs, getSession } from '../config';
-import { timeAgo } from '../../lib/utils/time';
+import { timeAgo } from '../time';
 
 export function lsCommand(): void {
 	const session = getSession();
