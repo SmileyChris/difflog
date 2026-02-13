@@ -1,13 +1,7 @@
 import { getProfile, clearAll } from '../config';
 import { deletePassword } from 'cross-keychain';
-
-const SERVICE_NAME = 'difflog-cli';
-const PROVIDERS = ['anthropic', 'serper', 'perplexity', 'deepseek', 'gemini'] as const;
-
-const RESET = '\x1b[0m';
-const DIM = '\x1b[2m';
-const GREEN = '\x1b[32m';
-const BRIGHT_YELLOW = '\x1b[93m';
+import { PROVIDER_IDS } from '../../lib/utils/providers';
+import { RESET, DIM, GREEN, BRIGHT_YELLOW, SERVICE_NAME } from '../ui';
 
 async function confirm(message: string): Promise<boolean> {
 	process.stdout.write(`${message} [y/N] `);
@@ -47,7 +41,7 @@ export async function logoutCommand(): Promise<void> {
 	}
 
 	// Remove API keys from OS keychain
-	for (const provider of PROVIDERS) {
+	for (const provider of PROVIDER_IDS) {
 		try {
 			await deletePassword(SERVICE_NAME, provider);
 		} catch {

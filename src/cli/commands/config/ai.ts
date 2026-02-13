@@ -1,19 +1,11 @@
 import { getProfile, saveProfile, clearProviderSelections, trackProfileModified, trackKeysModified } from '../../config';
 import { getPassword, setPassword, deletePassword } from 'cross-keychain';
 import { syncUpload } from '../../sync';
+import { PROVIDER_IDS } from '../../../lib/utils/providers';
+import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW, RED, SERVICE_NAME } from '../../ui';
 
-const SERVICE_NAME = 'difflog-cli';
-const PROVIDERS = ['anthropic', 'serper', 'perplexity', 'deepseek', 'gemini'] as const;
+const PROVIDERS = PROVIDER_IDS;
 type Provider = (typeof PROVIDERS)[number];
-
-// ANSI codes
-const RESET = '\x1b[0m';
-const DIM = '\x1b[2m';
-const BOLD = '\x1b[1m';
-const CYAN = '\x1b[36m';
-const GREEN = '\x1b[32m';
-const BRIGHT_YELLOW = '\x1b[93m';
-const RED = '\x1b[31m';
 
 const PROVIDER_LABELS: Record<Provider, string> = {
 	anthropic: 'Anthropic (Claude)',

@@ -3,13 +3,9 @@ import type { Session, Profile, Diff, PendingChanges, SyncMeta } from './config'
 import { localAwareFetch, BASE } from './api';
 import { encryptData, decryptData, hashPasswordForTransport, computeContentHash } from '../lib/utils/crypto';
 import { computeKeysHash } from '../lib/utils/sync';
-import type { ProviderSelections, ApiKeys } from '../lib/utils/sync';
+import type { ProviderSelections, ApiKeys, EncryptedKeysBlob } from '../lib/utils/sync';
 import { setPassword } from 'cross-keychain';
-
-interface EncryptedKeysBlob {
-	apiKeys: Record<string, string>;
-	providerSelections?: ProviderSelections;
-}
+import { SERVICE_NAME } from './ui';
 
 /** Check if the current session has the credentials needed for sync */
 export function canSync(): boolean {

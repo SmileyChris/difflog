@@ -4,14 +4,7 @@ import { showTopics, handleTopics } from './topics';
 import { showAiConfig, handleAi } from './ai';
 import { runInteractiveWizard } from './interactive';
 import { syncUpload } from '../../sync';
-
-// ANSI codes
-const RESET = '\x1b[0m';
-const DIM = '\x1b[2m';
-const BOLD = '\x1b[1m';
-const CYAN = '\x1b[36m';
-const GREEN = '\x1b[32m';
-const BRIGHT_YELLOW = '\x1b[93m';
+import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW } from '../../ui';
 
 export function formatAiConfig(providerSelections: any): string {
 	if (!providerSelections) return `${BRIGHT_YELLOW}curation unset, synthesis unset${RESET}`;

@@ -3,8 +3,7 @@ import { generateDiffContent } from '../../lib/actions/generateDiff';
 import type { GenerationDepth } from '../../lib/utils/constants';
 import { isConfigurationComplete, STEPS, type ProviderStep } from '../../lib/utils/providers';
 import { canSync, download, upload } from '../sync';
-
-const API_HOST = process.env.DIFFLOG_API_HOST || 'https://difflog.dev';
+import { BASE } from '../api';
 
 export async function generateCommand(): Promise<void> {
 	const profile = getProfile();
@@ -86,7 +85,7 @@ export async function generateCommand(): Promise<void> {
 			selectedDepth: depth,
 			lastDiffDate,
 			lastDiffContent,
-			apiHost: API_HOST
+			apiHost: BASE
 		});
 
 		// Save the diff

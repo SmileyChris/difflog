@@ -4,65 +4,10 @@ import { canSync } from '../sync';
 import { localAwareFetch, BASE } from '../api';
 import { encryptData, hashPasswordForTransport, uint8ToBase64 } from '../../lib/utils/crypto';
 import { computeKeysHash } from '../../lib/utils/sync';
-import type { ProviderSelections, ApiKeys } from '../../lib/utils/sync';
+import type { ProviderSelections, ApiKeys, EncryptedKeysBlob } from '../../lib/utils/sync';
 import { formatAiConfig } from './config/index';
 import { timeAgo } from '../time';
-
-// ANSI codes
-const RESET = '\x1b[0m';
-const DIM = '\x1b[2m';
-const BOLD = '\x1b[1m';
-const GREEN = '\x1b[32m';
-const RED = '\x1b[31m';
-const BRIGHT_YELLOW = '\x1b[93m';
-
-interface EncryptedKeysBlob {
-	apiKeys: Record<string, string>;
-	providerSelections?: ProviderSelections;
-}
-
-/** Read a line from stdin. Uses raw mode for masked input when isTTY. */
-async function prompt(label: string, mask = false): Promise<string> {
-	process.stderr.write(label);
-
-	if (!process.stdin.isTTY) {
-		const reader = process.stdin[Symbol.asyncIterator]();
-		const { value } = await reader.next();
-		const line = typeof value === 'string' ? value : new TextDecoder().decode(value);
-		return line.trimEnd();
-	}
-
-	return new Promise((resolve) => {
-		const buf: string[] = [];
-		process.stdin.setRawMode(true);
-		process.stdin.resume();
-		process.stdin.setEncoding('utf-8');
-
-		const onData = (ch: string) => {
-			if (ch === '\r' || ch === '\n') {
-				process.stdin.setRawMode(false);
-				process.stdin.pause();
-				process.stdin.removeListener('data', onData);
-				process.stderr.write('\n');
-				resolve(buf.join(''));
-			} else if (ch === '\x03') {
-				process.stdin.setRawMode(false);
-				process.stderr.write('\n');
-				process.exit(130);
-			} else if (ch === '\x7f' || ch === '\b') {
-				if (buf.length > 0) {
-					buf.pop();
-					if (mask) process.stderr.write('\b \b');
-				}
-			} else {
-				buf.push(ch);
-				process.stderr.write(mask ? '*' : ch);
-			}
-		};
-
-		process.stdin.on('data', onData);
-	});
-}
+import { RESET, DIM, BOLD, GREEN, RED, BRIGHT_YELLOW, prompt } from '../ui';
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 	const res = await localAwareFetch(url, init);

@@ -2,6 +2,8 @@ import { mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { getPassword } from 'cross-keychain';
+import { PROVIDER_IDS } from '../lib/utils/providers';
+import { SERVICE_NAME } from './ui';
 
 const CONFIG_DIR = join(homedir(), '.config', 'difflog');
 
@@ -32,12 +34,9 @@ function removeFile(filename: string): void {
 
 // API keys
 
-const SERVICE_NAME = 'difflog-cli';
-const PROVIDERS = ['anthropic', 'serper', 'perplexity', 'deepseek', 'gemini'] as const;
-
 export async function getApiKeys(): Promise<Record<string, string>> {
 	const keys: Record<string, string> = {};
-	for (const provider of PROVIDERS) {
+	for (const provider of PROVIDER_IDS) {
 		try {
 			const key = await getPassword(SERVICE_NAME, provider);
 			if (key) { keys[provider] = key; continue; }

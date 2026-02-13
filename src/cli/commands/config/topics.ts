@@ -1,16 +1,9 @@
 import { getProfile, saveProfile, trackProfileModified } from '../../config';
 import { syncUpload } from '../../sync';
+import { RESET, DIM, BOLD, GREEN, BRIGHT_YELLOW } from '../../ui';
 
 const CATEGORIES = ['languages', 'frameworks', 'tools', 'topics'] as const;
 type Category = (typeof CATEGORIES)[number];
-
-// ANSI codes
-const RESET = '\x1b[0m';
-const DIM = '\x1b[2m';
-const BOLD = '\x1b[1m';
-const CYAN = '\x1b[36m';
-const GREEN = '\x1b[32m';
-const BRIGHT_YELLOW = '\x1b[93m';
 
 export async function showTopics(): Promise<void> {
 	const profile = getProfile();

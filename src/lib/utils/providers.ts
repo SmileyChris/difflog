@@ -54,6 +54,7 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
 };
 
 export const PROVIDER_LIST = Object.values(PROVIDERS);
+export const PROVIDER_IDS = Object.keys(PROVIDERS) as (keyof typeof PROVIDERS)[];
 
 /**
  * Step configuration with labels and requirements

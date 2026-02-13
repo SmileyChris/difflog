@@ -4,60 +4,14 @@ import { login, localAwareFetch, BASE } from '../api';
 import { decryptData } from '../../lib/utils/crypto';
 import { importProfile } from '../../lib/utils/sync';
 import { setPassword } from 'cross-keychain';
+import { SERVICE_NAME, prompt } from '../ui';
 
 interface RelayPayload {
 	profileId: string;
 }
 
-const SERVICE_NAME = 'difflog-cli';
 const POLL_INTERVAL = 2000;
 const POLL_TIMEOUT = 5 * 60 * 1000;
-
-/** Read a line from stdin. Uses raw mode for masked input when isTTY. */
-async function prompt(label: string, mask = false): Promise<string> {
-	process.stderr.write(label);
-
-	if (!process.stdin.isTTY) {
-		// Piped input: read a line
-		const reader = process.stdin[Symbol.asyncIterator]();
-		const { value } = await reader.next();
-		const line = typeof value === 'string' ? value : new TextDecoder().decode(value);
-		return line.trimEnd();
-	}
-
-	return new Promise((resolve) => {
-		const buf: string[] = [];
-		process.stdin.setRawMode(true);
-		process.stdin.resume();
-		process.stdin.setEncoding('utf-8');
-
-		const onData = (ch: string) => {
-			if (ch === '\r' || ch === '\n') {
-				process.stdin.setRawMode(false);
-				process.stdin.pause();
-				process.stdin.removeListener('data', onData);
-				process.stderr.write('\n');
-				resolve(buf.join(''));
-			} else if (ch === '\x03') {
-				// Ctrl+C
-				process.stdin.setRawMode(false);
-				process.stderr.write('\n');
-				process.exit(130);
-			} else if (ch === '\x7f' || ch === '\b') {
-				// Backspace
-				if (buf.length > 0) {
-					buf.pop();
-					if (mask) process.stderr.write('\b \b');
-				}
-			} else {
-				buf.push(ch);
-				process.stderr.write(mask ? '*' : ch);
-			}
-		};
-
-		process.stdin.on('data', onData);
-	});
-}
 
 function waitForEnter(): Promise<void> {
 	return new Promise((resolve) => {

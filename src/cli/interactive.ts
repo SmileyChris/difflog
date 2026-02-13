@@ -6,14 +6,7 @@ import { spawn } from 'node:child_process';
 import { renderMarkdown } from './render';
 import { parseDiff, flattenTopics, type Topic } from './parser';
 import { isTopicRead, markTopicRead, toggleTopicRead } from './config';
-
-const RESET = '\x1b[0m';
-const DIM = '\x1b[2m';
-const BOLD = '\x1b[1m';
-const CYAN = '\x1b[36m';
-const UNDERLINE = '\x1b[4m';
-const GREEN = '\x1b[32m';
-const BRIGHT_YELLOW = '\x1b[93m';
+import { RESET, DIM, BOLD, CYAN, UNDERLINE, GREEN, BRIGHT_YELLOW } from './ui';
 
 /**
  * Open URL in default browser

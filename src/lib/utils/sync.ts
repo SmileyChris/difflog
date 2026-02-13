@@ -64,7 +64,7 @@ export interface ProviderSelections {
 }
 
 /** Shape of the expanded encrypted blob (apiKeys + providerSelections) */
-interface EncryptedKeysBlob {
+export interface EncryptedKeysBlob {
   apiKeys: Record<string, string>;
   providerSelections?: ProviderSelections;
 }

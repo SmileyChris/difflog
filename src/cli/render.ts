@@ -3,17 +3,7 @@
  * Handles headers, rules, list items, bold, inline code, and links.
  */
 
-const RESET = '\x1b[0m';
-const BOLD = '\x1b[1m';
-const DIM = '\x1b[2m';
-const ITALIC = '\x1b[3m';
-const UNDERLINE = '\x1b[4m';
-const CYAN = '\x1b[36m';
-const YELLOW = '\x1b[33m';
-const GREEN = '\x1b[32m';
-const MAGENTA = '\x1b[35m';
-const BLUE = '\x1b[34m';
-const BRIGHT_BLUE = '\x1b[94m';
+import { RESET, BOLD, DIM, ITALIC, UNDERLINE, CYAN, YELLOW, GREEN, MAGENTA, BRIGHT_BLUE } from './ui';
 
 /** Apply inline formatting: bold, code, links */
 function formatInline(text: string, highlightLinkIndex?: number): string {
