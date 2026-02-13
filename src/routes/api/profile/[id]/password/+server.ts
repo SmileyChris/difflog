@@ -4,8 +4,7 @@
  */
 
 import type { RequestHandler } from './$types';
-import type { ProfileRow } from '../../../types';
-import { verifyPassword } from '../../../auth';
+import { getProfileOrError, verifyAndUpgrade, hashPasswordWithSalt } from '../../../auth';
 
 interface PasswordUpdateRequest {
 	old_password_hash: string;
@@ -47,21 +46,13 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 			);
 		}
 
-		// Fetch profile
-		const profile = await DB.prepare('SELECT * FROM profiles WHERE id = ?')
-			.bind(profileId)
-			.first<ProfileRow>();
+		const lookup = await getProfileOrError(DB, profileId);
+		if (lookup.error) return lookup.error;
 
-		if (!profile) {
-			return new Response(JSON.stringify({ error: 'Profile not found' }), {
-				status: 404,
-				headers: { 'Content-Type': 'application/json' }
-			});
-		}
-
-		// Verify old password with rate limiting
-		const authError = await verifyPassword(DB, profile, profileId, body.old_password_hash);
-		if (authError) return authError;
+		const auth = await verifyAndUpgrade(DB, lookup.profile, profileId, body.old_password_hash, {
+			upgrade: false
+		});
+		if (auth.error) return auth.error;
 
 		// Build batch statements for atomic update
 		const statements: D1PreparedStatement[] = [];
@@ -100,12 +91,16 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 			}
 		}
 
+		// Hash the new password server-side before storing
+		const { hash: serverHash, clientSalt } = await hashPasswordWithSalt(body.new_password_hash);
+
 		// Update profile with new password hash, salt, encrypted API key
 		statements.push(
 			DB.prepare(
 				`
 				UPDATE profiles
 				SET password_hash = ?,
+					password_salt = ?,
 					salt = ?,
 					encrypted_api_key = ?,
 					failed_attempts = 0,
@@ -114,7 +109,7 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 					updated_at = datetime('now')
 				WHERE id = ?
 			`
-			).bind(body.new_password_hash, body.new_salt, body.new_encrypted_api_key, profileId)
+			).bind(serverHash, clientSalt, body.new_salt, body.new_encrypted_api_key, profileId)
 		);
 
 		// Execute all statements atomically

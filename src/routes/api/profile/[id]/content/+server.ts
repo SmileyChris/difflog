@@ -6,7 +6,7 @@
 
 import type { RequestHandler } from './$types';
 import type { ProfileRow, ContentRequest, ContentResponse } from '../../../types';
-import { verifyPassword, resetFailedAttempts } from '../../../auth';
+import { getProfileOrError, verifyAndUpgrade } from '../../../auth';
 
 export const POST: RequestHandler = async ({ request, params, platform }) => {
 	const DB = platform?.env?.DB;
@@ -29,24 +29,14 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 			});
 		}
 
-		// Fetch profile
-		const profile = await DB.prepare('SELECT * FROM profiles WHERE id = ?')
-			.bind(profileId)
-			.first<ProfileRow>();
+		const lookup = await getProfileOrError(DB, profileId);
+		if (lookup.error) return lookup.error;
+		const profile = lookup.profile;
 
-		if (!profile) {
-			return new Response(JSON.stringify({ error: 'Profile not found' }), {
-				status: 404,
-				headers: { 'Content-Type': 'application/json' }
-			});
-		}
-
-		// Verify password with rate limiting
-		const authError = await verifyPassword(DB, profile, profileId, body.password_hash);
-		if (authError) return authError;
-
-		// Reset failed attempts on success
-		await resetFailedAttempts(DB, profileId);
+		const auth = await verifyAndUpgrade(DB, profile, profileId, body.password_hash, {
+			resetAttempts: true
+		});
+		if (auth.error) return auth.error;
 
 		// Check if client already has current content (skip fetching if hashes match)
 		const skipDiffs = body.diffs_hash && body.diffs_hash === profile.diffs_hash;
