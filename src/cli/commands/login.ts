@@ -169,8 +169,8 @@ export async function loginCommand(args: string[]): Promise<void> {
 Usage: ${BIN} login [flags]
 
 Flags:
-  --profile <id>      Profile ID (skip browser login)
-  --password <pw>      Password (skip browser login)
+  --profile <id>       Profile ID (skip browser, prompts for password)
+  --password <pw>      Password (use with --profile to skip prompt)
   --no-browser         Print URL only, don't open browser
 `);
 
@@ -190,8 +190,12 @@ Flags:
 	}
 
 	try {
-		if (profileId && password) {
-			// Direct login with provided credentials
+		if (profileId) {
+			// Have profile ID — prompt for password if not provided
+			if (!password) {
+				password = await prompt('  Enter profile password: ', true);
+				process.stderr.write('\n');
+			}
 			await directLogin(profileId, password);
 		} else {
 			// Web-based login (default interactive flow)
