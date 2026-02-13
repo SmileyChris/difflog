@@ -4,7 +4,7 @@ icon: lucide/key-round
 
 # CLI Key Storage Architecture
 
-The CLI stores API keys in the operating system's native credential manager via the [`cross-keychain`](https://github.com/nicolo-ribaudo/cross-keychain) library. Keys are never written to disk as plaintext.
+The CLI stores API keys in the operating system's native credential manager via the [`cross-keychain`](https://github.com/nicolo-ribaudo/cross-keychain) library. Keys are never written to disk as plaintext. The service name (`difflog-cli`) is defined in `src/cli/ui.ts` and the provider list (`PROVIDER_IDS`) comes from `src/lib/utils/providers.ts`, shared with the web app.
 
 ## Overview
 
@@ -56,12 +56,12 @@ All keys are stored under a single service name with the provider as the account
 
 ### cross-keychain API
 
-The CLI uses three functions from `cross-keychain`:
+The CLI uses three functions from `cross-keychain`, with the service name and provider list defined in shared modules:
 
 ```typescript
 import { getPassword, setPassword, deletePassword } from 'cross-keychain';
-
-const SERVICE_NAME = 'difflog-cli';
+import { SERVICE_NAME } from './ui';           // 'difflog-cli'
+import { PROVIDER_IDS } from '../lib/utils/providers'; // ['anthropic', 'serper', ...]
 
 // Store a key
 await setPassword(SERVICE_NAME, 'anthropic', 'sk-ant-...');
@@ -106,11 +106,14 @@ When logging in from a shared profile (`difflog login`), the browser sends encry
 
 ### 4. Retrieval During Generation
 
-`difflog generate` (`src/cli/commands/generate.ts`) retrieves keys with an environment variable fallback:
+`difflog generate` (`src/cli/commands/generate.ts`) retrieves keys via `getApiKeys()` in `src/cli/config.ts`, which iterates over `PROVIDER_IDS` (from `src/lib/utils/providers.ts`) with an environment variable fallback:
 
 ```typescript
+import { PROVIDER_IDS } from '../lib/utils/providers';
+import { SERVICE_NAME } from './ui';
+
 async function getApiKeys() {
-    for (const provider of PROVIDERS) {
+    for (const provider of PROVIDER_IDS) {
         // 1. Try OS keychain first
         const keychainValue = await getPassword(SERVICE_NAME, provider);
         if (keychainValue) {

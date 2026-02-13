@@ -463,14 +463,10 @@ Not currently. The CLI uses a single-profile design for simplicity. To switch pr
 
 **Q: How do I log out?**
 
-Delete the session file:
+Use the logout command, which removes your profile, cached diffs, and API keys from the OS keychain:
 
 ```bash
-# Linux/macOS
-rm ~/.config/difflog/session.json
-
-# Windows
-del %APPDATA%\difflog\session.json
+difflog logout
 ```
 
 **Q: Where are my API keys stored?**
