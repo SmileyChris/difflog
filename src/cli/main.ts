@@ -63,14 +63,23 @@ if (!command) {
 			} catch { /* silent */ }
 		}
 
-		const diffs = getDiffs();
+		let diffs = getDiffs();
 		if (diffs.length === 0) {
 			process.stderr.write(`No diffs found. Run: ${BIN} generate\n`);
 			process.exit(1);
 		}
-		// Show the first diff (most recent)
-		// Don't call process.exit() here - let interactive mode keep running
-		showCommand(['1']);
+
+		// Show the first diff; loop back after generation
+		let action = await showCommand(['1']);
+		while (action === 'generate') {
+			const result = await generateCommand([]);
+			if (result === 'quit') break;
+			// cancel or done: return to interactive viewer
+			diffs = getDiffs();
+			if (diffs.length === 0) break;
+			action = await showCommand(['1']);
+		}
+		process.exit(0);
 	}
 } else {
 

@@ -1,10 +1,10 @@
 import { getDiffs, getSession } from '../config';
 import { renderMarkdown } from '../render';
-import { startInteractive } from '../interactive';
+import { startInteractive, type InteractiveAction } from '../interactive';
 import { formatDiffDate } from '../time';
 import { BIN, showHelp } from '../ui';
 
-export function showCommand(args: string[]): void {
+export async function showCommand(args: string[]): Promise<InteractiveAction> {
 	showHelp(args, `Show a diff by index or UUID prefix
 
 Usage: ${BIN} show <number|id> [flags]
@@ -95,9 +95,10 @@ Flags:
 			? new Date(diff.generated_at).toDateString() === new Date().toDateString()
 			: false;
 
-		startInteractive(diff.id, diff.content, title, dateInfo, diffPosition, isTodayDiff);
+		return startInteractive(diff.id, diff.content, title, dateInfo, diffPosition, isTodayDiff);
 	} else {
 		// Full mode (piped or --full flag)
 		process.stdout.write(renderMarkdown(diff.content) + '\n');
+		return 'quit';
 	}
 }

@@ -1,15 +1,130 @@
 import { getProfile, getSession, getDiffs, saveDiffs, trackDiffModified, getApiKeys } from '../config';
 import { generateDiffContent } from '../../lib/actions/generateDiff';
-import type { GenerationDepth } from '../../lib/utils/constants';
+import { DEPTHS, type GenerationDepth } from '../../lib/utils/constants';
 import { isConfigurationComplete, STEPS, type ProviderStep } from '../../lib/utils/providers';
 import { canSync, download, upload } from '../sync';
 import { BASE } from '../api';
-import { BIN, showHelp } from '../ui';
+import { BIN, showHelp, BOLD, RESET, DIM, CYAN } from '../ui';
 
-export async function generateCommand(args: string[]): Promise<void> {
+const PROVIDER_NAMES: Record<string, string> = {
+	anthropic: 'Anthropic',
+	perplexity: 'Perplexity',
+	deepseek: 'DeepSeek',
+	gemini: 'Gemini',
+	serper: 'Serper',
+};
+
+function getProvidersText(selections: { search: string | null; curation: string | null; synthesis: string | null }): string {
+	const providers = new Set<string>();
+	if (selections.search) providers.add(PROVIDER_NAMES[selections.search] || selections.search);
+	if (selections.curation) providers.add(PROVIDER_NAMES[selections.curation] || selections.curation);
+	if (selections.synthesis) providers.add(PROVIDER_NAMES[selections.synthesis || 'anthropic'] || 'Anthropic');
+
+	const list = Array.from(providers);
+	if (list.length === 0) return 'Anthropic';
+	if (list.length === 1) return list[0];
+	if (list.length === 2) return list.join(' and ');
+	const last = list.pop();
+	return `${list.join(', ')} and ${last}`;
+}
+
+function showPreGenScreen(
+	trackingText: string,
+	providersText: string,
+	depthIndex: number
+): void {
+	const CLEAR = '\x1b[2J\x1b[H';
+	const lines: string[] = [];
+
+	lines.push('');
+	lines.push(`  ${BOLD}Ready to generate${RESET}`);
+	lines.push('');
+	lines.push(`  ${DIM}Tracking${RESET}   ${trackingText}`);
+
+	// Depth selector
+	const depthParts = DEPTHS.map((d, i) => {
+		if (i === depthIndex) return `${BOLD}${CYAN}${d.label}${RESET}`;
+		return `${DIM}${d.label}${RESET}`;
+	});
+	const depthLine = depthParts.join(`${DIM}  \u25B8  ${RESET}`);
+	lines.push(`  ${DIM}Depth${RESET}      ${depthLine}`);
+
+	lines.push('');
+	lines.push(`  ${DIM}Using ${providersText}${RESET}`);
+	lines.push('');
+	lines.push(`  ${DIM}[Enter]${RESET} Generate  ${DIM}[${CYAN}\u2190\u2192${RESET}${DIM}]${RESET} Depth  ${DIM}[Esc]${RESET} Cancel`);
+	lines.push('');
+
+	process.stdout.write(CLEAR + lines.join('\n'));
+}
+
+type PreGenResult =
+	| { action: 'generate'; depth: GenerationDepth }
+	| { action: 'cancel' }
+	| { action: 'quit' };
+
+async function interactivePreGen(
+	profile: { languages: string[]; frameworks: string[]; tools: string[]; depth?: string },
+	selections: { search: string | null; curation: string | null; synthesis: string | null }
+): Promise<PreGenResult> {
+	const tracking = [...(profile.languages || []), ...(profile.frameworks || []), ...(profile.tools || [])];
+	const trackingText = tracking.length > 0 ? tracking.join(' \u00B7 ') : 'No topics configured';
+	const providersText = getProvidersText(selections);
+
+	const profileDepth = (profile.depth as GenerationDepth) || 'standard';
+	let depthIndex = DEPTHS.findIndex(d => d.id === profileDepth);
+	if (depthIndex === -1) depthIndex = 1;
+
+	showPreGenScreen(trackingText, providersText, depthIndex);
+
+	return new Promise((resolve) => {
+		process.stdin.setRawMode(true);
+		process.stdin.resume();
+		process.stdin.setEncoding('utf-8');
+
+		const cleanup = () => {
+			process.stdin.setRawMode(false);
+			process.stdin.pause();
+			process.stdin.removeListener('data', onData);
+		};
+
+		const onData = (ch: string) => {
+			if (ch === '\r' || ch === '\n') {
+				cleanup();
+				process.stdout.write('\x1b[2J\x1b[H');
+				resolve({ action: 'generate', depth: DEPTHS[depthIndex].id });
+			} else if (ch === '\x1b' && ch.length === 1) {
+				// Esc: cancel, go back
+				cleanup();
+				process.stdout.write('\x1b[2J\x1b[H');
+				resolve({ action: 'cancel' });
+			} else if (ch === 'q' || ch === '\x03') {
+				// q / Ctrl+C: quit entirely
+				cleanup();
+				process.stdout.write('\x1b[2J\x1b[H');
+				resolve({ action: 'quit' });
+			} else if (ch === '\x1b[D' || ch === '\x1b[C') {
+				// Left / Right arrow
+				if (ch === '\x1b[D' && depthIndex > 0) depthIndex--;
+				if (ch === '\x1b[C' && depthIndex < DEPTHS.length - 1) depthIndex++;
+				showPreGenScreen(trackingText, providersText, depthIndex);
+			}
+		};
+
+		process.stdin.on('data', onData);
+	});
+}
+
+/** Result of generation: 'done' means generated or skipped, 'cancel' means go back, 'quit' means exit */
+export type GenerateResult = 'done' | 'cancel' | 'quit';
+
+export async function generateCommand(args: string[]): Promise<GenerateResult> {
 	showHelp(args, `Generate a new diff based on your profile
 
-Usage: ${BIN} generate
+Usage: ${BIN} generate [--now]
+
+Options:
+  --now    Skip interactive screen and generate immediately
 `);
 
 	const profile = getProfile();
@@ -48,6 +163,19 @@ Usage: ${BIN} generate
 		process.exit(1);
 	}
 
+	// Determine depth: interactive screen or immediate
+	let depth: GenerationDepth;
+	const skipInteractive = args.includes('--now') || !process.stdin.isTTY;
+
+	if (skipInteractive) {
+		depth = (profile.depth as GenerationDepth) || 'standard';
+	} else {
+		const result = await interactivePreGen(profile, selections);
+		if (result.action === 'cancel') return 'cancel';
+		if (result.action === 'quit') return 'quit';
+		depth = result.depth;
+	}
+
 	// Sync down before generating to get latest state
 	const session = getSession();
 	if (session && canSync()) {
@@ -62,9 +190,6 @@ Usage: ${BIN} generate
 	const lastDiff = diffs[0];
 	const lastDiffDate = lastDiff?.generated_at || null;
 	const lastDiffContent = lastDiff?.content;
-
-	// Use profile depth or default to 'standard'
-	const depth = (profile.depth as GenerationDepth) || 'standard';
 
 	process.stdout.write('Generating diff...\n');
 	process.stdout.write(`Profile: ${profile.name}\n`);
@@ -111,6 +236,7 @@ Usage: ${BIN} generate
 			process.stdout.write(`Cost: $${diff.cost.toFixed(4)}\n`);
 		}
 		process.stdout.write(`\nRun \`${BIN}\` to view it.\n`);
+		return 'done';
 	} catch (error) {
 		process.stderr.write(`\nError generating diff: ${error instanceof Error ? error.message : 'Unknown error'}\n`);
 		process.exit(1);

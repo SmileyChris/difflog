@@ -58,7 +58,8 @@ function displayHelp(): void {
 	process.stdout.write(`${DIM}Links${RESET}\n`);
 	process.stdout.write(`  ${CYAN}Tab${RESET}        Cycle through links\n`);
 	process.stdout.write(`  ${CYAN}Enter${RESET}      Open link in browser\n\n`);
-	process.stdout.write(`${DIM}View${RESET}\n`);
+	process.stdout.write(`${DIM}Actions${RESET}\n`);
+	process.stdout.write(`  ${CYAN}g${RESET}          Generate new diff\n`);
 	process.stdout.write(`  ${CYAN}f${RESET}          Show full diff\n`);
 	process.stdout.write(`  ${CYAN}q  Esc${RESET}     Quit\n\n`);
 	process.stdout.write(`${DIM}Press any key to return${RESET}\n`);
@@ -343,8 +344,10 @@ function getCategoryNavigation(
 	return { prev: prevCategories, next: nextCategories };
 }
 
+export type InteractiveAction = 'quit' | 'generate';
+
 /**
- * Start interactive viewer
+ * Start interactive viewer. Resolves with the exit action.
  */
 export function startInteractive(
 	diffId: string,
@@ -353,7 +356,7 @@ export function startInteractive(
 	dateInfo: string = '',
 	diffPosition?: { current: number; total: number },
 	isTodayDiff: boolean = false
-): void {
+): Promise<InteractiveAction> {
 	const parsed = parseDiff(markdown);
 	const allItems = flattenTopics(parsed);
 
@@ -364,6 +367,8 @@ export function startInteractive(
 		process.stderr.write('No topics with links found in diff.\n');
 		process.exit(1);
 	}
+
+	return new Promise((resolve) => {
 
 	let currentIndex = 0;
 	let currentLinkIndex = 0;
@@ -502,7 +507,15 @@ export function startInteractive(
 		// Check for quit (q, Ctrl+C, ESC)
 		if (key === 'q' || key === '\u0003' || key === '\u001b') {
 			cleanup();
-			process.exit(0);
+			resolve('quit');
+			return;
+		}
+
+		// Generate (g)
+		if (key === 'g') {
+			cleanup();
+			resolve('generate');
+			return;
 		}
 
 		// Full mode (f)
@@ -510,7 +523,8 @@ export function startInteractive(
 			cleanup();
 			// Show full markdown
 			process.stdout.write(renderMarkdown(markdown) + '\n');
-			process.exit(0);
+			resolve('quit');
+			return;
 		}
 
 		// Open link (Enter)
@@ -790,9 +804,11 @@ export function startInteractive(
 	// Handle process exit
 	const exitHandler = () => {
 		cleanup();
-		process.exit(0);
+		resolve('quit');
 	};
 
 	process.on('SIGINT', exitHandler);
 	process.on('SIGTERM', exitHandler);
+
+	}); // end Promise
 }

@@ -41,10 +41,10 @@ export function formatAiConfig(providerSelections: any): string {
 
 	// Add unset warnings for required capabilities
 	if (!providerSelections.curation) {
-		parts.push(`${BRIGHT_YELLOW}curation unset${RESET}`);
+		parts.push(`${BRIGHT_YELLOW}curation unset${RESET}${DIM}`);
 	}
 	if (!providerSelections.synthesis) {
-		parts.push(`${BRIGHT_YELLOW}synthesis unset${RESET}`);
+		parts.push(`${BRIGHT_YELLOW}synthesis unset${RESET}${DIM}`);
 	}
 
 	return parts.length > 0 ? parts.join(', ') : `${DIM}none${RESET}`;

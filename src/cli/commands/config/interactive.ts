@@ -10,6 +10,11 @@ import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW, SERVICE_NAME } from '../.
 const PROVIDERS = PROVIDER_IDS;
 type Provider = (typeof PROVIDERS)[number];
 
+class QuitSignal extends Error {
+	profile: any;
+	constructor(profile?: any) { super('quit'); this.profile = profile; }
+}
+
 function clearScreen() {
 	process.stdout.write('\x1b[2J\x1b[H');
 }
@@ -236,6 +241,10 @@ async function editDepth(profile: any): Promise<any> {
 				tempFocus = newFocus;
 			}
 			render();
+		} else if (key === 'q') {
+			// Save depth changes to profile, then quit
+			profile = { ...profile, depth: depths[selectedDepth], customFocus: tempFocus };
+			throw new QuitSignal(profile);
 		} else if (key === '\u001b' || key === '\u0003') {
 			// Save and exit
 			return {
@@ -315,6 +324,10 @@ async function editList(
 				selectedIndex = allOptions.length - 1;
 			}
 			render();
+		} else if (key === 'q') {
+			// Save list changes to profile, then quit
+			profile = { ...profile, [category]: Array.from(current) };
+			throw new QuitSignal(profile);
 		} else if (key === '\u001b' || key === '\u0003') {
 			// Esc - save and go back
 			return { ...profile, [category]: Array.from(current) };
@@ -398,11 +411,13 @@ async function editAi(profile: any): Promise<any> {
 		}
 	}
 
-	const selections = profile.providerSelections || {
-		search: null,
-		curation: null,
-		synthesis: null
+	const existing = profile.providerSelections || {};
+	const selections = {
+		search: existing.search ?? null,
+		curation: existing.curation ?? null,
+		synthesis: existing.synthesis ?? null
 	};
+	const originalSelections = JSON.stringify(selections);
 
 	const render = () => {
 		clearScreen();
@@ -535,9 +550,18 @@ async function editAi(profile: any): Promise<any> {
 			}
 
 			render();
+		} else if (key === 'q') {
+			// Save selection changes to profile, then quit
+			if (JSON.stringify(selections) !== originalSelections) {
+				profile = { ...profile, providerSelections: selections };
+			}
+			throw new QuitSignal(profile);
 		} else if (key === '\u001b' || key === '\u0003') {
-			// Save and exit
-			return { ...profile, providerSelections: selections };
+			// Exit — only update profile if selections changed
+			if (JSON.stringify(selections) !== originalSelections) {
+				return { ...profile, providerSelections: selections };
+			}
+			return profile;
 		}
 	}
 }
@@ -645,6 +669,21 @@ export async function runInteractiveWizard(): Promise<void> {
 	};
 	process.on('SIGINT', sigintHandler);
 
+	const handleQuit = async (): Promise<boolean> => {
+		const hasChanges = hasProfileChanged(originalProfile, profile);
+		const decision = await quitConfirmation(hasChanges);
+
+		if (decision === 'save') {
+			await cleanup(true);
+			return true;
+		} else if (decision === 'discard') {
+			await cleanup(false);
+			return true;
+		}
+		// 'cancel' — continue the loop
+		return false;
+	};
+
 	try {
 		while (running) {
 			renderMainMenu(selectedSection, profile);
@@ -652,20 +691,7 @@ export async function runInteractiveWizard(): Promise<void> {
 			const key = await readKey();
 
 			if (key === '\u001b' || key === 'q') {
-				// Escape or 'q' - check for changes
-				const hasChanges = hasProfileChanged(originalProfile, profile);
-				const decision = await quitConfirmation(hasChanges);
-
-				if (decision === 'save') {
-					await cleanup(true);
-					running = false;
-					break;
-				} else if (decision === 'discard') {
-					await cleanup(false);
-					running = false;
-					break;
-				}
-				// If 'cancel', just continue the loop and re-render
+				if (await handleQuit()) break;
 			} else if (key === '\u0003') {
 				// Ctrl+C - always discard
 				await cleanup(false, false);
@@ -680,28 +706,37 @@ export async function runInteractiveWizard(): Promise<void> {
 			} else if (key === '\r' || key === '\n') {
 				const section = sections[selectedSection];
 
-				switch (section) {
-					case 'name':
-						profile = await editName(profile);
-						break;
-					case 'ai':
-						profile = await editAi(profile);
-						break;
-					case 'languages':
-						profile = await editList(profile, 'languages', 'Languages', LANGUAGE_OPTIONS);
-						break;
-					case 'frameworks':
-						profile = await editList(profile, 'frameworks', 'Frameworks', FRAMEWORK_OPTIONS);
-						break;
-					case 'tools':
-						profile = await editList(profile, 'tools', 'Tools', TOOL_OPTIONS);
-						break;
-					case 'topics':
-						profile = await editList(profile, 'topics', 'Topics', TOPIC_OPTIONS);
-						break;
-					case 'depth':
-						profile = await editDepth(profile);
-						break;
+				try {
+					switch (section) {
+						case 'name':
+							profile = await editName(profile);
+							break;
+						case 'ai':
+							profile = await editAi(profile);
+							break;
+						case 'languages':
+							profile = await editList(profile, 'languages', 'Languages', LANGUAGE_OPTIONS);
+							break;
+						case 'frameworks':
+							profile = await editList(profile, 'frameworks', 'Frameworks', FRAMEWORK_OPTIONS);
+							break;
+						case 'tools':
+							profile = await editList(profile, 'tools', 'Tools', TOOL_OPTIONS);
+							break;
+						case 'topics':
+							profile = await editList(profile, 'topics', 'Topics', TOPIC_OPTIONS);
+							break;
+						case 'depth':
+							profile = await editDepth(profile);
+							break;
+					}
+				} catch (err) {
+					if (err instanceof QuitSignal) {
+						if (err.profile) profile = err.profile;
+						if (await handleQuit()) break;
+					} else {
+						throw err;
+					}
 				}
 			}
 		}
