@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS profiles (
   id TEXT PRIMARY KEY,              -- UUID
   name TEXT NOT NULL,
-  password_hash TEXT NOT NULL,      -- bcrypt hash
+  password_hash TEXT NOT NULL,      -- PBKDF2 server-side hash (v2:serverSalt:hash format)
   encrypted_api_key TEXT NOT NULL,  -- base64(AES-GCM encrypted)
   salt TEXT NOT NULL,               -- base64(random salt for PBKDF2)
   languages TEXT,                   -- JSON array
