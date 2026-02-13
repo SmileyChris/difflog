@@ -58,8 +58,6 @@ difflog login   # Import from difflog.dev
 difflog  # Shows your most recent diff
 ```
 
-That's it. Zero friction.
-
 ---
 
 ## Authentication
