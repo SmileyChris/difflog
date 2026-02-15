@@ -1,5 +1,10 @@
 import { hashPasswordForTransport, decryptApiKey, decryptData } from '../lib/utils/crypto';
-import type { Diff, Profile, Session } from './config';
+import { fetchJson as sharedFetchJson, ApiError } from '../lib/utils/api';
+import { sortDiffsNewestFirst } from '../lib/utils/sync-core';
+import type { Diff } from '../lib/types/sync';
+import type { Profile, Session } from './config';
+
+export { ApiError } from '../lib/utils/api';
 
 export const BASE = process.env.DIFFLOG_URL || 'https://difflog.dev';
 
@@ -14,30 +19,14 @@ export async function localAwareFetch(url: string, init?: RequestInit): Promise<
 	}
 }
 
-class ApiError extends Error {
-	status: number;
-	constructor(message: string, status: number) {
-		super(message);
-		this.status = status;
-	}
-}
-
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-	const res = await localAwareFetch(url, init);
-	if (!res.ok) {
-		const data = (await res.json().catch(() => ({}))) as { error?: string; attempts_remaining?: number };
-		let message = data.error || `Request failed: ${res.status}`;
-		if (res.status === 401 && typeof data.attempts_remaining === 'number') {
-			message = `Invalid password (${data.attempts_remaining} attempts remaining)`;
-		}
-		throw new ApiError(message, res.status);
-	}
-	return res.json() as Promise<T>;
+/** CLI-specific fetchJson that uses localAwareFetch */
+export function cliFetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+	return sharedFetchJson<T>(url, init, localAwareFetch);
 }
 
 /** GET /api/share/{id} — returns password_salt (public, no auth) */
 async function getShareInfo(profileId: string): Promise<{ password_salt: string }> {
-	const data = await fetchJson<{ password_salt?: string | null }>(
+	const data = await cliFetchJson<{ password_salt?: string | null }>(
 		`${BASE}/api/share/${profileId}`
 	);
 	if (!data.password_salt) {
@@ -49,7 +38,7 @@ async function getShareInfo(profileId: string): Promise<{ password_salt: string 
 /** GET /api/profile/{id}?password_hash=... — returns encrypted profile */
 async function downloadProfile(profileId: string, password: string, passwordSalt: string) {
 	const passwordHash = await hashPasswordForTransport(password, passwordSalt);
-	return fetchJson<{
+	return cliFetchJson<{
 		id: string;
 		name: string;
 		encrypted_api_key: string;
@@ -66,7 +55,7 @@ async function downloadProfile(profileId: string, password: string, passwordSalt
 /** POST /api/profile/{id}/content — returns encrypted diffs + stars */
 async function downloadContent(profileId: string, password: string, passwordSalt: string) {
 	const passwordHash = await hashPasswordForTransport(password, passwordSalt);
-	return fetchJson<{
+	return cliFetchJson<{
 		diffs: { id: string; encrypted_data: string }[];
 		stars: { id: string; encrypted_data: string }[];
 		salt: string;
@@ -124,7 +113,7 @@ export async function login(
 	}
 
 	// Sort newest first
-	diffs.sort((a, b) => new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime());
+	sortDiffsNewestFirst(diffs);
 
 	const profile: Profile = {
 		id: profileData.id,

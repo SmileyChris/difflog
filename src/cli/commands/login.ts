@@ -118,7 +118,10 @@ async function webLogin(noBrowser: boolean): Promise<void> {
 
 	// Use import flow to fetch profile and decrypt keys
 	process.stderr.write('  Fetching profile...\n');
-	const { profile, diffs } = await importProfile(profileId, password);
+	const { profile, diffs } = await importProfile(profileId, password, {
+		baseUrl: BASE,
+		fetchFn: localAwareFetch
+	});
 
 	// Store API keys in OS keychain
 	if (profile.apiKeys) {

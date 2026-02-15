@@ -1,9 +1,17 @@
 import { getSession, getProfile, getDiffs, saveDiffs, saveProfile, getPendingChanges, clearPendingChanges, getSyncMeta, saveSyncMeta, getApiKeys } from './config';
 import type { Session, Profile, Diff, PendingChanges, SyncMeta } from './config';
-import { localAwareFetch, BASE } from './api';
-import { encryptData, decryptData, hashPasswordForTransport, computeContentHash } from '../lib/utils/crypto';
-import { computeKeysHash } from '../lib/utils/sync';
-import type { ProviderSelections, ApiKeys, EncryptedKeysBlob } from '../lib/utils/sync';
+import { cliFetchJson, BASE } from './api';
+import { encryptData, hashPasswordForTransport, computeContentHash } from '../lib/utils/crypto';
+import type { ProviderSelections, ApiKeys, EncryptedKeysBlob } from '../lib/types/sync';
+import {
+	encryptDiffs,
+	decryptAndMergeDiffs,
+	decryptKeysBlob,
+	buildProfileMetadata,
+	buildSyncPayload,
+	sortDiffsNewestFirst,
+	computeKeysHash
+} from '../lib/utils/sync-core';
 import { setPassword } from 'cross-keychain';
 import { SERVICE_NAME } from './ui';
 
@@ -22,15 +30,6 @@ export async function syncUpload(): Promise<void> {
 	}
 }
 
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-	const res = await localAwareFetch(url, init);
-	if (!res.ok) {
-		const data = (await res.json().catch(() => ({}))) as { error?: string };
-		throw new Error(data.error || `Request failed: ${res.status}`);
-	}
-	return res.json() as Promise<T>;
-}
-
 /** Upload pending local changes to the server */
 export async function upload(session: Session): Promise<number> {
 	const profile = getProfile();
@@ -44,19 +43,9 @@ export async function upload(session: Session): Promise<number> {
 	const passwordHash = await hashPasswordForTransport(session.password, session.passwordSalt);
 	const diffs = getDiffs();
 
-	// Encrypt modified diffs
+	// Encrypt modified diffs using shared helper
 	const modifiedSet = new Set(pending.modifiedDiffs);
-	const diffsToUpload: { id: string; encrypted_data: string }[] = [];
-	for (const diff of diffs) {
-		if (!modifiedSet.has(diff.id)) continue;
-		if (diff.isPublic) {
-			const { isPublic, ...diffData } = diff;
-			diffsToUpload.push({ id: diff.id, encrypted_data: JSON.stringify(diffData) });
-		} else {
-			const encrypted = await encryptData(diff, session.password, session.salt);
-			diffsToUpload.push({ id: diff.id, encrypted_data: encrypted });
-		}
-	}
+	const diffsToUpload = await encryptDiffs(diffs, modifiedSet, session.password, session.salt);
 
 	// Compute diffs hash over all local diffs
 	const diffsHash = await computeContentHash(diffs);
@@ -75,29 +64,21 @@ export async function upload(session: Session): Promise<number> {
 	}
 
 	// Build profile metadata if modified
-	const profileData = pending.profileModified ? {
-		name: profile.name,
-		languages: profile.languages,
-		frameworks: profile.frameworks,
-		tools: profile.tools,
-		topics: profile.topics,
-		depth: profile.depth,
-		custom_focus: profile.customFocus
-	} : undefined;
+	const profileData = pending.profileModified ? buildProfileMetadata(profile) : undefined;
 
-	await fetchJson(`${BASE}/api/profile/${session.profileId}/sync`, {
+	await cliFetchJson(`${BASE}/api/profile/${session.profileId}/sync`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			password_hash: passwordHash,
+		body: JSON.stringify(buildSyncPayload({
+			passwordHash,
 			diffs: diffsToUpload,
-			deleted_diff_ids: pending.deletedDiffs,
-			diffs_hash: diffsHash,
-			stars_hash: '',
-			encrypted_api_key: encryptedApiKey,
-			keys_hash: keysHash,
+			deletedDiffIds: pending.deletedDiffs,
+			diffsHash,
+			starsHash: '',
+			encryptedApiKey,
+			keysHash,
 			profile: profileData
-		})
+		}))
 	});
 
 	// Update sync meta
@@ -127,7 +108,7 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 	// Pass local hashes so server can skip unchanged collections
 	const localKeysHash = syncMeta.keysHash;
 
-	const data = await fetchJson<{
+	const data = await cliFetchJson<{
 		diffs: { id: string; encrypted_data: string }[];
 		stars: { id: string; encrypted_data: string }[];
 		diffs_skipped?: boolean;
@@ -157,65 +138,21 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 	let downloaded = 0;
 	let profileUpdated = false;
 
-	// Merge diffs (unless server indicated no changes)
+	// Merge diffs using shared helper (unless server indicated no changes)
 	let mergedDiffs = [...localDiffs];
-	const pendingModified = new Set(pending.modifiedDiffs);
-	const pendingDeleted = new Set(pending.deletedDiffs);
-
 	if (!data.diffs_skipped) {
-		const serverDiffIds = new Set<string>();
-
-		for (const encDiff of data.diffs) {
-			try {
-				let diff: Diff;
-				if (encDiff.encrypted_data.startsWith('{')) {
-					diff = JSON.parse(encDiff.encrypted_data);
-					diff.isPublic = true;
-				} else {
-					diff = await decryptData<Diff>(encDiff.encrypted_data, session.password, salt);
-					diff.isPublic = false;
-				}
-				serverDiffIds.add(encDiff.id);
-
-				const existingIdx = mergedDiffs.findIndex(d => d.id === encDiff.id);
-				if (existingIdx === -1 && !pendingDeleted.has(encDiff.id)) {
-					mergedDiffs.push(diff);
-					downloaded++;
-				} else if (existingIdx !== -1 && !pendingModified.has(encDiff.id)) {
-					// Server wins for non-locally-modified diffs
-					mergedDiffs[existingIdx] = diff;
-				}
-			} catch {
-				// skip diffs that fail to decrypt
-			}
-		}
-
-		// Remove diffs deleted on server (unless locally modified or pending delete)
-		mergedDiffs = mergedDiffs.filter(d =>
-			serverDiffIds.has(d.id) || pendingDeleted.has(d.id) || pendingModified.has(d.id)
-		);
+		const result = await decryptAndMergeDiffs(data.diffs, localDiffs, pending, session.password, salt);
+		mergedDiffs = result.merged;
+		downloaded = result.downloaded;
 	}
 
 	// Apply keys blob if server returned one and no local key changes pending
 	if (data.encrypted_api_key && !pending.keysModified) {
 		try {
-			const decrypted = await decryptData<EncryptedKeysBlob | Record<string, string>>(
-				data.encrypted_api_key, session.password, salt
-			);
-
-			let apiKeys: Record<string, string>;
-			let providerSelections: ProviderSelections | undefined;
-
-			if (decrypted && typeof decrypted === 'object' && 'apiKeys' in decrypted) {
-				const blob = decrypted as EncryptedKeysBlob;
-				apiKeys = blob.apiKeys;
-				providerSelections = blob.providerSelections;
-			} else {
-				apiKeys = decrypted as Record<string, string>;
-			}
+			const result = await decryptKeysBlob(data.encrypted_api_key, session.password, salt);
 
 			// Store keys in OS keychain
-			for (const [provider, key] of Object.entries(apiKeys)) {
+			for (const [provider, key] of Object.entries(result.apiKeys)) {
 				if (key) {
 					try {
 						await setPassword(SERVICE_NAME, provider, key);
@@ -226,8 +163,8 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 			}
 
 			// Update provider selections on profile
-			if (providerSelections) {
-				profile.providerSelections = providerSelections;
+			if (result.providerSelections) {
+				profile.providerSelections = result.providerSelections;
 				profileUpdated = true;
 			}
 		} catch {
@@ -248,7 +185,7 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 	}
 
 	// Sort diffs newest first
-	mergedDiffs.sort((a, b) => new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime());
+	sortDiffsNewestFirst(mergedDiffs);
 
 	saveDiffs(mergedDiffs);
 	if (profileUpdated) saveProfile(profile);

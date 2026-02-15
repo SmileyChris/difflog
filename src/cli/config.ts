@@ -4,6 +4,9 @@ import { join } from 'node:path';
 import { getPassword } from 'cross-keychain';
 import { PROVIDER_IDS } from '../lib/utils/providers';
 import { SERVICE_NAME } from './ui';
+import type { Diff, ProfileCore, PendingChanges as SharedPendingChanges } from '../lib/types/sync';
+
+export type { Diff } from '../lib/types/sync';
 
 const CONFIG_DIR = join(homedir(), '.config', 'difflog');
 
@@ -83,20 +86,11 @@ export function clearAll(): void {
 
 // Profile
 
-export interface Profile {
-	id: string;
-	name: string;
+export interface Profile extends ProfileCore {
 	languages: string[];
 	frameworks: string[];
 	tools: string[];
 	topics: string[];
-	depth: string;
-	customFocus: string;
-	providerSelections?: {
-		search: string | null;
-		curation: string | null;
-		synthesis: string | null;
-	};
 }
 
 export function getProfile(): Profile | null {
@@ -119,17 +113,6 @@ export function clearProviderSelections(provider: string): void {
 }
 
 // Diffs
-
-export interface Diff {
-	id: string;
-	content: string;
-	generated_at: string;
-	title?: string;
-	duration_seconds?: number;
-	cost?: number;
-	isPublic?: boolean;
-	window_days?: number;
-}
 
 export function getDiffs(): Diff[] {
 	return readJson<Diff[]>('diffs.json') || [];
@@ -189,17 +172,14 @@ export function toggleTopicRead(diffId: string, topicIndex: number): boolean {
 
 // Pending changes (sync tracking)
 
-export interface PendingChanges {
-	modifiedDiffs: string[];
-	deletedDiffs: string[];
-	profileModified: boolean;
-	keysModified: boolean;
-}
+export type PendingChanges = SharedPendingChanges;
 
 export function getPendingChanges(): PendingChanges {
 	return readJson<PendingChanges>('pending.json') || {
 		modifiedDiffs: [],
+		modifiedStars: [],
 		deletedDiffs: [],
+		deletedStars: [],
 		profileModified: false,
 		keysModified: false
 	};

@@ -1,130 +1,56 @@
 import {
   encryptApiKeys,
-  encryptApiKeysWithSalt,
   decryptApiKeys,
   hashPasswordForTransport,
   encryptData,
-  decryptData,
   computeContentHash,
   uint8ToBase64
 } from './crypto';
-import { completeJson } from './llm';
-import { DEPTH_TOKEN_LIMITS, type GenerationDepth } from './constants';
+import { type GenerationDepth } from './constants';
 import { fetchJson, postJson } from './api';
 import { STORAGE_KEYS } from './constants';
+import {
+  starId,
+  computeKeysHash,
+  encryptDiffs,
+  decryptAndMergeDiffs,
+  decryptAndMergeStars,
+  decryptKeysBlob,
+  inferProviderSelections,
+  buildProfileMetadata,
+  buildSyncPayload,
+  sortDiffsNewestFirst,
+  buildApiKeysRecord
+} from './sync-core';
 
-// Types
-export interface PendingChanges {
-  modifiedDiffs: string[];
-  modifiedStars: string[];
-  deletedDiffs: string[];
-  deletedStars: string[];
-  profileModified?: boolean;
-  keysModified?: boolean;
-}
+export { starId, computeKeysHash } from './sync-core';
 
-export interface SyncStatus {
-  exists: boolean;
-  diffs_hash?: string;
-  stars_hash?: string;
-  keys_hash?: string;
-  content_updated_at?: string;
-  error?: string;
-  localDiffsHash?: string | null;
-  localStarsHash?: string | null;
-  localKeysHash?: string | null;
-  needsSync?: boolean;
-  hasPassword?: boolean;
-}
+// Re-export shared types from canonical location
+export type {
+  Diff,
+  Star,
+  PendingChanges,
+  ApiKeys,
+  ProviderSelections,
+  EncryptedKeysBlob,
+  ResolvedMapping,
+  SyncStatus,
+  SyncResult,
+  ProfileCore
+} from '../types/sync';
 
-export interface SyncResult {
-  uploaded: number;
-  downloaded: number;
-  status: 'synced' | 'uploaded' | 'downloaded';
-}
-
-export interface ResolvedMapping {
-  subreddits: string[];
-  lobstersTags: string[];
-  devtoTags: string[];
-}
-
-export interface ApiKeys {
-  anthropic?: string;
-  serper?: string;
-  perplexity?: string;
-  deepseek?: string;
-  gemini?: string;
-}
-
-export interface ProviderSelections {
-  search?: string | null;
-  curation?: string | null;
-  synthesis?: string | null;
-}
-
-/** Shape of the expanded encrypted blob (apiKeys + providerSelections) */
-export interface EncryptedKeysBlob {
-  apiKeys: Record<string, string>;
-  providerSelections?: ProviderSelections;
-}
-
-/**
- * Compute a deterministic hash over API keys and provider selections
- */
-export async function computeKeysHash(
-  apiKeys?: ApiKeys,
-  providerSelections?: ProviderSelections
-): Promise<string> {
-  const payload = {
-    apiKeys: apiKeys ? Object.fromEntries(
-      Object.entries(apiKeys).filter(([, v]) => v).sort()
-    ) : {},
-    providerSelections: providerSelections ? Object.fromEntries(
-      Object.entries(providerSelections).filter(([, v]) => v != null).sort()
-    ) : {}
-  };
-  const data = new TextEncoder().encode(JSON.stringify(payload));
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return uint8ToBase64(new Uint8Array(hashBuffer));
-}
-
-/**
- * Build the filtered apiKeys record (non-empty values only) for encryption
- */
-function buildApiKeysRecord(apiKeys?: ApiKeys): Record<string, string> {
-  const record: Record<string, string> = {};
-  if (apiKeys) {
-    Object.entries(apiKeys).forEach(([key, value]) => {
-      if (value) record[key] = value;
-    });
-  }
-  return record;
-}
-
-/**
- * Infer provider selections from available API keys (legacy fallback)
- */
-function inferProviderSelections(apiKeys: Record<string, string>): ProviderSelections {
-  const selections: ProviderSelections = {};
-  if (apiKeys.anthropic) {
-    selections.search = 'anthropic';
-    selections.curation = 'anthropic';
-    selections.synthesis = 'anthropic';
-  } else if (apiKeys.deepseek) {
-    selections.curation = 'deepseek';
-    selections.synthesis = 'deepseek';
-  } else if (apiKeys.gemini) {
-    selections.curation = 'gemini';
-    selections.synthesis = 'gemini';
-  }
-  if (apiKeys.serper) {
-    selections.search = 'serper';
-  } else if (apiKeys.perplexity) {
-    selections.search = 'perplexity';
-  }
-  return selections;
-}
+// Import types for use in this file
+import type {
+  Diff,
+  Star,
+  PendingChanges,
+  ApiKeys,
+  ProviderSelections,
+  EncryptedKeysBlob,
+  ResolvedMapping,
+  SyncStatus,
+  ProfileCore
+} from '../types/sync';
 
 /**
  * Get Anthropic API key from profile
@@ -133,52 +59,15 @@ export function getAnthropicKey(profile: { apiKeys?: ApiKeys }): string | undefi
   return profile.apiKeys?.anthropic;
 }
 
-export interface Profile {
-  id: string;
-  name: string;
+export interface Profile extends ProfileCore {
   apiKeys?: ApiKeys;
-  providerSelections?: ProviderSelections;
   salt?: string;
   passwordSalt?: string;
   syncedAt?: string | null;
   createdAt?: string;
-  languages?: string[];
-  frameworks?: string[];
-  tools?: string[];
-  topics?: string[];
   depth: GenerationDepth;
-  customFocus: string;
   resolvedMappings?: Record<string, ResolvedMapping>;
   [key: string]: unknown;
-}
-
-export interface Diff {
-  id: string;
-  content: string;
-  generated_at: string;
-  title?: string;
-  duration_seconds?: number;
-  cost?: number;
-  isPublic?: boolean;
-  window_days?: number;
-  [key: string]: unknown;
-}
-
-export interface Star {
-  diff_id: string;
-  p_index: number;
-  added_at: string;
-  [key: string]: unknown;
-}
-
-// Compute deterministic star ID from its semantic identity
-export function starId(star: Star): string;
-export function starId(diffId: string, pIndex: number): string;
-export function starId(starOrDiffId: Star | string, pIndex?: number): string {
-  if (typeof starOrDiffId === 'string') {
-    return `${starOrDiffId}:${pIndex}`;
-  }
-  return `${starOrDiffId.diff_id}:${starOrDiffId.p_index}`;
 }
 
 // Session password management
@@ -391,14 +280,21 @@ export async function shareProfile(
 }
 
 /**
- * Import a shared profile from server
+ * Import a shared profile from server.
+ * Pass `baseUrl` and `fetchFn` to use from CLI (absolute URLs + custom fetch).
  */
 export async function importProfile(
   id: string,
-  password: string
+  password: string,
+  opts?: { baseUrl?: string; fetchFn?: typeof fetch }
 ): Promise<{ profile: Profile; diffs: Diff[]; stars: Star[] }> {
+  const base = opts?.baseUrl ?? '';
+  const fetcher = opts?.fetchFn;
+
   // First fetch the share info to get the password salt
-  const shareData = await fetchJson<{ password_salt?: string }>(`/api/share/${id}`);
+  const shareData = await fetchJson<{ password_salt?: string }>(
+    `${base}/api/share/${id}`, undefined, fetcher
+  );
 
   if (!shareData.password_salt) {
     throw new Error('Profile is missing password data');
@@ -416,27 +312,16 @@ export async function importProfile(
     topics?: string[];
     depth?: GenerationDepth;
     custom_focus?: string;
-  }>(`/api/profile/${id}?password_hash=${encodeURIComponent(passwordHash)}`);
+  }>(`${base}/api/profile/${id}?password_hash=${encodeURIComponent(passwordHash)}`, undefined, fetcher);
 
   // Decrypt the blob — try expanded format first, fall back to legacy
   let apiKeys: Record<string, string>;
   let providerSelections: ProviderSelections = {};
 
   try {
-    const decrypted = await decryptData<EncryptedKeysBlob | Record<string, string>>(
-      data.encrypted_api_key, password, data.salt
-    );
-
-    if (decrypted && typeof decrypted === 'object' && 'apiKeys' in decrypted) {
-      // New expanded format: { apiKeys, providerSelections }
-      const blob = decrypted as EncryptedKeysBlob;
-      apiKeys = blob.apiKeys;
-      providerSelections = blob.providerSelections || {};
-    } else {
-      // Legacy format: Record<string, string> (just API keys)
-      apiKeys = decrypted as Record<string, string>;
-      providerSelections = inferProviderSelections(apiKeys);
-    }
+    const result = await decryptKeysBlob(data.encrypted_api_key, password, data.salt);
+    apiKeys = result.apiKeys;
+    providerSelections = result.providerSelections;
   } catch {
     // Fallback: try decryptApiKeys which handles single-key format too
     apiKeys = await decryptApiKeys(data.encrypted_api_key, data.salt, password);
@@ -501,33 +386,12 @@ export async function uploadContent(
     // On error, fall back to full upload
   }
 
-  // Determine which items to upload
-  const modifiedDiffIds = new Set(pending.modifiedDiffs);
-  const modifiedStarIds = new Set(pending.modifiedStars);
-
-  // Upload diffs: selective (only modified) or full (all)
-  const diffsToUpload: { id: string; encrypted_data: string }[] = [];
-  for (const diff of history) {
-    // Skip unmodified diffs if using selective upload
-    if (useSelectiveUpload && !modifiedDiffIds.has(diff.id)) {
-      continue;
-    }
-
-    if (diff.isPublic) {
-      // Public diffs are stored as plaintext JSON
-      const { isPublic, ...diffData } = diff;
-      diffsToUpload.push({
-        id: diff.id,
-        encrypted_data: JSON.stringify(diffData)
-      });
-    } else {
-      // Private diffs are encrypted
-      const encrypted = await encryptData(diff, password, salt);
-      diffsToUpload.push({ id: diff.id, encrypted_data: encrypted });
-    }
-  }
+  // Encrypt diffs: selective (only modified) or full (all)
+  const modifiedDiffIds = useSelectiveUpload ? new Set(pending.modifiedDiffs) : null;
+  const diffsToUpload = await encryptDiffs(history, modifiedDiffIds, password, salt);
 
   // Upload stars: selective (only modified) or full (all)
+  const modifiedStarIds = new Set(pending.modifiedStars);
   const starsToUpload: { id: string; encrypted_data: string }[] = [];
   for (const star of stars) {
     const id = starId(star);
@@ -547,15 +411,7 @@ export async function uploadContent(
   const starsHash = await computeContentHash(starsWithIds);
 
   // Include profile data if modified
-  const profileData = pending.profileModified ? {
-    name: profile.name,
-    languages: profile.languages,
-    frameworks: profile.frameworks,
-    tools: profile.tools,
-    topics: profile.topics,
-    depth: profile.depth,
-    custom_focus: profile.customFocus,
-  } : undefined;
+  const profileData = pending.profileModified ? buildProfileMetadata(profile) : undefined;
 
   // Re-encrypt and include keys blob if keys/providers changed
   let encryptedApiKey: string | undefined;
@@ -570,18 +426,18 @@ export async function uploadContent(
     keysHash = await computeKeysHash(profile.apiKeys, profile.providerSelections);
   }
 
-  await postJson(`/api/profile/${profileId}/sync`, {
-    password_hash: passwordHash,
+  await postJson(`/api/profile/${profileId}/sync`, buildSyncPayload({
+    passwordHash,
     diffs: diffsToUpload,
+    deletedDiffIds: pending.deletedDiffs,
+    diffsHash,
+    starsHash,
     stars: starsToUpload,
-    deleted_diff_ids: pending.deletedDiffs,
-    deleted_star_ids: pending.deletedStars,
-    diffs_hash: diffsHash,
-    stars_hash: starsHash,
-    encrypted_api_key: encryptedApiKey,
-    keys_hash: keysHash,
-    profile: profileData,
-  });
+    deletedStarIds: pending.deletedStars,
+    encryptedApiKey,
+    keysHash,
+    profile: profileData
+  }));
 
   const uploaded = pending.modifiedDiffs.length + pending.modifiedStars.length +
     pending.deletedDiffs.length + pending.deletedStars.length;
@@ -648,8 +504,8 @@ export async function downloadContent(
   });
 
   const salt = data.salt || profile.salt!;
-  let downloaded = 0;
-  let decryptionErrors = 0;
+  let totalDownloaded = 0;
+  let totalErrors = 0;
 
   // Build profile updates (skip if local profile changes pending)
   const hasLocalProfileChanges = pending.profileModified;
@@ -670,103 +526,41 @@ export async function downloadContent(
   // Decrypt and merge keys blob if server returned one and no local key changes pending
   if (data.encrypted_api_key && !pending.keysModified) {
     try {
-      const decrypted = await decryptData<EncryptedKeysBlob | Record<string, string>>(
-        data.encrypted_api_key, password, salt
-      );
+      const result = await decryptKeysBlob(data.encrypted_api_key, password, salt);
       if (!profileUpdates) profileUpdates = {};
-      if (decrypted && typeof decrypted === 'object' && 'apiKeys' in decrypted) {
-        const blob = decrypted as EncryptedKeysBlob;
-        profileUpdates.apiKeys = blob.apiKeys as ApiKeys;
-        profileUpdates.providerSelections = blob.providerSelections;
-      } else {
-        // Legacy format
-        profileUpdates.apiKeys = decrypted as ApiKeys;
-        profileUpdates.providerSelections = inferProviderSelections(decrypted as Record<string, string>);
-      }
+      profileUpdates.apiKeys = result.apiKeys as ApiKeys;
+      profileUpdates.providerSelections = result.providerSelections;
     } catch (e) {
       console.error('Failed to decrypt keys blob:', e);
     }
   }
 
-  // Get pending deletions so we don't re-add items we're about to delete
-  const pendingDeletedDiffs = new Set(pending.deletedDiffs);
-  const pendingDeletedStars = new Set(pending.deletedStars);
-  const pendingModifiedDiffs = new Set(pending.modifiedDiffs);
-  const pendingModifiedStars = new Set(pending.modifiedStars);
-
   // Decrypt and merge diffs (skip if server indicated no changes)
-  const serverDiffIds = new Set<string>();
-  let mergedHistory = [...localHistory];
-
+  let filteredHistory = [...localHistory];
   if (!data.diffs_skipped) {
-    for (const encryptedDiff of data.diffs) {
-      try {
-        let diff: Diff;
-        // Public diffs are plaintext JSON (starts with '{'), private are encrypted base64
-        if (encryptedDiff.encrypted_data.startsWith('{')) {
-          diff = JSON.parse(encryptedDiff.encrypted_data) as Diff;
-          diff.isPublic = true;
-        } else {
-          diff = await decryptData(encryptedDiff.encrypted_data, password, salt) as Diff;
-          diff.isPublic = false;
-        }
-        serverDiffIds.add(encryptedDiff.id);
-
-        const existingIdx = mergedHistory.findIndex(d => d.id === encryptedDiff.id);
-        if (existingIdx === -1 && !pendingDeletedDiffs.has(encryptedDiff.id)) {
-          mergedHistory.push(diff);
-          downloaded++;
-        } else if (existingIdx !== -1 && !pendingModifiedDiffs.has(encryptedDiff.id)) {
-          // Update isPublic from server if not locally modified
-          mergedHistory[existingIdx].isPublic = diff.isPublic;
-        }
-      } catch (e) {
-        console.error('Failed to decrypt diff:', e);
-        decryptionErrors++;
-      }
+    const diffResult = await decryptAndMergeDiffs(data.diffs, localHistory, pending, password, salt);
+    filteredHistory = diffResult.merged;
+    totalDownloaded += diffResult.downloaded;
+    totalErrors += diffResult.errors;
+    if (diffResult.errors > 0) {
+      console.error(`Failed to decrypt ${diffResult.errors} diff(s)`);
     }
-
-    // Remove diffs deleted on server (only when we fetched server state)
-    mergedHistory = mergedHistory.filter(d =>
-      serverDiffIds.has(d.id) || pendingDeletedDiffs.has(d.id) || pendingModifiedDiffs.has(d.id)
-    );
   }
 
   // Decrypt and merge stars (skip if server indicated no changes)
-  const serverStarIds = new Set<string>();
-  let mergedStars = [...localStars];
-
+  let filteredStars = [...localStars];
   if (!data.stars_skipped) {
-    for (const encryptedStar of data.stars) {
-      try {
-        const star = await decryptData(encryptedStar.encrypted_data, password, salt) as Star;
-        serverStarIds.add(encryptedStar.id);
-
-        const existingIdx = mergedStars.findIndex(s => starId(s) === encryptedStar.id);
-        if (existingIdx === -1 && !pendingDeletedStars.has(encryptedStar.id)) {
-          mergedStars.push(star);
-          downloaded++;
-        }
-      } catch (e) {
-        console.error('Failed to decrypt star:', e);
-        decryptionErrors++;
-      }
+    const starResult = await decryptAndMergeStars(data.stars, localStars, pending, password, salt);
+    filteredStars = starResult.merged;
+    totalDownloaded += starResult.downloaded;
+    totalErrors += starResult.errors;
+    if (starResult.errors > 0) {
+      console.error(`Failed to decrypt ${starResult.errors} star(s)`);
     }
-
-    // Remove stars deleted on server (only when we fetched server state)
-    mergedStars = mergedStars.filter(s => {
-      const id = starId(s);
-      return serverStarIds.has(id) || pendingDeletedStars.has(id) || pendingModifiedStars.has(id);
-    });
   }
 
-  const filteredHistory = mergedHistory;
-  const filteredStars = mergedStars;
-
   // Sort history by date (newest first)
-  filteredHistory.sort((a, b) =>
-    new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime()
-  );
+  sortDiffsNewestFirst(filteredHistory);
 
   // Compute hashes over plaintext content for deterministic comparison
   const diffsHash = await computeContentHash(filteredHistory);
@@ -791,14 +585,14 @@ export async function downloadContent(
   };
 
   return {
-    downloaded,
+    downloaded: totalDownloaded,
     diffs: filteredHistory,
     stars: filteredStars,
     diffsHash,
     starsHash,
     keysHash,
     salt,
-    decryptionErrors,
+    decryptionErrors: totalErrors,
     profileUpdates,
     remainingPending
   };

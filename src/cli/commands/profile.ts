@@ -1,22 +1,13 @@
 import { getSession, saveSession, getProfile, getDiffs, getApiKeys, getSyncMeta, saveSyncMeta, clearPendingChanges } from '../config';
 import type { Session } from '../config';
 import { canSync } from '../sync';
-import { localAwareFetch, BASE } from '../api';
+import { cliFetchJson, BASE } from '../api';
 import { encryptData, hashPasswordForTransport, uint8ToBase64 } from '../../lib/utils/crypto';
-import { computeKeysHash } from '../../lib/utils/sync';
-import type { ProviderSelections, ApiKeys, EncryptedKeysBlob } from '../../lib/utils/sync';
+import { computeKeysHash } from '../../lib/utils/sync-core';
+import type { ProviderSelections, ApiKeys, EncryptedKeysBlob } from '../../lib/types/sync';
 import { formatAiConfig } from './config/index';
 import { timeAgo } from '../time';
 import { RESET, DIM, BOLD, GREEN, RED, BRIGHT_YELLOW, BIN, showHelp, prompt } from '../ui';
-
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-	const res = await localAwareFetch(url, init);
-	if (!res.ok) {
-		const data = (await res.json().catch(() => ({}))) as { error?: string };
-		throw new Error(data.error || `Request failed: ${res.status}`);
-	}
-	return res.json() as Promise<T>;
-}
 
 async function showInfo(session: Session): Promise<void> {
 	const profile = getProfile();
@@ -106,7 +97,7 @@ async function shareCommand(session: Session): Promise<void> {
 	const keysHash = await computeKeysHash(apiKeys as ApiKeys, profile.providerSelections as ProviderSelections);
 
 	// Upload to server
-	await fetchJson(`${BASE}/api/profile/create`, {
+	await cliFetchJson(`${BASE}/api/profile/create`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({
@@ -199,7 +190,7 @@ async function passwordCommand(session: Session): Promise<void> {
 	}
 
 	// POST to server
-	await fetchJson(`${BASE}/api/profile/${session.profileId}/password`, {
+	await cliFetchJson(`${BASE}/api/profile/${session.profileId}/password`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({
@@ -243,7 +234,7 @@ async function unshareCommand(session: Session): Promise<void> {
 	const passwordHash = await hashPasswordForTransport(session.password, session.passwordSalt);
 
 	// DELETE from server
-	await fetchJson(`${BASE}/api/profile/${session.profileId}?password_hash=${encodeURIComponent(passwordHash)}`, {
+	await cliFetchJson(`${BASE}/api/profile/${session.profileId}?password_hash=${encodeURIComponent(passwordHash)}`, {
 		method: 'DELETE'
 	});
 
