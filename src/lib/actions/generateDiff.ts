@@ -19,7 +19,7 @@ export interface GenerateOptions {
 		topics: string[];
 		depth: GenerationDepth;
 		resolvedMappings?: Record<string, ResolvedMapping>;
-		providerSelections?: { synthesis?: string };
+		providerSelections?: { search?: string; curation?: string; synthesis?: string };
 		apiKeys?: Partial<ApiKeys>;
 	};
 	selectedDepth: GenerationDepth;
@@ -159,7 +159,7 @@ export async function generateDiffContent(options: GenerateOptions): Promise<Gen
 
 		// Fetch feeds and web search in parallel
 		const [webSearchResults, feedRes] = await Promise.all([
-			searchWeb(keys, currentProfile, windowDays).catch(() => []),
+			searchWeb(keys, currentProfile, windowDays, profile.providerSelections?.search).catch(() => []),
 			fetch('/api/feeds', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -183,7 +183,7 @@ export async function generateDiffContent(options: GenerateOptions): Promise<Gen
 				const generalItems: FeedItem[] = [...(feeds.hn || []), ...(feeds.lobsters || [])];
 				let curatedGeneral: FeedItem[] = generalItems;
 				if (generalItems.length > 0) {
-					curatedGeneral = await curateGeneralFeeds(keys, generalItems, currentProfile);
+					curatedGeneral = await curateGeneralFeeds(keys, generalItems, currentProfile, profile.providerSelections?.curation);
 				}
 
 				const allItems: FeedItem[] = [

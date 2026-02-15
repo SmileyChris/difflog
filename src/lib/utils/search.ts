@@ -288,14 +288,35 @@ ITEM: "Title" | URL | Brief description`
 }
 
 /**
- * Unified search function
- * Priority: Serper (cheapest) > Perplexity > Anthropic (most expensive)
+ * Unified search function.
+ * If preferredProvider is set and the key exists, use that provider directly.
+ * Otherwise fall back: Serper (cheapest) > Perplexity > Anthropic (most expensive)
  */
 export async function searchWeb(
   keys: ApiKeys,
   profile: ProfileForSearch,
-  windowDays: number = 7
+  windowDays: number = 7,
+  preferredProvider?: string | null
 ): Promise<WebSearchResult[]> {
+  // If a preferred provider is specified and its key exists, use it directly
+  if (preferredProvider) {
+    switch (preferredProvider) {
+      case 'serper':
+        if (keys.serper) {
+          const queries = buildSearchQueries(profile);
+          return queries.length > 0 ? searchWithSerper(keys.serper, queries, windowDays) : [];
+        }
+        break;
+      case 'perplexity':
+        if (keys.perplexity) return searchWithPerplexity(keys.perplexity, profile, windowDays);
+        break;
+      case 'anthropic':
+        if (keys.anthropic) return searchWithAnthropic(keys.anthropic, profile, windowDays);
+        break;
+    }
+    // Preferred provider key not available — fall through to chain
+  }
+
   // Prefer Serper (cheapest, $1/1k)
   if (keys.serper) {
     const queries = buildSearchQueries(profile);

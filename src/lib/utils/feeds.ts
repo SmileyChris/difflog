@@ -491,7 +491,8 @@ Only include sources that actually exist and are active. Prefer popular, well-es
 export async function curateGeneralFeeds(
   keys: ApiKeys,
   items: FeedItem[],
-  profile: Profile
+  profile: Profile,
+  preferredProvider?: string | null
 ): Promise<FeedItem[]> {
   if (items.length === 0) return [];
 
@@ -538,7 +539,7 @@ Return the indices of relevant items.`;
     required: ['indices']
   };
 
-  const result = await completeJson<{ indices: number[] }>(keys, prompt, schema);
+  const result = await completeJson<{ indices: number[] }>(keys, prompt, schema, { preferredProvider });
 
   if (!result?.indices) {
     console.warn('Feed curation returned no indices, returning all items');
