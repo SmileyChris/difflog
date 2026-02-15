@@ -3,6 +3,7 @@ import { renderMarkdown } from '../render';
 import { startInteractive, type InteractiveAction } from '../interactive';
 import { formatDiffDate } from '../time';
 import { BIN, showHelp } from '../ui';
+import { canSync } from '../sync';
 
 export async function showCommand(args: string[]): Promise<InteractiveAction> {
 	showHelp(args, `Show a diff by index or UUID prefix
@@ -95,7 +96,7 @@ Flags:
 			? new Date(diff.generated_at).toDateString() === new Date().toDateString()
 			: false;
 
-		return startInteractive(diff.id, diff.content, title, dateInfo, diffPosition, isTodayDiff);
+		return startInteractive(diff.id, diff.content, title, dateInfo, diffPosition, isTodayDiff, diff.isPublic ?? false, canSync());
 	} else {
 		// Full mode (piped or --full flag)
 		process.stdout.write(renderMarkdown(diff.content) + '\n');

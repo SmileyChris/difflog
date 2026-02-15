@@ -4,8 +4,9 @@
 
 import { renderMarkdown } from './render';
 import { parseDiff, flattenTopics, type Topic } from './parser';
-import { isTopicRead, markTopicRead, toggleTopicRead } from './config';
-import { RESET, DIM, BOLD, CYAN, UNDERLINE, GREEN, BRIGHT_YELLOW, clearScreen, hideCursor, showCursor, openUrl } from './ui';
+import { isTopicRead, markTopicRead, toggleTopicRead, getDiffs, saveDiffs, trackDiffModified } from './config';
+import { syncUpload } from './sync';
+import { RESET, DIM, BOLD, CYAN, UNDERLINE, GREEN, BRIGHT_YELLOW, clearScreen, hideCursor, showCursor, openUrl, copyToClipboard } from './ui';
 
 /**
  * Display help overlay
@@ -26,9 +27,38 @@ function displayHelp(): void {
 	process.stdout.write(`  ${CYAN}Enter${RESET}      Open link in browser\n\n`);
 	process.stdout.write(`${DIM}Actions${RESET}\n`);
 	process.stdout.write(`  ${CYAN}g${RESET}          Generate new diff\n`);
+	process.stdout.write(`  ${CYAN}s${RESET}          Share/unshare diff\n`);
 	process.stdout.write(`  ${CYAN}f${RESET}          Show full diff\n`);
 	process.stdout.write(`  ${CYAN}q  Esc${RESET}     Quit\n\n`);
 	process.stdout.write(`${DIM}Press any key to return${RESET}\n`);
+}
+
+/**
+ * Display share menu overlay
+ */
+function displayShareMenu(diffId: string, menuSelection: number, currentlyPublic: boolean, flash?: string): void {
+	clearScreen();
+	const currentStatus = currentlyPublic ? 'public' : 'private';
+	process.stdout.write(`${BOLD}Sharing${RESET} ${DIM}(currently ${currentStatus})${RESET}\n\n`);
+
+	const privateRadio = menuSelection === 0 ? `${CYAN}●${RESET}` : `${DIM}○${RESET}`;
+	const publicRadio = menuSelection === 1 ? `${CYAN}●${RESET}` : `${DIM}○${RESET}`;
+
+	const privateLabel = menuSelection === 0 ? 'private' : `${DIM}private${RESET}`;
+	const publicLabel = menuSelection === 1 ? 'public' : `${DIM}public${RESET}`;
+
+	process.stdout.write(`  ${privateRadio} ${privateLabel}    ${DIM}Encrypted, only you can see it${RESET}\n`);
+	process.stdout.write(`  ${publicRadio} ${publicLabel}     ${DIM}Anyone with the link can view${RESET}\n`);
+
+	if (menuSelection === 1) {
+		process.stdout.write(`\n  ${CYAN}https://difflog.dev/d/${diffId}${RESET}\n`);
+		if (flash) {
+			process.stdout.write(`\n  ${GREEN}${flash}${RESET}\n`);
+		}
+		process.stdout.write(`\n${DIM}b open in browser · c copy link · enter to save · esc to cancel${RESET}\n`);
+	} else {
+		process.stdout.write(`\n${DIM}enter to save · esc to cancel${RESET}\n`);
+	}
 }
 
 /**
@@ -51,7 +81,9 @@ function displayTopic(
 	isRead: boolean = false,
 	unreadCount: number = 0,
 	showRead: boolean = false,
-	currentUnreadPos: number = 0
+	currentUnreadPos: number = 0,
+	isPublic: boolean = false,
+	syncEnabled: boolean = false
 ): void {
 	clearScreen();
 
@@ -87,7 +119,14 @@ function displayTopic(
 
 	// Date info
 	if (dateInfo) {
-		process.stdout.write(`${DIM}${dateInfo}${RESET}\n`);
+		let line = `${DIM}${dateInfo}${RESET}`;
+		if (syncEnabled) {
+			const status = isPublic
+				? `${CYAN}public${RESET}`
+				: `${DIM}private${RESET}`;
+			line += `${DIM} · ${RESET}${status}`;
+		}
+		process.stdout.write(line + '\n');
 	}
 	process.stdout.write('\n');
 
@@ -307,7 +346,9 @@ export function startInteractive(
 	diffTitle: string,
 	dateInfo: string = '',
 	diffPosition?: { current: number; total: number },
-	isTodayDiff: boolean = false
+	isTodayDiff: boolean = false,
+	isPublic: boolean = false,
+	syncEnabled: boolean = false
 ): Promise<InteractiveAction> {
 	const parsed = parseDiff(markdown);
 	const allItems = flattenTopics(parsed);
@@ -326,6 +367,9 @@ export function startInteractive(
 	let currentLinkIndex = 0;
 	let running = true;
 	let showingHelp = false;
+	let showingShareMenu = false;
+	let menuSelection = isPublic ? 1 : 0; // 0 = private, 1 = public
+	let currentIsPublic = isPublic;
 	let showRead = false; // Toggle to show/hide read topics
 
 	// Helper to get visible items based on showRead mode
@@ -396,7 +440,9 @@ export function startInteractive(
 			isTopicRead(diffId, currentIndex),
 			unreadCount,
 			showRead,
-			currentUnreadPos
+			currentUnreadPos,
+			currentIsPublic,
+			syncEnabled
 		);
 	}
 
@@ -422,30 +468,58 @@ export function startInteractive(
 		// If showing help, any key returns to normal view
 		if (showingHelp) {
 			showingHelp = false;
-			const item = items[currentIndex];
-			const categoryPos = getCategoryTopicIndex(items, currentIndex);
-			const categoryNav = getCategoryNavigation(items, currentIndex);
-			const unreadCount = getUnreadCount();
-			const currentUnreadPos = getCurrentUnreadPosition();
-			displayTopic(
-				diffTitle,
-				dateInfo,
-				item.category.header,
-				categoryPos.index,
-				categoryPos.total,
-				item.topic,
-				currentIndex,
-				items.length,
-				currentLinkIndex,
-				categoryNav.prev,
-				categoryNav.next,
-				diffPosition,
-				isTodayDiff,
-				isTopicRead(diffId, currentIndex),
-				unreadCount,
-				showRead,
-				currentUnreadPos
-			);
+			displayCurrentView();
+			return;
+		}
+
+		// If showing share menu, handle menu keys
+		if (showingShareMenu) {
+			// Esc/q: cancel
+			if (key === '\u001b' || key === '\u0003' || key === 'q') {
+				showingShareMenu = false;
+				displayCurrentView();
+				return;
+			}
+			// Up/Down arrows or j/k: move cursor
+			if (key === '\u001b[A' || key === '\u001b[B' || key === 'k' || key === 'j') {
+				menuSelection = menuSelection === 0 ? 1 : 0;
+				displayShareMenu(diffId, menuSelection, currentIsPublic);
+				return;
+			}
+			// b: open in browser (when public selected)
+			if (key === 'b' && menuSelection === 1) {
+				const url = `https://difflog.dev/d/${diffId}`;
+				openUrl(url);
+				displayShareMenu(diffId, menuSelection, currentIsPublic, 'Opened in browser');
+				return;
+			}
+			// c: copy link (when public selected)
+			if (key === 'c' && menuSelection === 1) {
+				const url = `https://difflog.dev/d/${diffId}`;
+				const ok = copyToClipboard(url);
+				displayShareMenu(diffId, menuSelection, currentIsPublic, ok ? 'Copied to clipboard' : 'Copy failed — install xclip');
+				return;
+			}
+			// Enter: save and close
+			if (key === '\r' || key === '\n') {
+				const newIsPublic = menuSelection === 1;
+				if (newIsPublic !== currentIsPublic) {
+					currentIsPublic = newIsPublic;
+					// Update diff in storage
+					const diffs = getDiffs();
+					const diff = diffs.find(d => d.id === diffId);
+					if (diff) {
+						diff.isPublic = currentIsPublic;
+						saveDiffs(diffs);
+						trackDiffModified(diffId);
+						syncUpload(); // fire-and-forget
+					}
+				}
+				showingShareMenu = false;
+				displayCurrentView();
+				return;
+			}
+			// Ignore all other keys in share menu
 			return;
 		}
 
@@ -467,6 +541,14 @@ export function startInteractive(
 		if (key === 'g') {
 			cleanup();
 			resolve('generate');
+			return;
+		}
+
+		// Share menu (s) — only when sync is available
+		if (key === 's' && syncEnabled) {
+			showingShareMenu = true;
+			menuSelection = currentIsPublic ? 1 : 0;
+			displayShareMenu(diffId, menuSelection, currentIsPublic);
 			return;
 		}
 
@@ -537,29 +619,7 @@ export function startInteractive(
 			const currentItem = items[currentIndex];
 			if (currentItem.topic.links.length > 1) {
 				currentLinkIndex = (currentLinkIndex + 1) % currentItem.topic.links.length;
-				const categoryPos = getCategoryTopicIndex(items, currentIndex);
-				const categoryNav = getCategoryNavigation(items, currentIndex);
-				const unreadCount = getUnreadCount();
-				const currentUnreadPos = getCurrentUnreadPosition();
-				displayTopic(
-					diffTitle,
-					dateInfo,
-					currentItem.category.header,
-					categoryPos.index,
-					categoryPos.total,
-					currentItem.topic,
-					currentIndex,
-					items.length,
-					currentLinkIndex,
-					categoryNav.prev,
-					categoryNav.next,
-					diffPosition,
-					isTodayDiff,
-					isTopicRead(diffId, currentIndex),
-					unreadCount,
-					showRead,
-					currentUnreadPos
-				);
+				displayCurrentView();
 			}
 			return;
 		}
@@ -570,29 +630,7 @@ export function startInteractive(
 			if (currentItem.topic.links.length > 1) {
 				currentLinkIndex =
 					(currentLinkIndex - 1 + currentItem.topic.links.length) % currentItem.topic.links.length;
-				const categoryPos = getCategoryTopicIndex(items, currentIndex);
-				const categoryNav = getCategoryNavigation(items, currentIndex);
-				const unreadCount = getUnreadCount();
-				const currentUnreadPos = getCurrentUnreadPosition();
-				displayTopic(
-					diffTitle,
-					dateInfo,
-					currentItem.category.header,
-					categoryPos.index,
-					categoryPos.total,
-					currentItem.topic,
-					currentIndex,
-					items.length,
-					currentLinkIndex,
-					categoryNav.prev,
-					categoryNav.next,
-					diffPosition,
-					isTodayDiff,
-					isTopicRead(diffId, currentIndex),
-					unreadCount,
-					showRead,
-					currentUnreadPos
-				);
+				displayCurrentView();
 			}
 			return;
 		}
@@ -713,30 +751,7 @@ export function startInteractive(
 		}
 
 		if (moved) {
-			const item = items[currentIndex];
-			const categoryPos = getCategoryTopicIndex(items, currentIndex);
-			const categoryNav = getCategoryNavigation(items, currentIndex);
-			const unreadCount = getUnreadCount();
-			const currentUnreadPos = getCurrentUnreadPosition();
-			displayTopic(
-				diffTitle,
-				dateInfo,
-				item.category.header,
-				categoryPos.index,
-				categoryPos.total,
-				item.topic,
-				currentIndex,
-				items.length,
-				currentLinkIndex,
-				categoryNav.prev,
-				categoryNav.next,
-				diffPosition,
-				isTodayDiff,
-				isTopicRead(diffId, currentIndex),
-				unreadCount,
-				showRead,
-				currentUnreadPos
-			);
+			displayCurrentView();
 		}
 	};
 

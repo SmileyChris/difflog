@@ -91,6 +91,33 @@ export function showCursor(): void {
 	process.stdout.write('\x1b[?25h');
 }
 
+/** Copy text to system clipboard. Returns true on success. */
+export function copyToClipboard(text: string): boolean {
+	const platform = process.platform;
+	let command: string;
+	let args: string[];
+
+	if (platform === 'darwin') {
+		command = 'pbcopy';
+		args = [];
+	} else if (platform === 'win32') {
+		command = 'clip';
+		args = [];
+	} else {
+		command = 'xclip';
+		args = ['-selection', 'clipboard'];
+	}
+
+	try {
+		const child = spawn(command, args, { stdio: ['pipe', 'ignore', 'ignore'] });
+		child.stdin!.write(text);
+		child.stdin!.end();
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 /** Open URL in default browser */
 export function openUrl(url: string): void {
 	const platform = process.platform;
