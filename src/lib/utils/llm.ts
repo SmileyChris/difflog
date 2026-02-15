@@ -14,6 +14,7 @@ export interface JsonSchema {
 
 interface CompletionOptions {
   maxTokens?: number;
+  preferredProvider?: string | null;
 }
 
 // Anthropic API response types
@@ -40,8 +41,9 @@ interface AnthropicResponse {
 }
 
 /**
- * Get a JSON completion from the cheapest available LLM
- * Priority: DeepSeek > Gemini > Anthropic Haiku
+ * Get a JSON completion from the cheapest available LLM.
+ * If preferredProvider is set and the key exists, use that provider directly.
+ * Otherwise fall back: DeepSeek > Gemini > Anthropic Haiku
  */
 export async function completeJson<T>(
   keys: ApiKeys,
@@ -49,7 +51,23 @@ export async function completeJson<T>(
   schema: JsonSchema,
   options: CompletionOptions = {}
 ): Promise<T | null> {
-  const { maxTokens = 1024 } = options;
+  const { maxTokens = 1024, preferredProvider } = options;
+
+  // If a preferred provider is specified and its key exists, use it directly
+  if (preferredProvider) {
+    switch (preferredProvider) {
+      case 'deepseek':
+        if (keys.deepseek) return completeWithDeepSeek<T>(keys.deepseek, prompt, schema, maxTokens);
+        break;
+      case 'gemini':
+        if (keys.gemini) return completeWithGemini<T>(keys.gemini, prompt, schema, maxTokens);
+        break;
+      case 'anthropic':
+        if (keys.anthropic) return completeWithAnthropic<T>(keys.anthropic, prompt, schema, maxTokens);
+        break;
+    }
+    // Preferred provider key not available — fall through to chain
+  }
 
   // Try DeepSeek first (cheapest)
   if (keys.deepseek) {
