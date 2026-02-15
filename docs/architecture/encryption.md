@@ -73,17 +73,26 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
 
 ## Encrypting Data
 
-### API Keys Encryption
+### API Keys & Provider Selections Encryption
 
-When sharing a profile, all API keys are encrypted as a JSON object:
+When sharing a profile, API keys and provider selections are encrypted together as a single blob:
 
 ```typescript
-async function encryptApiKeys(apiKeys: Record<string, string>, password: string) {
+interface EncryptedKeysBlob {
+  apiKeys: Record<string, string>;
+  providerSelections?: {
+    search?: string | null;
+    curation?: string | null;
+    synthesis?: string | null;
+  };
+}
+
+async function encryptApiKeys(blob: EncryptedKeysBlob, password: string) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const saltBase64 = uint8ToBase64(salt);
 
-  // Encrypt the entire apiKeys object as JSON
-  const encrypted = await encryptData(apiKeys, password, saltBase64);
+  // Encrypt the entire blob (keys + selections) as JSON
+  const encrypted = await encryptData(blob, password, saltBase64);
 
   return {
     encrypted,
@@ -99,7 +108,7 @@ async function encryptApiKeys(apiKeys: Record<string, string>, password: string)
 - `deepseek` - DeepSeek API key (curation + synthesis)
 - `gemini` - Google Gemini API key (curation + synthesis)
 
-All keys are encrypted together and stored as a single encrypted blob on the server. When importing a profile on another device, all keys are restored.
+All keys and provider selections are encrypted together and stored as a single encrypted blob on the server. When importing a profile on another device, both keys and selections are restored. Legacy profiles that stored only a `Record<string, string>` of keys are handled transparently — on import, provider selections are inferred from the available keys.
 
 ### Content Encryption
 

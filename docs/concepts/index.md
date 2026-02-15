@@ -104,6 +104,8 @@ Diffs store markdown only. HTML is rendered client-side on display.
   title?: string;          // AI-generated title
   duration_seconds?: number;
   cost?: number;           // Estimated generation cost in USD
+  isPublic?: boolean;      // Whether the diff is publicly viewable
+  window_days?: number;    // Intelligence window used for generation
 }
 ```
 

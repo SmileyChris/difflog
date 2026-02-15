@@ -118,6 +118,8 @@ CREATE TABLE profiles (
   resolved_sources TEXT,    -- JSON object
   diffs_hash TEXT,
   stars_hash TEXT,
+  keys_hash TEXT,
+  password_salt TEXT,
   content_updated_at TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
