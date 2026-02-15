@@ -1,24 +1,16 @@
 import { getProfile, getSession, getDiffs, saveDiffs, trackDiffModified, getApiKeys } from '../config';
 import { generateDiffContent } from '../../lib/actions/generateDiff';
 import { DEPTHS, type GenerationDepth } from '../../lib/utils/constants';
-import { isConfigurationComplete, STEPS, type ProviderStep } from '../../lib/utils/providers';
+import { isConfigurationComplete, STEPS, PROVIDER_LABELS, type ProviderStep } from '../../lib/utils/providers';
 import { canSync, download, upload } from '../sync';
 import { BASE } from '../api';
 import { BIN, showHelp, BOLD, RESET, DIM, CYAN } from '../ui';
 
-const PROVIDER_NAMES: Record<string, string> = {
-	anthropic: 'Anthropic',
-	perplexity: 'Perplexity',
-	deepseek: 'DeepSeek',
-	gemini: 'Gemini',
-	serper: 'Serper',
-};
-
 function getProvidersText(selections: { search: string | null; curation: string | null; synthesis: string | null }): string {
 	const providers = new Set<string>();
-	if (selections.search) providers.add(PROVIDER_NAMES[selections.search] || selections.search);
-	if (selections.curation) providers.add(PROVIDER_NAMES[selections.curation] || selections.curation);
-	if (selections.synthesis) providers.add(PROVIDER_NAMES[selections.synthesis || 'anthropic'] || 'Anthropic');
+	if (selections.search) providers.add(PROVIDER_LABELS[selections.search] || selections.search);
+	if (selections.curation) providers.add(PROVIDER_LABELS[selections.curation] || selections.curation);
+	if (selections.synthesis) providers.add(PROVIDER_LABELS[selections.synthesis || 'anthropic'] || 'Anthropic');
 
 	const list = Array.from(providers);
 	if (list.length === 0) return 'Anthropic';

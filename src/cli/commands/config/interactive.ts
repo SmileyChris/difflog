@@ -1,90 +1,19 @@
-import { getProfile, saveProfile, trackProfileModified, trackKeysModified } from '../../config';
+import { getProfile, saveProfile, getConfiguredKeys, trackProfileModified, trackKeysModified } from '../../config';
 import type { GenerationDepth } from '../../../lib/utils/constants';
+import { LANGUAGES, FRAMEWORKS, TOOLS, TOPICS } from '../../../lib/utils/constants';
 import { getPassword, setPassword, deletePassword } from 'cross-keychain';
 import { estimateDiffCost } from '../../../lib/utils/pricing';
 import { formatAiConfig } from './index';
 import { syncUpload } from '../../sync';
-import { PROVIDER_IDS } from '../../../lib/utils/providers';
-import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW, SERVICE_NAME } from '../../ui';
+import { PROVIDERS, PROVIDER_IDS, PROVIDER_LABELS } from '../../../lib/utils/providers';
+import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW, SERVICE_NAME, clearScreen, hideCursor, showCursor, readLine, readKey } from '../../ui';
 
-const PROVIDERS = PROVIDER_IDS;
-type Provider = (typeof PROVIDERS)[number];
+const PROVIDER_ID_LIST = PROVIDER_IDS;
+type Provider = (typeof PROVIDER_ID_LIST)[number];
 
 class QuitSignal extends Error {
 	profile: any;
 	constructor(profile?: any) { super('quit'); this.profile = profile; }
-}
-
-function clearScreen() {
-	process.stdout.write('\x1b[2J\x1b[H');
-}
-
-function hideCursor() {
-	process.stdout.write('\x1b[?25l');
-}
-
-function showCursor() {
-	process.stdout.write('\x1b[?25h');
-}
-
-/** Read a line from stdin */
-async function readLine(prompt: string): Promise<string | null> {
-	process.stdout.write(prompt);
-	showCursor();
-
-	return new Promise((resolve) => {
-		const buf: string[] = [];
-		process.stdin.setRawMode(true);
-		process.stdin.resume();
-		process.stdin.setEncoding('utf-8');
-
-		const onData = (ch: string) => {
-			if (ch === '\r' || ch === '\n') {
-				process.stdin.setRawMode(false);
-				process.stdin.pause();
-				process.stdin.removeListener('data', onData);
-				process.stdout.write('\n');
-				hideCursor();
-				resolve(buf.join(''));
-			} else if (ch === '\x03' || ch === '\x1b') {
-				// Ctrl+C or Esc - cancel input
-				process.stdin.setRawMode(false);
-				process.stdin.pause();
-				process.stdin.removeListener('data', onData);
-				process.stdout.write('\n');
-				hideCursor();
-				resolve(null);
-			} else if (ch === '\x7f' || ch === '\b') {
-				if (buf.length > 0) {
-					buf.pop();
-					process.stdout.write('\b \b');
-				}
-			} else {
-				buf.push(ch);
-				process.stdout.write(ch);
-			}
-		};
-
-		process.stdin.on('data', onData);
-	});
-}
-
-/** Read a single keypress */
-async function readKey(): Promise<string> {
-	return new Promise((resolve) => {
-		process.stdin.setRawMode(true);
-		process.stdin.resume();
-		process.stdin.setEncoding('utf-8');
-
-		const onData = (key: string) => {
-			process.stdin.setRawMode(false);
-			process.stdin.pause();
-			process.stdin.removeListener('data', onData);
-			resolve(key);
-		};
-
-		process.stdin.on('data', onData);
-	});
 }
 
 type Section = 'name' | 'ai' | 'languages' | 'frameworks' | 'tools' | 'topics' | 'depth';
@@ -98,25 +27,6 @@ const SECTION_LABELS: Record<Section, string> = {
 	topics: 'Topics',
 	depth: 'Depth & Focus'
 };
-
-// Predefined options for each category
-const LANGUAGE_OPTIONS = ['TypeScript', 'JavaScript', 'Python', 'Go', 'Rust', 'Java', 'C#', 'Ruby', 'PHP', 'Swift', 'Kotlin'];
-const FRAMEWORK_OPTIONS = ['React', 'Vue', 'Svelte', 'Angular', 'Next.js', 'Nuxt', 'SvelteKit', 'Astro', 'Node.js', 'Express', 'FastAPI', 'Django', 'Rails'];
-const TOOL_OPTIONS = ['Docker', 'Kubernetes', 'Git', 'GitHub Actions', 'Terraform', 'AWS', 'GCP', 'Azure', 'PostgreSQL', 'Redis', 'Nginx'];
-const TOPIC_OPTIONS = ['AI/ML', 'DevOps', 'Security', 'Testing', 'Performance', 'Databases', 'APIs', 'WebAssembly', 'Serverless', 'Blockchain'];
-
-async function getConfiguredKeys(): Promise<Set<Provider>> {
-	const configured = new Set<Provider>();
-	for (const provider of PROVIDERS) {
-		try {
-			const key = await getPassword(SERVICE_NAME, provider);
-			if (key) configured.add(provider);
-		} catch {
-			// Not configured
-		}
-	}
-	return configured;
-}
 
 function renderMainMenu(selectedSection: number, profile: any) {
 	clearScreen();
@@ -260,7 +170,7 @@ async function editList(
 	profile: any,
 	category: 'languages' | 'frameworks' | 'tools' | 'topics',
 	title: string,
-	options: string[]
+	options: readonly string[]
 ): Promise<any> {
 	const current = new Set(profile[category] || []);
 
@@ -335,36 +245,13 @@ async function editList(
 	}
 }
 
-const PROVIDER_LABELS: Record<Provider, string> = {
-	anthropic: 'Anthropic (Claude)',
-	serper: 'Serper (web search)',
-	perplexity: 'Perplexity',
-	deepseek: 'DeepSeek',
-	gemini: 'Google Gemini'
-};
-
-const PROVIDER_CAPABILITIES: Record<Provider, Array<'search' | 'curation' | 'synthesis'>> = {
-	anthropic: ['search', 'curation', 'synthesis'],
-	serper: ['search'],
-	perplexity: ['search', 'curation', 'synthesis'],
-	deepseek: ['curation', 'synthesis'],
-	gemini: ['curation', 'synthesis']
-};
-
-const PROVIDER_URLS: Record<Provider, string> = {
-	anthropic: 'https://console.anthropic.com/',
-	serper: 'https://serper.dev/',
-	perplexity: 'https://www.perplexity.ai/',
-	deepseek: 'https://platform.deepseek.com/',
-	gemini: 'https://ai.google.dev/'
-};
 
 async function editProviderKey(provider: Provider, hasKey: boolean): Promise<string | null> {
 	clearScreen();
 	process.stdout.write(`${BOLD}${GREEN}${PROVIDER_LABELS[provider]}${RESET}\n\n`);
 
 	// Show capabilities
-	const caps = PROVIDER_CAPABILITIES[provider];
+	const caps = PROVIDERS[provider].capabilities;
 	process.stdout.write(`${DIM}Can be used for:${RESET} ${caps.join(', ')}\n\n`);
 
 	// Show current status
@@ -375,7 +262,7 @@ async function editProviderKey(provider: Provider, hasKey: boolean): Promise<str
 	}
 
 	// Show link to get key
-	process.stdout.write(`${DIM}Get API key:${RESET} ${CYAN}${PROVIDER_URLS[provider]}${RESET}\n\n`);
+	process.stdout.write(`${DIM}Get API key:${RESET} ${CYAN}${PROVIDERS[provider].docsUrl}${RESET}\n\n`);
 	process.stdout.write(`${DIM}Enter key (leave empty to cancel, or type 'remove' to delete)${RESET}\n\n`);
 
 	const key = await readLine(`${CYAN}API Key:${RESET} `);
@@ -403,7 +290,7 @@ async function editAi(profile: any): Promise<any> {
 
 	// Get configured keys from keychain
 	const keys: Record<Provider, string | undefined> = {} as any;
-	for (const provider of PROVIDERS) {
+	for (const provider of PROVIDER_ID_LIST) {
 		try {
 			keys[provider] = await getPassword(SERVICE_NAME, provider) || undefined;
 		} catch {
@@ -443,13 +330,13 @@ async function editAi(profile: any): Promise<any> {
 		process.stdout.write(`${DIM}Provider              Key    ${RESET}${searchHeader}  ${curationHeader}  ${synthesisHeader}\n`);
 		process.stdout.write(`${DIM}────────────────────────────────────────────────────────${RESET}\n`);
 
-		for (let i = 0; i < PROVIDERS.length; i++) {
-			const provider = PROVIDERS[i];
+		for (let i = 0; i < PROVIDER_ID_LIST.length; i++) {
+			const provider = PROVIDER_ID_LIST[i];
 			const marker = i === selectedProvider ? `${CYAN}▸${RESET}` : ' ';
 			const label = i === selectedProvider ? `${BOLD}${PROVIDER_LABELS[provider]}${RESET}` : PROVIDER_LABELS[provider];
 			const hasKey = keys[provider] ? `${GREEN}✓${RESET}` : `${DIM}✗${RESET}`;
 
-			const caps = PROVIDER_CAPABILITIES[provider];
+			const caps = PROVIDERS[provider].capabilities;
 
 			// Helper to check if cell is selected (row + column)
 			const isSelected = (columnIndex: number) => i === selectedProvider && columnIndex === selectedColumn;
@@ -491,7 +378,7 @@ async function editAi(profile: any): Promise<any> {
 			render();
 		} else if (key === '\u001b[B' || key === 'j') {
 			// Down
-			selectedProvider = Math.min(PROVIDERS.length - 1, selectedProvider + 1);
+			selectedProvider = Math.min(PROVIDER_ID_LIST.length - 1, selectedProvider + 1);
 			render();
 		} else if (key === '\u001b[C' || key === 'l') {
 			// Right
@@ -503,8 +390,8 @@ async function editAi(profile: any): Promise<any> {
 			render();
 		} else if (key === ' ') {
 			// Space - toggle selection in current column
-			const provider = PROVIDERS[selectedProvider];
-			const caps = PROVIDER_CAPABILITIES[provider];
+			const provider = PROVIDER_ID_LIST[selectedProvider];
+			const caps = PROVIDERS[provider].capabilities;
 
 			if (selectedColumn === 0 && caps.includes('search') && keys[provider]) {
 				selections.search = selections.search === provider ? null : provider;
@@ -518,7 +405,7 @@ async function editAi(profile: any): Promise<any> {
 			}
 		} else if (key === '\r' || key === '\n') {
 			// Edit key
-			const provider = PROVIDERS[selectedProvider];
+			const provider = PROVIDER_ID_LIST[selectedProvider];
 			const newKey = await editProviderKey(provider, !!keys[provider]);
 
 			if (newKey !== null) {
@@ -536,7 +423,7 @@ async function editAi(profile: any): Promise<any> {
 					keys[provider] = newKey;
 
 					// Auto-select for capabilities if not already set
-					const caps = PROVIDER_CAPABILITIES[provider];
+					const caps = PROVIDERS[provider].capabilities;
 					if (caps.includes('search') && !selections.search) {
 						selections.search = provider;
 					}
@@ -715,16 +602,16 @@ export async function runInteractiveWizard(): Promise<void> {
 							profile = await editAi(profile);
 							break;
 						case 'languages':
-							profile = await editList(profile, 'languages', 'Languages', LANGUAGE_OPTIONS);
+							profile = await editList(profile, 'languages', 'Languages', LANGUAGES);
 							break;
 						case 'frameworks':
-							profile = await editList(profile, 'frameworks', 'Frameworks', FRAMEWORK_OPTIONS);
+							profile = await editList(profile, 'frameworks', 'Frameworks', FRAMEWORKS);
 							break;
 						case 'tools':
-							profile = await editList(profile, 'tools', 'Tools', TOOL_OPTIONS);
+							profile = await editList(profile, 'tools', 'Tools', TOOLS);
 							break;
 						case 'topics':
-							profile = await editList(profile, 'topics', 'Topics', TOPIC_OPTIONS);
+							profile = await editList(profile, 'topics', 'Topics', TOPICS);
 							break;
 						case 'depth':
 							profile = await editDepth(profile);

@@ -4,7 +4,7 @@ import { login, localAwareFetch, BASE } from '../api';
 import { decryptData } from '../../lib/utils/crypto';
 import { importProfile } from '../../lib/utils/sync';
 import { setPassword } from 'cross-keychain';
-import { SERVICE_NAME, BIN, showHelp, prompt } from '../ui';
+import { SERVICE_NAME, BIN, showHelp, prompt, openUrl } from '../ui';
 
 interface RelayPayload {
 	profileId: string;
@@ -40,14 +40,6 @@ function waitForEnter(): Promise<void> {
 	});
 }
 
-function openBrowser(url: string): void {
-	try {
-		const cmd = process.platform === 'darwin' ? 'open' : 'xdg-open';
-		Bun.spawn([cmd, url], { stdout: 'ignore', stderr: 'ignore' });
-	} catch {
-		// Ignore — URL is printed to stderr regardless
-	}
-}
 
 const SPINNER = ['|', '/', '-', '\\'];
 
@@ -106,7 +98,7 @@ async function webLogin(noBrowser: boolean): Promise<void> {
 		process.stderr.write(`  Press Enter to open difflog.dev in your browser...`);
 		await waitForEnter();
 		process.stderr.write('\n');
-		openBrowser(url);
+		openUrl(url);
 	}
 
 	const { profileId } = await pollForRelay(code, expires);

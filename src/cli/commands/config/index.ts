@@ -4,7 +4,7 @@ import { showTopics, handleTopics } from './topics';
 import { showAiConfig, handleAi } from './ai';
 import { runInteractiveWizard } from './interactive';
 import { syncUpload } from '../../sync';
-import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW, BIN, showHelp } from '../../ui';
+import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW, BIN, showHelp, clearScreen, hideCursor, showCursor, readLine, readKey } from '../../ui';
 
 export function formatAiConfig(providerSelections: any): string {
 	if (!providerSelections) return `${BRIGHT_YELLOW}curation unset, synthesis unset${RESET}`;
@@ -48,88 +48,6 @@ export function formatAiConfig(providerSelections: any): string {
 	}
 
 	return parts.length > 0 ? parts.join(', ') : `${DIM}none${RESET}`;
-}
-
-function clearScreen() {
-	process.stdout.write('\x1b[2J\x1b[H');
-}
-
-function hideCursor() {
-	process.stdout.write('\x1b[?25l');
-}
-
-function showCursor() {
-	process.stdout.write('\x1b[?25h');
-}
-
-/** Read a line from stdin */
-async function readLine(prompt: string, mask = false): Promise<string> {
-	process.stdout.write(prompt);
-
-	if (!process.stdin.isTTY) {
-		const reader = process.stdin[Symbol.asyncIterator]();
-		const { value } = await reader.next();
-		const line = typeof value === 'string' ? value : new TextDecoder().decode(value);
-		return line.trimEnd();
-	}
-
-	showCursor();
-	return new Promise((resolve) => {
-		const buf: string[] = [];
-		process.stdin.setRawMode(true);
-		process.stdin.resume();
-		process.stdin.setEncoding('utf-8');
-
-		const onData = (ch: string) => {
-			if (ch === '\r' || ch === '\n') {
-				process.stdin.setRawMode(false);
-				process.stdin.pause();
-				process.stdin.removeListener('data', onData);
-				process.stdout.write('\n');
-				hideCursor();
-				resolve(buf.join(''));
-			} else if (ch === '\x03') {
-				process.stdin.setRawMode(false);
-				showCursor();
-				process.stdout.write('\n');
-				process.exit(130);
-			} else if (ch === '\x7f' || ch === '\b') {
-				if (buf.length > 0) {
-					buf.pop();
-					if (!mask) process.stdout.write('\b \b');
-				}
-			} else {
-				buf.push(ch);
-				process.stdout.write(mask ? '*' : ch);
-			}
-		};
-
-		process.stdin.on('data', onData);
-	});
-}
-
-/** Read a single keypress */
-async function readKey(): Promise<string> {
-	if (!process.stdin.isTTY) {
-		const reader = process.stdin[Symbol.asyncIterator]();
-		const { value } = await reader.next();
-		return typeof value === 'string' ? value : new TextDecoder().decode(value);
-	}
-
-	return new Promise((resolve) => {
-		process.stdin.setRawMode(true);
-		process.stdin.resume();
-		process.stdin.setEncoding('utf-8');
-
-		const onData = (key: string) => {
-			process.stdin.setRawMode(false);
-			process.stdin.pause();
-			process.stdin.removeListener('data', onData);
-			resolve(key);
-		};
-
-		process.stdin.on('data', onData);
-	});
 }
 
 async function showStatus(): Promise<void> {

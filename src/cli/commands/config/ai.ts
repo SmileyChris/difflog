@@ -1,32 +1,11 @@
-import { getProfile, saveProfile, clearProviderSelections, trackProfileModified, trackKeysModified } from '../../config';
-import { getPassword, setPassword, deletePassword } from 'cross-keychain';
+import { getProfile, saveProfile, clearProviderSelections, getConfiguredKeys, trackProfileModified, trackKeysModified } from '../../config';
+import { setPassword, deletePassword } from 'cross-keychain';
 import { syncUpload } from '../../sync';
-import { PROVIDER_IDS } from '../../../lib/utils/providers';
+import { PROVIDER_IDS, PROVIDER_LABELS } from '../../../lib/utils/providers';
 import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW, RED, SERVICE_NAME, BIN } from '../../ui';
 
 const PROVIDERS = PROVIDER_IDS;
 type Provider = (typeof PROVIDERS)[number];
-
-const PROVIDER_LABELS: Record<Provider, string> = {
-	anthropic: 'Anthropic (Claude)',
-	serper: 'Serper (web search)',
-	perplexity: 'Perplexity',
-	deepseek: 'DeepSeek',
-	gemini: 'Google Gemini'
-};
-
-async function getConfiguredKeys(): Promise<Set<Provider>> {
-	const configured = new Set<Provider>();
-	for (const provider of PROVIDERS) {
-		try {
-			const key = await getPassword(SERVICE_NAME, provider);
-			if (key) configured.add(provider);
-		} catch {
-			// Not configured
-		}
-	}
-	return configured;
-}
 
 export async function showAiConfig(): Promise<void> {
 	const profile = getProfile();

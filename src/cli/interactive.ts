@@ -2,44 +2,10 @@
  * Interactive diff viewer with keyboard navigation.
  */
 
-import { spawn } from 'node:child_process';
 import { renderMarkdown } from './render';
 import { parseDiff, flattenTopics, type Topic } from './parser';
 import { isTopicRead, markTopicRead, toggleTopicRead } from './config';
-import { RESET, DIM, BOLD, CYAN, UNDERLINE, GREEN, BRIGHT_YELLOW } from './ui';
-
-/**
- * Open URL in default browser
- */
-function openUrl(url: string): void {
-	const platform = process.platform;
-	let command: string;
-	let args: string[];
-
-	if (platform === 'darwin') {
-		command = 'open';
-		args = [url];
-	} else if (platform === 'win32') {
-		command = 'cmd';
-		args = ['/c', 'start', url];
-	} else {
-		command = 'xdg-open';
-		args = [url];
-	}
-
-	// Spawn detached process so it doesn't block
-	spawn(command, args, {
-		detached: true,
-		stdio: 'ignore'
-	}).unref();
-}
-
-/**
- * Clear screen and move cursor to top
- */
-function clearScreen() {
-	process.stdout.write('\x1b[2J\x1b[H');
-}
+import { RESET, DIM, BOLD, CYAN, UNDERLINE, GREEN, BRIGHT_YELLOW, clearScreen, hideCursor, showCursor, openUrl } from './ui';
 
 /**
  * Display help overlay
@@ -63,20 +29,6 @@ function displayHelp(): void {
 	process.stdout.write(`  ${CYAN}f${RESET}          Show full diff\n`);
 	process.stdout.write(`  ${CYAN}q  Esc${RESET}     Quit\n\n`);
 	process.stdout.write(`${DIM}Press any key to return${RESET}\n`);
-}
-
-/**
- * Hide cursor
- */
-function hideCursor() {
-	process.stdout.write('\x1b[?25l');
-}
-
-/**
- * Show cursor
- */
-function showCursor() {
-	process.stdout.write('\x1b[?25h');
 }
 
 /**

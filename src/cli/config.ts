@@ -37,6 +37,19 @@ function removeFile(filename: string): void {
 
 // API keys
 
+export async function getConfiguredKeys(): Promise<Set<string>> {
+	const configured = new Set<string>();
+	for (const provider of PROVIDER_IDS) {
+		try {
+			const key = await getPassword(SERVICE_NAME, provider);
+			if (key) configured.add(provider);
+		} catch {
+			// Not configured
+		}
+	}
+	return configured;
+}
+
 export async function getApiKeys(): Promise<Record<string, string>> {
 	const keys: Record<string, string> = {};
 	for (const provider of PROVIDER_IDS) {

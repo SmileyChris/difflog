@@ -1,6 +1,6 @@
-import { hashPasswordForTransport, decryptApiKey, decryptData } from '../lib/utils/crypto';
+import { hashPasswordForTransport, decryptApiKey } from '../lib/utils/crypto';
 import { fetchJson as sharedFetchJson, ApiError } from '../lib/utils/api';
-import { sortDiffsNewestFirst } from '../lib/utils/sync-core';
+import { decryptAndMergeDiffs, sortDiffsNewestFirst } from '../lib/utils/sync-core';
 import type { Diff } from '../lib/types/sync';
 import type { Profile, Session } from './config';
 
@@ -96,23 +96,9 @@ export async function login(
 	const content = await downloadContent(profileId, password, password_salt);
 	const salt = content.salt || profileData.salt;
 
-	// 5. Decrypt diffs
-	const diffs: Diff[] = [];
-	for (const item of content.diffs) {
-		try {
-			let diff: Diff;
-			if (item.encrypted_data.startsWith('{')) {
-				diff = JSON.parse(item.encrypted_data);
-			} else {
-				diff = await decryptData<Diff>(item.encrypted_data, password, salt);
-			}
-			diffs.push(diff);
-		} catch {
-			// skip diffs that fail to decrypt
-		}
-	}
-
-	// Sort newest first
+	// 5. Decrypt and merge diffs (empty local state on fresh login)
+	const emptyPending = { modifiedDiffs: [], modifiedStars: [], deletedDiffs: [], deletedStars: [] };
+	const { merged: diffs } = await decryptAndMergeDiffs(content.diffs, [], emptyPending, password, salt);
 	sortDiffsNewestFirst(diffs);
 
 	const profile: Profile = {
