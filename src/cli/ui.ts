@@ -164,6 +164,70 @@ export async function readLine(promptText: string, opts?: { mask?: boolean }): P
 	});
 }
 
+// --- Menu loop helper ---
+
+export interface MenuLoopOptions {
+	/** Number of items for cursor clamping */
+	itemCount: number;
+	/** Wrap cursor around (default: false = clamp) */
+	wrap?: boolean;
+	/** Called on each render with current cursor position */
+	render: (cursor: number) => void;
+	/** Handle Enter key. Return 'break' to exit loop. */
+	onEnter?: (cursor: number) => Promise<void | 'break'> | void | 'break';
+	/** Handle Space key. */
+	onSpace?: (cursor: number) => void;
+	/** Handle Esc. Return 'break' to exit loop. Default: break. */
+	onEsc?: (cursor: number) => Promise<void | 'break'> | void | 'break';
+	/** Handle Ctrl+C. Return 'break' to exit loop. Default: same as onEsc. */
+	onCtrlC?: (cursor: number) => Promise<void | 'break'> | void | 'break';
+	/** Handle q key. Return 'break' to exit loop. Default: same as onEsc. */
+	onQuit?: (cursor: number) => Promise<void | 'break'> | void | 'break';
+	/** Handle horizontal navigation (left/right/h/l). */
+	onHorizontal?: (cursor: number, direction: 'left' | 'right') => void;
+}
+
+/** Reusable menu loop: renders, reads keys, navigates cursor, delegates actions to callbacks. */
+export async function menuLoop(options: MenuLoopOptions, initialCursor = 0): Promise<void> {
+	let cursor = initialCursor;
+	const { itemCount, wrap = false, render, onEnter, onSpace, onEsc, onCtrlC, onQuit, onHorizontal } = options;
+
+	render(cursor);
+
+	while (true) {
+		const key = await readKey();
+
+		if (key === '\u001b[A' || key === 'k') {
+			cursor = wrap
+				? (cursor === 0 ? itemCount - 1 : cursor - 1)
+				: Math.max(0, cursor - 1);
+			render(cursor);
+		} else if (key === '\u001b[B' || key === 'j') {
+			cursor = wrap
+				? (cursor === itemCount - 1 ? 0 : cursor + 1)
+				: Math.min(itemCount - 1, cursor + 1);
+			render(cursor);
+		} else if (key === '\u001b[C' || key === 'l') {
+			if (onHorizontal) { onHorizontal(cursor, 'right'); render(cursor); }
+		} else if (key === '\u001b[D' || key === 'h') {
+			if (onHorizontal) { onHorizontal(cursor, 'left'); render(cursor); }
+		} else if (key === '\r' || key === '\n') {
+			if (onEnter && await onEnter(cursor) === 'break') return;
+		} else if (key === ' ') {
+			if (onSpace) { onSpace(cursor); render(cursor); }
+		} else if (key === '\u001b') {
+			const handler = onEsc ?? (() => 'break' as const);
+			if (await handler(cursor) === 'break') return;
+		} else if (key === '\u0003') {
+			const handler = onCtrlC ?? onEsc ?? (() => 'break' as const);
+			if (await handler(cursor) === 'break') return;
+		} else if (key === 'q') {
+			const handler = onQuit ?? onEsc ?? (() => 'break' as const);
+			if (await handler(cursor) === 'break') return;
+		}
+	}
+}
+
 /** Read a single keypress */
 export async function readKey(): Promise<string> {
 	if (!process.stdin.isTTY) {
