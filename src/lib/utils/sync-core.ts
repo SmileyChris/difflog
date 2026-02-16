@@ -2,7 +2,7 @@
  * Pure data-transform functions shared by both web (lib/utils/sync.ts) and CLI (cli/sync.ts).
  * No I/O — no fetch, no storage, no DOM.
  */
-import { encryptData, decryptData, uint8ToBase64 } from './crypto';
+import { encryptData, decryptData, decryptApiKeys, uint8ToBase64 } from './crypto';
 import type {
   Diff,
   PendingChanges,
@@ -131,30 +131,43 @@ export async function decryptAndMergeStars(
   return { merged, downloaded, errors };
 }
 
-/** Decrypt an encrypted keys blob, handling both new and legacy formats. */
+/** Decrypt an encrypted keys blob, handling new and legacy formats.
+ *  Format 1 (newest): EncryptedKeysBlob JSON { apiKeys, providerSelections }
+ *  Format 2: Record<string, string> JSON { anthropic: "sk-...", ... }
+ *  Format 3 (oldest): raw API key string (single Anthropic key)
+ */
 export async function decryptKeysBlob(
   encryptedApiKey: string,
   password: string,
   salt: string
 ): Promise<{ apiKeys: Record<string, string>; providerSelections: ProviderSelections }> {
-  const decrypted = await decryptData<EncryptedKeysBlob | Record<string, string>>(
-    encryptedApiKey, password, salt
-  );
+  try {
+    const decrypted = await decryptData<EncryptedKeysBlob | Record<string, string>>(
+      encryptedApiKey, password, salt
+    );
 
-  if (decrypted && typeof decrypted === 'object' && 'apiKeys' in decrypted) {
-    const blob = decrypted as EncryptedKeysBlob;
+    if (decrypted && typeof decrypted === 'object' && 'apiKeys' in decrypted) {
+      const blob = decrypted as EncryptedKeysBlob;
+      return {
+        apiKeys: blob.apiKeys,
+        providerSelections: blob.providerSelections || {}
+      };
+    }
+
+    // Legacy format 2: Record<string, string> (just API keys)
+    const apiKeys = decrypted as Record<string, string>;
     return {
-      apiKeys: blob.apiKeys,
-      providerSelections: blob.providerSelections || {}
+      apiKeys,
+      providerSelections: inferProviderSelections(apiKeys)
+    };
+  } catch {
+    // Legacy format 3: raw string — fall back to decryptApiKeys
+    const apiKeys = await decryptApiKeys(encryptedApiKey, salt, password);
+    return {
+      apiKeys,
+      providerSelections: inferProviderSelections(apiKeys)
     };
   }
-
-  // Legacy format: Record<string, string> (just API keys)
-  const apiKeys = decrypted as Record<string, string>;
-  return {
-    apiKeys,
-    providerSelections: inferProviderSelections(apiKeys)
-  };
 }
 
 /** Infer provider selections from available API keys (legacy fallback). */

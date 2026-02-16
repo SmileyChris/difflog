@@ -151,7 +151,7 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 		try {
 			const result = await decryptKeysBlob(data.encrypted_api_key, session.password, salt);
 
-			// Store keys in OS keychain
+			// Store server keys in OS keychain (additive — doesn't remove local keys)
 			for (const [provider, key] of Object.entries(result.apiKeys)) {
 				if (key) {
 					try {
@@ -162,9 +162,12 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 				}
 			}
 
-			// Update provider selections on profile
+			// Merge provider selections: local takes precedence over server
 			if (result.providerSelections) {
-				profile.providerSelections = result.providerSelections;
+				profile.providerSelections = {
+					...result.providerSelections,
+					...profile.providerSelections
+				};
 				profileUpdated = true;
 			}
 		} catch {
@@ -195,6 +198,15 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 	const updatedMeta = getSyncMeta();
 	updatedMeta.diffsHash = newDiffsHash;
 	updatedMeta.lastSyncedAt = new Date().toISOString();
+
+	// Recompute keys hash from current profile state
+	const currentKeys = await getApiKeys();
+	const newKeysHash = await computeKeysHash(
+		currentKeys as ApiKeys,
+		profile.providerSelections as ProviderSelections
+	);
+	updatedMeta.keysHash = newKeysHash;
+
 	saveSyncMeta(updatedMeta);
 
 	return { downloaded, profileUpdated };

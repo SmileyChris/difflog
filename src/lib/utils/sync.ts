@@ -1,6 +1,5 @@
 import {
   encryptApiKeys,
-  decryptApiKeys,
   hashPasswordForTransport,
   encryptData,
   computeContentHash,
@@ -16,7 +15,6 @@ import {
   decryptAndMergeDiffs,
   decryptAndMergeStars,
   decryptKeysBlob,
-  inferProviderSelections,
   buildProfileMetadata,
   buildSyncPayload,
   sortDiffsNewestFirst,
@@ -314,19 +312,8 @@ export async function importProfile(
     custom_focus?: string;
   }>(`${base}/api/profile/${id}?password_hash=${encodeURIComponent(passwordHash)}`, undefined, fetcher);
 
-  // Decrypt the blob — try expanded format first, fall back to legacy
-  let apiKeys: Record<string, string>;
-  let providerSelections: ProviderSelections = {};
-
-  try {
-    const result = await decryptKeysBlob(data.encrypted_api_key, password, data.salt);
-    apiKeys = result.apiKeys;
-    providerSelections = result.providerSelections;
-  } catch {
-    // Fallback: try decryptApiKeys which handles single-key format too
-    apiKeys = await decryptApiKeys(data.encrypted_api_key, data.salt, password);
-    providerSelections = inferProviderSelections(apiKeys);
-  }
+  // Decrypt the blob (handles all legacy formats)
+  const { apiKeys, providerSelections } = await decryptKeysBlob(data.encrypted_api_key, password, data.salt);
 
   const profile: Profile = {
     id: data.id,
@@ -526,35 +513,28 @@ export async function downloadContent(
   // Decrypt and merge keys blob if server returned one and no local key changes pending
   let keysNeedReupload = false;
   if (data.encrypted_api_key && !pending.keysModified) {
-    let serverApiKeys: Record<string, string> | undefined;
-    let serverProviderSelections: ProviderSelections | undefined;
-
     try {
       const result = await decryptKeysBlob(data.encrypted_api_key, password, salt);
-      serverApiKeys = result.apiKeys;
-      serverProviderSelections = result.providerSelections;
-    } catch (e) {
-      console.error('Failed to decrypt keys blob:', e);
-    }
-
-    if (serverApiKeys) {
       if (!profileUpdates) profileUpdates = {};
       // Merge: server keys fill gaps, local keys take precedence
-      const merged = { ...serverApiKeys, ...profile.apiKeys } as ApiKeys;
+      const merged = { ...result.apiKeys, ...profile.apiKeys } as ApiKeys;
+      // Remove empty values
       for (const [k, v] of Object.entries(merged)) {
         if (!v) delete (merged as Record<string, unknown>)[k];
       }
       profileUpdates.apiKeys = merged;
       profileUpdates.providerSelections = {
-        ...serverProviderSelections,
+        ...result.providerSelections,
         ...profile.providerSelections
       };
       // If local has keys the server doesn't, flag for re-upload
-      const serverKeyCount = Object.keys(serverApiKeys).filter(k => serverApiKeys![k]).length;
+      const serverKeyCount = Object.keys(result.apiKeys).filter(k => result.apiKeys[k]).length;
       const mergedKeyCount = Object.keys(merged).filter(k => merged[k as keyof ApiKeys]).length;
       if (mergedKeyCount > serverKeyCount) {
         keysNeedReupload = true;
       }
+    } catch (e) {
+      console.error('Failed to decrypt keys blob:', e);
     }
   }
 
