@@ -4,7 +4,7 @@ icon: lucide/key-round
 
 # CLI Key Storage Architecture
 
-The CLI stores API keys in the operating system's native credential manager via the [`cross-keychain`](https://github.com/nicolo-ribaudo/cross-keychain) library. Keys are never written to disk as plaintext. The service name (`difflog-cli`) is defined in `src/cli/ui.ts` and the provider list (`PROVIDER_IDS`) comes from `src/lib/utils/providers.ts`, shared with the web app.
+The CLI stores API keys in the operating system's native credential manager via the [`cross-keychain`](https://github.com/magarcia/cross-keychain) library. Keys are never written to disk as plaintext. The service name (`difflog-cli`) is defined in `src/cli/ui.ts` and the provider list (`PROVIDER_IDS`) comes from `src/lib/utils/providers.ts`, shared with the web app.
 
 ## Overview
 
