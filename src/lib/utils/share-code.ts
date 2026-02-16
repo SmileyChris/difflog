@@ -9,6 +9,7 @@ const CODE_PATTERN = /^[A-Z0-9]{4}$/;
 /** Check if input looks like a share code (with or without diff- prefix) */
 export function isShareCode(input: string): boolean {
 	const normalized = input.trim().toUpperCase();
+	if (normalized === 'DIFF') return false;
 	if (normalized.startsWith('DIFF-')) {
 		return CODE_PATTERN.test(normalized.slice(5));
 	}
