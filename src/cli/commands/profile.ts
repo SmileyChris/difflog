@@ -1,15 +1,16 @@
-import { getSession, saveSession, getProfile, getDiffs, getApiKeys, getSyncMeta, saveSyncMeta, clearPendingChanges } from '../config';
+import { getSession, saveSession, getProfile, getDiffs, getApiKeys, getConfiguredKeys, getSyncMeta, saveSyncMeta, getPendingChanges, clearPendingChanges } from '../config';
 import type { Session } from '../config';
-import { canSync } from '../sync';
+import { canSync, sync } from '../sync';
 import { cliFetchJson, BASE } from '../api';
-import { encryptData, hashPasswordForTransport, uint8ToBase64 } from '../../lib/utils/crypto';
+import { encryptData, hashPasswordForTransport, computeContentHash, uint8ToBase64 } from '../../lib/utils/crypto';
 import { computeKeysHash } from '../../lib/utils/sync-core';
 import type { ProviderSelections, ApiKeys, EncryptedKeysBlob } from '../../lib/types/sync';
 import { formatAiConfig } from './config/index';
+import { PROVIDER_LABELS } from '../../lib/utils/providers';
 import { timeAgo } from '../time';
 import { RESET, DIM, BOLD, GREEN, RED, BRIGHT_YELLOW, BIN, showHelp, prompt } from '../ui';
 
-async function showInfo(session: Session): Promise<void> {
+async function showInfo(session: Session, verbose = false): Promise<void> {
 	const profile = getProfile();
 	if (!profile) {
 		process.stderr.write(`No profile data found. Run: ${BIN} config\n`);
@@ -25,7 +26,15 @@ async function showInfo(session: Session): Promise<void> {
 	process.stdout.write(`  ${DIM}ID:${RESET}     ${session.profileId.slice(0, 8)}...\n`);
 	process.stdout.write(`  ${DIM}Diffs:${RESET}  ${diffs.length}\n`);
 	process.stdout.write(`  ${DIM}Depth:${RESET}  ${profile.depth || 'standard'}\n`);
-	process.stdout.write(`  ${DIM}AI:${RESET}     ${formatAiConfig(profile.providerSelections)}\n`);
+
+	const configuredKeys = await getConfiguredKeys();
+	if (configuredKeys.size > 0) {
+		const keyNames = Array.from(configuredKeys).map(k => PROVIDER_LABELS[k] || k).join(', ');
+		process.stdout.write(`  ${DIM}Keys:${RESET}   ${GREEN}${keyNames}${RESET}\n`);
+	} else {
+		process.stdout.write(`  ${DIM}Keys:${RESET}   ${BRIGHT_YELLOW}none${RESET}\n`);
+	}
+	process.stdout.write(`  ${DIM}Steps:${RESET}  ${formatAiConfig(profile.providerSelections)}\n`);
 
 	if (shared) {
 		let syncLine = `${GREEN}Shared${RESET}`;
@@ -36,6 +45,39 @@ async function showInfo(session: Session): Promise<void> {
 		process.stdout.write(`  ${DIM}Sync:${RESET}   ${syncLine}\n`);
 	} else {
 		process.stdout.write(`  ${DIM}Sync:${RESET}   ${BRIGHT_YELLOW}Local-only${RESET}\n`);
+	}
+
+	if (verbose && shared) {
+		const pending = getPendingChanges();
+		const pendingItems: string[] = [];
+		if (pending.modifiedDiffs.length) pendingItems.push(`${pending.modifiedDiffs.length} modified diffs`);
+		if (pending.deletedDiffs.length) pendingItems.push(`${pending.deletedDiffs.length} deleted diffs`);
+		if (pending.profileModified) pendingItems.push('profile');
+		if (pending.keysModified) pendingItems.push('keys');
+
+		process.stdout.write(`\n  ${BOLD}Sync details${RESET}\n`);
+		process.stdout.write(`  ${DIM}Pending:${RESET}    ${pendingItems.length ? pendingItems.join(', ') : `${GREEN}none${RESET}`}\n`);
+
+		if (syncMeta.diffsHash) {
+			process.stdout.write(`  ${DIM}Diffs hash:${RESET} ${syncMeta.diffsHash.slice(0, 12)}...\n`);
+		}
+		if (syncMeta.keysHash) {
+			process.stdout.write(`  ${DIM}Keys hash:${RESET}  ${syncMeta.keysHash.slice(0, 12)}...\n`);
+		}
+
+		// Compute current hashes and compare to stored
+		const currentDiffsHash = await computeContentHash(diffs);
+		const currentApiKeys = await getApiKeys();
+		const currentKeysHash = await computeKeysHash(
+			currentApiKeys as ApiKeys,
+			profile.providerSelections as ProviderSelections
+		);
+		const diffsMatch = currentDiffsHash === syncMeta.diffsHash;
+		const keysMatch = currentKeysHash === syncMeta.keysHash;
+		const localStatus = diffsMatch && keysMatch ? `${GREEN}in sync${RESET}` : `${BRIGHT_YELLOW}changed${RESET}`;
+		process.stdout.write(`  ${DIM}Local:${RESET}      ${localStatus}\n`);
+		if (!diffsMatch) process.stdout.write(`  ${DIM}            ${RESET}${BRIGHT_YELLOW}diffs changed since last sync${RESET}\n`);
+		if (!keysMatch) process.stdout.write(`  ${DIM}            ${RESET}${BRIGHT_YELLOW}keys changed since last sync${RESET}\n`);
 	}
 
 	process.stdout.write('\n');
@@ -258,13 +300,17 @@ async function unshareCommand(session: Session): Promise<void> {
 export async function profileCommand(args: string[]): Promise<void> {
 	showHelp(args, `Show profile info and manage cloud sync
 
-Usage: ${BIN} profile [command]
+Usage: ${BIN} profile [command] [flags]
 
 Commands:
   ${BIN} profile              Show profile info and sync status
   ${BIN} profile share        Share profile to difflog.dev (enables sync)
   ${BIN} profile password     Change sync password
   ${BIN} profile unshare      Remove profile from server (revert to local-only)
+
+Flags:
+  --sync                      Sync before showing profile info
+  --verbose                   Show sync diagnostics (hashes, pending changes)
 `);
 
 	const session = getSession();
@@ -273,9 +319,34 @@ Commands:
 		process.exit(1);
 	}
 
-	switch (args[0]) {
+	const wantsSync = args.includes('--sync');
+	const verbose = args.includes('--verbose');
+	const command = args.find(a => !a.startsWith('-'));
+
+	if (wantsSync && canSync()) {
+		try {
+			const result = await sync(session);
+			if (verbose) {
+				const parts: string[] = [];
+				if (result.downloaded) parts.push(`${result.downloaded} downloaded`);
+				if (result.uploaded) parts.push(`${result.uploaded} uploaded`);
+				if (result.profileUpdated) parts.push('profile updated');
+				if (parts.length) {
+					process.stderr.write(`  ${GREEN}✓${RESET} Synced: ${parts.join(', ')}\n`);
+				} else {
+					process.stderr.write(`  ${GREEN}✓${RESET} Synced: ${DIM}no changes${RESET}\n`);
+				}
+			}
+		} catch (e) {
+			if (verbose) {
+				process.stderr.write(`  ${RED}✗${RESET} Sync failed: ${e instanceof Error ? e.message : String(e)}\n`);
+			}
+		}
+	}
+
+	switch (command) {
 		case undefined:
-			return showInfo(session);
+			return showInfo(session, verbose);
 		case 'share':
 			return shareCommand(session);
 		case 'password':

@@ -4,6 +4,7 @@ import { showTopics, handleTopics } from './topics';
 import { showAiConfig, handleAi } from './ai';
 import { runInteractiveWizard } from './interactive';
 import { syncUpload } from '../../sync';
+import { PROVIDER_LABELS } from '../../../lib/utils/providers';
 import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW, BIN, showHelp, clearScreen, hideCursor, showCursor, readLine, readKey } from '../../ui';
 
 export function formatAiConfig(providerSelections: any): string {
@@ -13,30 +14,19 @@ export function formatAiConfig(providerSelections: any): string {
 	const providerGroups: Record<string, string[]> = {};
 
 	// Group by provider
-	if (providerSelections.search) {
-		if (!providerGroups[providerSelections.search]) {
-			providerGroups[providerSelections.search] = [];
+	for (const step of ['search', 'curation', 'synthesis'] as const) {
+		const provider = providerSelections[step];
+		if (provider) {
+			if (!providerGroups[provider]) providerGroups[provider] = [];
+			providerGroups[provider].push(step);
 		}
-		providerGroups[providerSelections.search].push('search');
-	}
-
-	if (providerSelections.curation) {
-		if (!providerGroups[providerSelections.curation]) {
-			providerGroups[providerSelections.curation] = [];
-		}
-		providerGroups[providerSelections.curation].push('curation');
-	}
-
-	if (providerSelections.synthesis) {
-		if (!providerGroups[providerSelections.synthesis]) {
-			providerGroups[providerSelections.synthesis] = [];
-		}
-		providerGroups[providerSelections.synthesis].push('synthesis');
 	}
 
 	// Add provider groups: "Anthropic (curation, synthesis)"
 	for (const [provider, caps] of Object.entries(providerGroups)) {
-		parts.push(`${provider} (${caps.join(', ')})`);
+		// Use short name: strip parenthetical from label, e.g. "Anthropic (Claude)" → "Anthropic"
+		const label = (PROVIDER_LABELS[provider] || provider).replace(/\s*\(.*\)$/, '');
+		parts.push(`${label} (${caps.join(', ')})`);
 	}
 
 	// Add unset warnings for required capabilities
