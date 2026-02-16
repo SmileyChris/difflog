@@ -668,23 +668,52 @@ export async function downloadContent(
   }
 
   // Decrypt and merge keys blob if server returned one and no local key changes pending
+  let keysNeedReupload = false;
   if (data.encrypted_api_key && !pending.keysModified) {
+    let serverApiKeys: Record<string, string> | undefined;
+    let serverProviderSelections: ProviderSelections | undefined;
+
     try {
       const decrypted = await decryptData<EncryptedKeysBlob | Record<string, string>>(
         data.encrypted_api_key, password, salt
       );
-      if (!profileUpdates) profileUpdates = {};
       if (decrypted && typeof decrypted === 'object' && 'apiKeys' in decrypted) {
         const blob = decrypted as EncryptedKeysBlob;
-        profileUpdates.apiKeys = blob.apiKeys as ApiKeys;
-        profileUpdates.providerSelections = blob.providerSelections;
+        serverApiKeys = blob.apiKeys;
+        serverProviderSelections = blob.providerSelections;
       } else {
-        // Legacy format
-        profileUpdates.apiKeys = decrypted as ApiKeys;
-        profileUpdates.providerSelections = inferProviderSelections(decrypted as Record<string, string>);
+        // Legacy format 2: Record<string, string>
+        serverApiKeys = decrypted as Record<string, string>;
+        serverProviderSelections = inferProviderSelections(serverApiKeys);
       }
-    } catch (e) {
-      console.error('Failed to decrypt keys blob:', e);
+    } catch {
+      // Legacy format 3: raw string — fall back to decryptApiKeys
+      try {
+        serverApiKeys = await decryptApiKeys(data.encrypted_api_key, salt, password);
+        serverProviderSelections = inferProviderSelections(serverApiKeys);
+      } catch (e) {
+        console.error('Failed to decrypt keys blob:', e);
+      }
+    }
+
+    if (serverApiKeys) {
+      if (!profileUpdates) profileUpdates = {};
+      // Merge: server keys fill gaps, local keys take precedence
+      const merged = { ...serverApiKeys, ...profile.apiKeys } as ApiKeys;
+      for (const [k, v] of Object.entries(merged)) {
+        if (!v) delete (merged as Record<string, unknown>)[k];
+      }
+      profileUpdates.apiKeys = merged;
+      profileUpdates.providerSelections = {
+        ...serverProviderSelections,
+        ...profile.providerSelections
+      };
+      // If local has keys the server doesn't, flag for re-upload
+      const serverKeyCount = Object.keys(serverApiKeys).filter(k => serverApiKeys![k]).length;
+      const mergedKeyCount = Object.keys(merged).filter(k => merged[k as keyof ApiKeys]).length;
+      if (mergedKeyCount > serverKeyCount) {
+        keysNeedReupload = true;
+      }
     }
   }
 
@@ -787,7 +816,7 @@ export async function downloadContent(
     deletedDiffs: pending.deletedDiffs,
     deletedStars: pending.deletedStars,
     profileModified: hasLocalProfileChanges,
-    keysModified: pending.keysModified
+    keysModified: pending.keysModified || keysNeedReupload
   };
 
   return {
