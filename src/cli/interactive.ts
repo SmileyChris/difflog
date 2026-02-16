@@ -18,7 +18,9 @@ function displayHelp(): void {
 	process.stdout.write(`  ${CYAN}←  →  j  k${RESET}  Navigate articles\n`);
 	process.stdout.write(`  ${CYAN}↑  ↓  h  l${RESET}  Navigate categories\n`);
 	process.stdout.write(`  ${CYAN}Home${RESET}       First article\n`);
-	process.stdout.write(`  ${CYAN}End${RESET}        Last article\n\n`);
+	process.stdout.write(`  ${CYAN}End${RESET}        Last article\n`);
+	process.stdout.write(`  ${CYAN}PgUp${RESET}       Previous diff (older)\n`);
+	process.stdout.write(`  ${CYAN}PgDn${RESET}       Next diff (newer)\n\n`);
 	process.stdout.write(`${DIM}Reading${RESET}\n`);
 	process.stdout.write(`  ${CYAN}Space${RESET}      Mark as read & jump to next\n`);
 	process.stdout.write(`  ${CYAN}a${RESET}          Toggle show/hide read articles\n\n`);
@@ -142,6 +144,12 @@ function displayTopic(
 		process.stdout.write('\n');
 		process.stdout.write(
 			`${DIM}↑ ${RESET}${GREEN}${prevCategories[0].name}${RESET}  ${DIM}${prevCategories[0].count}${RESET}\n`
+		);
+	} else if (showRead && unreadCount === 0) {
+		// All read: show "All articles read" as virtual previous category
+		process.stdout.write('\n');
+		process.stdout.write(
+			`${DIM}↑ ${RESET}${BRIGHT_YELLOW}✓${RESET} ${BOLD}All articles read${RESET}\n`
 		);
 	} else {
 		// Show status line when on first category
@@ -335,7 +343,7 @@ function getCategoryNavigation(
 	return { prev: prevCategories, next: nextCategories };
 }
 
-export type InteractiveAction = 'quit' | 'generate';
+export type InteractiveAction = 'quit' | 'generate' | 'prev-diff' | 'next-diff';
 
 /**
  * Start interactive viewer. Resolves with the exit action.
@@ -371,6 +379,7 @@ export function startInteractive(
 	let menuSelection = isPublic ? 1 : 0; // 0 = private, 1 = public
 	let currentIsPublic = isPublic;
 	let showRead = false; // Toggle to show/hide read topics
+	let onAllReadScreen = false; // Virtual "all read" category 0 screen
 
 	// Helper to get visible items based on showRead mode
 	function getVisibleItems() {
@@ -396,6 +405,80 @@ export function startInteractive(
 		return position;
 	}
 
+	// Display the "all articles read" virtual category 0 screen
+	function displayAllReadScreen() {
+		clearScreen();
+
+		// Title with read/unread breakdown (same as show-all mode)
+		const readCount = items.length;
+		process.stdout.write(
+			`${BOLD}${diffTitle}${RESET} ${DIM}[${readCount} read, ${RESET}${BRIGHT_YELLOW}0 unread${RESET}${DIM}]${RESET}\n`
+		);
+
+		// Date info line
+		if (dateInfo) {
+			let line = `${DIM}${dateInfo}${RESET}`;
+			if (syncEnabled) {
+				const status = currentIsPublic
+					? `${CYAN}public${RESET}`
+					: `${DIM}private${RESET}`;
+				line += `${DIM} · ${RESET}${status}`;
+			}
+			process.stdout.write(line + '\n');
+		}
+		process.stdout.write('\n');
+
+		// Status line (same as first-category status line)
+		let statusLine = '';
+		if (diffPosition) {
+			const isLatest = diffPosition.current === 1;
+			if (isLatest) {
+				if (isTodayDiff) {
+					statusLine = `${DIM}Latest diff (${diffPosition.current}/${diffPosition.total})  •  ? for keys${RESET}`;
+				} else {
+					statusLine = `${DIM}Latest diff (${diffPosition.current}/${diffPosition.total})  •  g to generate new  •  ? for keys${RESET}`;
+				}
+			} else {
+				statusLine = `${DIM}From the archives [${diffPosition.current}/${diffPosition.total}]  •  ? for keys${RESET}`;
+			}
+		} else {
+			statusLine = `${DIM}? for keys${RESET}`;
+		}
+		process.stdout.write(statusLine + '\n\n');
+
+		// Completion message as "category header"
+		process.stdout.write(`  ${BRIGHT_YELLOW}✓${RESET} ${BOLD}All articles read${RESET}\n`);
+
+		// Show first 2 real categories below
+		const firstCategories: Array<{ name: string; count: number }> = [];
+		let lastSeenCategory: typeof items[0]['category'] | null = null;
+		for (let i = 0; i < items.length && firstCategories.length < 2; i++) {
+			const cat = items[i].category;
+			if (cat !== lastSeenCategory) {
+				const count = items.filter((item) => item.category === cat).length;
+				firstCategories.push({
+					name: cat.header.replace(/^##\s*/, '').trim(),
+					count
+				});
+				lastSeenCategory = cat;
+			}
+		}
+
+		process.stdout.write('\n');
+		if (firstCategories.length >= 1) {
+			process.stdout.write(
+				`${DIM}↓ ${RESET}${GREEN}${firstCategories[0].name}${RESET}  ${DIM}${firstCategories[0].count}${RESET}\n`
+			);
+		}
+		if (firstCategories.length >= 2) {
+			process.stdout.write(
+				`${DIM}  ${RESET}${GREEN}${firstCategories[1].name}${RESET}  ${DIM}${firstCategories[1].count}${RESET}\n`
+			);
+		} else {
+			process.stdout.write('\n');
+		}
+	}
+
 	// Ensure we have a TTY
 	if (!process.stdin.isTTY) {
 		process.stderr.write('Error: Interactive mode requires a TTY\n');
@@ -411,6 +494,11 @@ export function startInteractive(
 
 	// Helper to display current view
 	function displayCurrentView() {
+		if (onAllReadScreen) {
+			displayAllReadScreen();
+			return;
+		}
+
 		const unreadCount = getUnreadCount();
 		const allRead = unreadCount === 0;
 
@@ -450,8 +538,11 @@ export function startInteractive(
 	const unreadCount = getUnreadCount();
 	const allRead = unreadCount === 0;
 
-	// Display first topic (or first unread if hiding read)
-	if (!showRead && !allRead) {
+	if (allRead) {
+		// All read: open on the completion screen
+		onAllReadScreen = true;
+		showRead = true;
+	} else if (!showRead) {
 		// Jump to first unread
 		while (currentIndex < items.length && isTopicRead(diffId, currentIndex)) {
 			currentIndex++;
@@ -572,6 +663,26 @@ export function startInteractive(
 			return;
 		}
 
+		// PageUp: previous diff (older)
+		if (key === '\u001b[5~') {
+			if (diffPosition && diffPosition.current < diffPosition.total) {
+				cleanup();
+				resolve('prev-diff');
+				return;
+			}
+			return;
+		}
+
+		// PageDown: next diff (newer)
+		if (key === '\u001b[6~') {
+			if (diffPosition && diffPosition.current > 1) {
+				cleanup();
+				resolve('next-diff');
+				return;
+			}
+			return;
+		}
+
 		// Open link (Enter)
 		if (key === '\r' || key === '\n') {
 			const currentItem = items[currentIndex];
@@ -601,6 +712,10 @@ export function startInteractive(
 				if (nextUnread >= 0) {
 					currentIndex = nextUnread;
 					currentLinkIndex = 0;
+				} else {
+					// Last unread article just read — show completion screen
+					onAllReadScreen = true;
+					showRead = true;
 				}
 			}
 			displayCurrentView();
@@ -609,16 +724,31 @@ export function startInteractive(
 
 		// Toggle show/hide read articles with 'a' key
 		if (key === 'a') {
+			if (onAllReadScreen) {
+				// From all-read screen: 'a' enters browse-all mode
+				onAllReadScreen = false;
+				showRead = true;
+				currentIndex = 0;
+				currentLinkIndex = 0;
+				displayCurrentView();
+				return;
+			}
 			showRead = !showRead;
 			// If toggling to hide-read mode, jump to first unread (if any)
 			if (!showRead) {
-				currentIndex = 0;
-				while (currentIndex < items.length && isTopicRead(diffId, currentIndex)) {
-					currentIndex++;
-				}
-				// Reset to first article if all read
-				if (currentIndex >= items.length) {
+				const unread = getUnreadCount();
+				if (unread === 0) {
+					// All read: go to completion screen
+					onAllReadScreen = true;
+					showRead = true;
+				} else {
 					currentIndex = 0;
+					while (currentIndex < items.length && isTopicRead(diffId, currentIndex)) {
+						currentIndex++;
+					}
+					if (currentIndex >= items.length) {
+						currentIndex = 0;
+					}
 				}
 			}
 			displayCurrentView();
@@ -646,6 +776,20 @@ export function startInteractive(
 			return;
 		}
 
+		// Navigation from the all-read screen
+		if (onAllReadScreen) {
+			// Right/j/Down/l: leave screen into browse-all mode
+			if (key === '\u001b[C' || key === 'j' || key === '\u001b[B' || key === 'l') {
+				onAllReadScreen = false;
+				showRead = true;
+				currentIndex = 0;
+				currentLinkIndex = 0;
+				displayCurrentView();
+			}
+			// Left/Up/Home/End: ignore (nothing before this screen)
+			return;
+		}
+
 		// Navigation
 		let moved = false;
 
@@ -668,18 +812,24 @@ export function startInteractive(
 
 		// Previous topic: Left arrow or k
 		if (key === '\u001b[D' || key === 'k') {
-			let prevIndex = currentIndex - 1;
-			// Skip read articles if not showing read AND not all read
-			const allRead = getUnreadCount() === 0;
-			if (!showRead && !allRead) {
-				while (prevIndex >= 0 && isTopicRead(diffId, prevIndex)) {
-					prevIndex--;
-				}
-			}
-			if (prevIndex >= 0) {
-				currentIndex = prevIndex;
-				currentLinkIndex = 0; // Reset link index on topic change
+			if (currentIndex === 0 && showRead && getUnreadCount() === 0) {
+				// At article 0 with all read: go to all-read screen
+				onAllReadScreen = true;
 				moved = true;
+			} else {
+				let prevIndex = currentIndex - 1;
+				// Skip read articles if not showing read AND not all read
+				const allRead = getUnreadCount() === 0;
+				if (!showRead && !allRead) {
+					while (prevIndex >= 0 && isTopicRead(diffId, prevIndex)) {
+						prevIndex--;
+					}
+				}
+				if (prevIndex >= 0) {
+					currentIndex = prevIndex;
+					currentLinkIndex = 0; // Reset link index on topic change
+					moved = true;
+				}
 			}
 		}
 
@@ -711,7 +861,11 @@ export function startInteractive(
 		// Previous category: Up arrow or h (hidden)
 		if (key === '\u001b[A' || key === 'h') {
 			const prevIndex = getPrevCategoryIndex(items, currentIndex);
-			if (prevIndex !== currentIndex) {
+			// At first category with all read: go to all-read screen
+			if (prevIndex === currentIndex && showRead && getUnreadCount() === 0) {
+				onAllReadScreen = true;
+				moved = true;
+			} else if (prevIndex !== currentIndex) {
 				const currentCategory = items[currentIndex].category;
 				if (items[prevIndex].category !== currentCategory) {
 					if (!showRead && getUnreadCount() > 0) {
@@ -747,10 +901,14 @@ export function startInteractive(
 			}
 		}
 
-		// Home: jump to first
+		// Home: jump to first (or all-read screen when all read)
 		if (key === '\u001b[H') {
-			currentIndex = 0;
-			currentLinkIndex = 0;
+			if (getUnreadCount() === 0) {
+				onAllReadScreen = true;
+			} else {
+				currentIndex = 0;
+				currentLinkIndex = 0;
+			}
 			moved = true;
 		}
 

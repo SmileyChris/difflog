@@ -71,32 +71,41 @@ Flags:
 	const isInteractiveTTY = process.stdin.isTTY && process.stdout.isTTY && !forceFullMode;
 
 	if (isInteractiveTTY) {
-		// Interactive mode
-		const title = diff.title || `Diff ${diff.generated_at}`;
+		let currentDiffIndex = diffs.findIndex((d) => d.id === diff.id);
+		if (currentDiffIndex < 0) currentDiffIndex = 0;
 
-		// Get window_days from metadata or parse from content as fallback
-		let windowDays = diff.window_days;
-		if (!windowDays && diff.content) {
-			// Parse from content for backward compatibility
-			const match = diff.content.match(/Past (\d+) days?|Past 24 hours/i);
-			if (match) {
-				windowDays = match[1] ? parseInt(match[1], 10) : 1;
+		// eslint-disable-next-line no-constant-condition
+		while (true) {
+			const currentDiff = diffs[currentDiffIndex];
+			const title = currentDiff.title || `Diff ${currentDiff.generated_at}`;
+
+			// Get window_days from metadata or parse from content as fallback
+			let windowDays = currentDiff.window_days;
+			if (!windowDays && currentDiff.content) {
+				const match = currentDiff.content.match(/Past (\d+) days?|Past 24 hours/i);
+				if (match) {
+					windowDays = match[1] ? parseInt(match[1], 10) : 1;
+				}
 			}
+
+			const dateInfo = currentDiff.generated_at ? formatDiffDate(currentDiff.generated_at, windowDays) : '';
+			const diffPosition = { current: currentDiffIndex + 1, total: diffs.length };
+			const isTodayDiff = currentDiff.generated_at
+				? new Date(currentDiff.generated_at).toDateString() === new Date().toDateString()
+				: false;
+
+			const action = await startInteractive(currentDiff.id, currentDiff.content, title, dateInfo, diffPosition, isTodayDiff, currentDiff.isPublic ?? false, canSync());
+
+			if (action === 'prev-diff') {
+				currentDiffIndex++;
+				continue;
+			}
+			if (action === 'next-diff') {
+				currentDiffIndex--;
+				continue;
+			}
+			return action;
 		}
-
-		const dateInfo = diff.generated_at ? formatDiffDate(diff.generated_at, windowDays) : '';
-
-		// Calculate diff position in history
-		const diffIndex = diffs.findIndex((d) => d.id === diff.id);
-		const diffPosition =
-			diffIndex >= 0 ? { current: diffIndex + 1, total: diffs.length } : undefined;
-
-		// Check if this diff is from today
-		const isTodayDiff = diff.generated_at
-			? new Date(diff.generated_at).toDateString() === new Date().toDateString()
-			: false;
-
-		return startInteractive(diff.id, diff.content, title, dateInfo, diffPosition, isTodayDiff, diff.isPublic ?? false, canSync());
 	} else {
 		// Full mode (piped or --full flag)
 		process.stdout.write(renderMarkdown(diff.content) + '\n');
