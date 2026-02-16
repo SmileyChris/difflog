@@ -14,10 +14,15 @@ export class ApiError extends Error {
 }
 
 /**
- * Fetch JSON with standardized error handling
+ * Fetch JSON with standardized error handling.
+ * Pass a custom `fetchFn` to use a different fetch implementation (e.g. CLI's localAwareFetch).
  */
-export async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, options);
+export async function fetchJson<T>(
+  url: string,
+  options?: RequestInit,
+  fetchFn: typeof fetch = fetch
+): Promise<T> {
+  const res = await fetchFn(url, options);
 
   if (res.status === 429) {
     const data = (await res.json().catch(() => ({}))) as { retry_after_seconds?: number };
@@ -43,14 +48,19 @@ export async function fetchJson<T>(url: string, options?: RequestInit): Promise<
 }
 
 /**
- * POST JSON with standardized error handling
+ * POST JSON with standardized error handling.
+ * Pass a custom `fetchFn` to use a different fetch implementation.
  */
-export async function postJson<T>(url: string, body: unknown): Promise<T> {
+export async function postJson<T>(
+  url: string,
+  body: unknown,
+  fetchFn: typeof fetch = fetch
+): Promise<T> {
   return fetchJson<T>(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
-  });
+  }, fetchFn);
 }
 
 /**

@@ -26,6 +26,7 @@ export interface GenerateOptions {
 	lastDiffDate: string | null;
 	lastDiffContent?: string;
 	onMappingsResolved?: (mappings: Record<string, unknown>) => void;
+	apiHost?: string; // Optional: API host (e.g., 'https://difflog.dev'), defaults to relative paths for web
 }
 
 export interface GenerateResult {
@@ -158,9 +159,10 @@ export async function generateDiffContent(options: GenerateOptions): Promise<Gen
 		const windowDays = calculateWindowDays(lastDiffDate);
 
 		// Fetch feeds and web search in parallel
+		const feedUrl = options.apiHost ? `${options.apiHost}/api/feeds` : '/api/feeds';
 		const [webSearchResults, feedRes] = await Promise.all([
 			searchWeb(keys, currentProfile, windowDays, profile.providerSelections?.search).catch(() => []),
-			fetch('/api/feeds', {
+			fetch(feedUrl, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({

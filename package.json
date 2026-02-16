@@ -2,6 +2,7 @@
   "name": "difflog",
   "private": true,
   "version": "3.1.0",
+  "cliVersion": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "bun run dev:migrate && vite dev",
@@ -14,7 +15,9 @@
     "dev:migrate": "wrangler d1 migrations apply difflog-db --local --persist-to=.wrangler/state",
     "docs": "uvx zensical serve",
     "cleanup": "bun run scripts/cleanup-profiles.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "cli": "bun src/cli/main.ts",
+    "cli:build": "bun build src/cli/main.ts --compile --outfile difflog"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
@@ -26,5 +29,8 @@
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "wrangler": "^4.61.0"
+  },
+  "dependencies": {
+    "cross-keychain": "^1.1.0"
   }
 }

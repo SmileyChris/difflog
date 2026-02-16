@@ -8,6 +8,10 @@ database_name = "difflog-db"
 database_id = "e2a8a909-e155-42af-aa75-4bc911278554"
 migrations_dir = "migrations"
 
+[[kv_namespaces]]
+binding = "KV"
+id = "a2dae57156264ebebdf583e9c0e4c304"
+
 [vars]
 # Environment variables can be set here or via wrangler secret
 
