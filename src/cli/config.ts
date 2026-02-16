@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { getPassword } from 'cross-keychain';
 import { PROVIDER_IDS } from '../lib/utils/providers';
 import { SERVICE_NAME } from './ui';
-import type { Diff, ProfileCore, PendingChanges as SharedPendingChanges } from '../lib/types/sync';
+import type { Diff, ProfileCore, PendingChanges as SharedPendingChanges, ResolvedMapping } from '../lib/types/sync';
 
 export type { Diff } from '../lib/types/sync';
 
@@ -104,6 +104,7 @@ export interface Profile extends ProfileCore {
 	frameworks: string[];
 	tools: string[];
 	topics: string[];
+	resolvedMappings?: Record<string, ResolvedMapping>;
 }
 
 export function getProfile(): Profile | null {

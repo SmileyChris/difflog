@@ -1,4 +1,5 @@
-import { getProfile, getSession, getDiffs, saveDiffs, trackDiffModified, getApiKeys } from '../config';
+import { getProfile, saveProfile, getSession, getDiffs, saveDiffs, trackDiffModified, trackDiffDeleted, getApiKeys } from '../config';
+import type { ResolvedMapping } from '../../lib/types/sync';
 import { generateDiffContent } from '../../lib/actions/generateDiff';
 import { DEPTHS, type GenerationDepth } from '../../lib/utils/constants';
 import { isConfigurationComplete, STEPS, PROVIDER_LABELS, type ProviderStep } from '../../lib/utils/providers';
@@ -178,7 +179,7 @@ Options:
 	}
 
 	// Get last diff for window calculation
-	const diffs = getDiffs();
+	let diffs = getDiffs();
 	const lastDiff = diffs[0];
 	const lastDiffDate = lastDiff?.generated_at || null;
 	const lastDiffContent = lastDiff?.content;
@@ -201,15 +202,27 @@ Options:
 				tools: profile.tools,
 				topics: profile.topics,
 				depth,
-				resolvedMappings: {}, // TODO: Add support for resolved mappings in CLI
+				resolvedMappings: profile.resolvedMappings || {},
 				providerSelections: { synthesis: selections.synthesis || undefined },
 				apiKeys
 			},
 			selectedDepth: depth,
 			lastDiffDate,
 			lastDiffContent,
-			apiHost: BASE
+			apiHost: BASE,
+			onMappingsResolved: (mappings) => {
+				const current = getProfile();
+				if (current) saveProfile({ ...current, resolvedMappings: mappings as Record<string, ResolvedMapping> });
+			}
 		});
+
+		// Replace today's existing diff if present
+		const today = new Date().toDateString();
+		if (diffs.length > 0 && new Date(diffs[0].generated_at).toDateString() === today) {
+			const oldId = diffs[0].id;
+			diffs = diffs.slice(1);
+			trackDiffDeleted(oldId);
+		}
 
 		// Save the diff
 		const updatedDiffs = [diff, ...diffs];

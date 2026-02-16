@@ -202,10 +202,14 @@ difflog show 2026-02-12 | glow -
 Generate a new diff directly from the terminal.
 
 ```bash
-difflog generate
+difflog generate [--now]
 ```
 
-This runs the full AI pipeline (fetch feeds, curate, search, synthesize) using your profile settings and API keys from the OS keychain.
+This runs the full AI pipeline (fetch feeds, curate, search, synthesize) using your profile settings and API keys from the OS keychain. If a diff already exists for today, it is replaced automatically.
+
+**Options:**
+
+- `--now` - Skip the interactive depth selection screen and generate immediately using your profile's default depth
 
 **Requirements:**
 - At least one AI provider API key configured (see `difflog config ai`)
@@ -319,7 +323,7 @@ The CLI stores data in standard OS locations:
 **Files:**
 
 - `session.json` - Authentication session (profile ID, password salt)
-- `profile.json` - Profile metadata (name, languages, frameworks, topics, depth, provider selections)
+- `profile.json` - Profile metadata (name, languages, frameworks, topics, depth, provider selections, resolved mappings)
 - `diffs.json` - Cached diff history
 - `read-state.json` - Article read/unread tracking for interactive viewer
 
