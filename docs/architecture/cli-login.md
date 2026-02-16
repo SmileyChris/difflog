@@ -6,7 +6,42 @@ icon: lucide/terminal
 
 The CLI login system enables web-assisted authentication similar to `gh auth login`, allowing users to authenticate in the terminal by completing the flow in their browser.
 
-## Overview
+## Architecture
+
+``` mermaid
+graph TB
+    subgraph CLI ["CLI (Terminal)"]
+        Config["~/.config/difflog/"]
+        Keychain["OS Keychain"]
+        Crypto[Web Crypto API]
+    end
+
+    subgraph Server ["Cloudflare Pages"]
+        API["/api/* Server Routes"]
+        KV["KV (ephemeral relay)"]
+    end
+
+    subgraph DB ["Cloudflare D1"]
+        Profiles[(profiles)]
+        Diffs[(diffs)]
+    end
+
+    subgraph Browser ["Web Browser"]
+        Storage[localStorage]
+    end
+
+    Config <--> Crypto
+    Keychain --- Config
+    Crypto <--> API
+    API <--> Profiles
+    API <--> Diffs
+    Browser -- "login relay" --> KV
+    KV -- "encrypted session" --> CLI
+```
+
+The CLI shares the same sync, encryption, and generation code as the web app. Profile metadata and diffs are stored as JSON files in `~/.config/difflog/`, while API keys are stored in the OS keychain. Cloud sync uses the same D1-backed API endpoints as the web client.
+
+## Login Flow
 
 ```mermaid
 sequenceDiagram
