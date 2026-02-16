@@ -62,12 +62,13 @@
 			{onblur}
 			{onkeydown}
 		></textarea>
-	{:else if status}
+	{:else}
 		<div class="input-with-status">
 			<input
 				id={inputId}
 				{type}
 				class="text-input"
+				class:has-status={!!status}
 				{placeholder}
 				{disabled}
 				aria-required={required || undefined}
@@ -85,20 +86,6 @@
 				<span class="input-status" aria-hidden="true">...</span>
 			{/if}
 		</div>
-	{:else}
-		<input
-			id={inputId}
-			{type}
-			class="text-input"
-			{placeholder}
-			{disabled}
-			aria-required={required || undefined}
-			aria-invalid={ariaInvalid}
-			aria-describedby={ariaDescribedBy}
-			bind:value
-			{onblur}
-			{onkeydown}
-		/>
 	{/if}
 
 	{#if hint}
@@ -130,7 +117,7 @@
 		align-items: center;
 	}
 
-	.input-with-status :global(.text-input) {
+	.input-with-status :global(.text-input.has-status) {
 		padding-right: 2.5rem;
 	}
 

@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "3.3",
+      "date": "2026-02-17",
+      "summary": "Quick share codes for profile import",
+      "description": "Share profiles with a short temporary code instead of a full UUID. Generate a code like diff-ab3k, share it verbally or via text, and the recipient enters it to import — no QR scanner or copy-paste needed.",
+      "changes": []
+    },
+    {
       "version": "3.2",
       "date": "2026-02-16",
       "summary": "CLI support and install page",
