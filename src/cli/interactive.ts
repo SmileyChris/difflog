@@ -465,8 +465,13 @@ export function startInteractive(
 	const dataHandler = (key: string) => {
 		if (!running) return;
 
-		// If showing help, any key returns to normal view
+		// If showing help, q quits, any other key returns to normal view
 		if (showingHelp) {
+			if (key === 'q') {
+				cleanup();
+				resolve('quit');
+				return;
+			}
 			showingHelp = false;
 			displayCurrentView();
 			return;
@@ -474,8 +479,14 @@ export function startInteractive(
 
 		// If showing share menu, handle menu keys
 		if (showingShareMenu) {
-			// Esc/q: cancel
-			if (key === '\u001b' || key === '\u0003' || key === 'q') {
+			// q: quit app
+			if (key === 'q') {
+				cleanup();
+				resolve('quit');
+				return;
+			}
+			// Esc/Ctrl+C: cancel back to viewer
+			if (key === '\u001b' || key === '\u0003') {
 				showingShareMenu = false;
 				displayCurrentView();
 				return;
@@ -757,6 +768,12 @@ export function startInteractive(
 
 	process.stdin.on('data', dataHandler);
 
+	// Handle process exit
+	const exitHandler = () => {
+		cleanup();
+		resolve('quit');
+	};
+
 	function cleanup() {
 		running = false;
 		showCursor();
@@ -766,13 +783,9 @@ export function startInteractive(
 			process.stdin.setRawMode(false);
 		}
 		process.stdin.pause();
+		process.removeListener('SIGINT', exitHandler);
+		process.removeListener('SIGTERM', exitHandler);
 	}
-
-	// Handle process exit
-	const exitHandler = () => {
-		cleanup();
-		resolve('quit');
-	};
 
 	process.on('SIGINT', exitHandler);
 	process.on('SIGTERM', exitHandler);
