@@ -43,6 +43,10 @@ jobs:
         if: steps.version.outputs.changed == 'true'
         run: bun install
 
+      - name: Sync SvelteKit types
+        if: steps.version.outputs.changed == 'true'
+        run: bunx svelte-kit sync
+
       - name: Build binaries
         if: steps.version.outputs.changed == 'true'
         run: |
