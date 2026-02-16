@@ -85,53 +85,43 @@ if (!command) {
 
 	const subArgs = args.slice(1);
 
-	switch (command) {
-		case 'login':
-			loginCommand(subArgs).catch((err) => {
-				process.stderr.write(`Error: ${err.message}\n`);
+	try {
+		switch (command) {
+			case 'login':
+				await loginCommand(subArgs);
+				break;
+
+			case 'logout':
+				await logoutCommand(subArgs);
+				break;
+
+			case 'generate':
+				await generateCommand(subArgs);
+				break;
+
+			case 'config':
+				await configCommand(subArgs);
+				break;
+
+			case 'profile':
+				await profileCommand(subArgs);
+				break;
+
+			case 'ls':
+				lsCommand(subArgs);
+				break;
+
+			case 'show':
+				await showCommand(subArgs);
+				break;
+
+			default:
+				process.stderr.write(`Unknown command: ${command}\n`);
+				process.stderr.write(`Run ${BIN} --help for usage.\n`);
 				process.exit(1);
-			});
-			break;
-
-		case 'logout':
-			logoutCommand(subArgs).catch((err) => {
-				process.stderr.write(`Error: ${err.message}\n`);
-				process.exit(1);
-			});
-			break;
-
-		case 'generate':
-			generateCommand(subArgs).catch((err) => {
-				process.stderr.write(`Error: ${err.message}\n`);
-				process.exit(1);
-			});
-			break;
-
-		case 'config':
-			configCommand(subArgs).catch((err) => {
-				process.stderr.write(`Error: ${err.message}\n`);
-				process.exit(1);
-			});
-			break;
-
-		case 'profile':
-			profileCommand(subArgs).catch((err) => {
-				process.stderr.write(`Error: ${err.message}\n`);
-				process.exit(1);
-			});
-			break;
-
-		case 'ls':
-			lsCommand(subArgs);
-			break;
-
-		case 'show':
-			showCommand(subArgs);
-			break;
-
-		default:
-			process.stderr.write(`Unknown command: ${command}\n`);
-			process.stderr.write(`Run ${BIN} --help for usage.\n`);
-			process.exit(1);
+		}
+	} catch (err) {
+		process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
+		process.exit(1);
 	}
 }
