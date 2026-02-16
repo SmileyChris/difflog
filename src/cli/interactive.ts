@@ -685,6 +685,7 @@ export function startInteractive(
 
 		// Open link (Enter)
 		if (key === '\r' || key === '\n') {
+			if (onAllReadScreen) return;
 			const currentItem = items[currentIndex];
 			if (currentItem.topic.links.length > 0) {
 				const link = currentItem.topic.links[currentLinkIndex];

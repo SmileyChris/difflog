@@ -5,7 +5,7 @@ import { showAiConfig, handleAi } from './ai';
 import { runInteractiveWizard } from './interactive';
 import { syncUpload } from '../../sync';
 import { PROVIDER_LABELS } from '../../../lib/utils/providers';
-import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW, BIN, showHelp, clearScreen, hideCursor, showCursor, readLine, readKey } from '../../ui';
+import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_WHITE, BRIGHT_YELLOW, BIN, showHelp, clearScreen, hideCursor, showCursor, readLine, readKey } from '../../ui';
 
 export function formatAiConfig(providerSelections: any): string {
 	if (!providerSelections) return `${BRIGHT_YELLOW}curation unset, synthesis unset${RESET}`;
@@ -47,7 +47,7 @@ async function showStatus(): Promise<void> {
 	clearScreen();
 
 	// Title
-	process.stdout.write(`${BOLD}${GREEN}Profile Configuration${RESET}\n\n`);
+	process.stdout.write(`${BOLD}${BRIGHT_WHITE}Profile Configuration${RESET}\n\n`);
 	process.stdout.write(`${DIM}Profile:${RESET} ${profile.name}\n\n`);
 
 	// Provider selections
@@ -189,7 +189,7 @@ Examples:
 	// If no profile exists, create one
 	if (!profile) {
 		clearScreen();
-		process.stdout.write(`${BOLD}${GREEN}Create Profile${RESET}\n\n`);
+		process.stdout.write(`${BOLD}${BRIGHT_WHITE}Create Profile${RESET}\n\n`);
 
 		const name = await readLine(`${CYAN}Profile name:${RESET} `);
 		if (!name) {

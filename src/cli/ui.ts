@@ -19,6 +19,7 @@ export const BLUE = '\x1b[34m';
 export const MAGENTA = '\x1b[35m';
 export const BRIGHT_YELLOW = '\x1b[93m';
 export const BRIGHT_BLUE = '\x1b[94m';
+export const BRIGHT_WHITE = '\x1b[97m';
 
 // Keychain service name
 export const SERVICE_NAME = 'difflog-cli';
@@ -240,17 +241,21 @@ export async function menuLoop(options: MenuLoopOptions, initialCursor = 0): Pro
 			if (onHorizontal) { onHorizontal(cursor, 'left'); render(cursor); }
 		} else if (key === '\r' || key === '\n') {
 			if (onEnter && await onEnter(cursor) === 'break') return;
+			render(cursor);
 		} else if (key === ' ') {
 			if (onSpace) { onSpace(cursor); render(cursor); }
 		} else if (key === '\u001b') {
 			const handler = onEsc ?? (() => 'break' as const);
 			if (await handler(cursor) === 'break') return;
+			render(cursor);
 		} else if (key === '\u0003') {
 			const handler = onCtrlC ?? onEsc ?? (() => 'break' as const);
 			if (await handler(cursor) === 'break') return;
+			render(cursor);
 		} else if (key === 'q') {
 			const handler = onQuit ?? onEsc ?? (() => 'break' as const);
 			if (await handler(cursor) === 'break') return;
+			render(cursor);
 		}
 	}
 }

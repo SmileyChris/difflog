@@ -6,7 +6,7 @@ import { estimateDiffCost } from '../../../lib/utils/pricing';
 import { formatAiConfig } from './index';
 import { syncUpload } from '../../sync';
 import { PROVIDERS, PROVIDER_IDS, PROVIDER_LABELS } from '../../../lib/utils/providers';
-import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_YELLOW, SERVICE_NAME, clearScreen, hideCursor, showCursor, readLine, menuLoop } from '../../ui';
+import { RESET, DIM, BOLD, CYAN, GREEN, BRIGHT_WHITE, BRIGHT_YELLOW, SERVICE_NAME, clearScreen, hideCursor, showCursor, readLine, menuLoop } from '../../ui';
 
 const PROVIDER_ID_LIST = PROVIDER_IDS;
 type Provider = (typeof PROVIDER_ID_LIST)[number];
@@ -31,8 +31,8 @@ const SECTION_LABELS: Record<Section, string> = {
 function renderMainMenu(selectedSection: number, profile: any) {
 	clearScreen();
 
-	process.stdout.write(`${BOLD}${GREEN}Profile Configuration${RESET}\n\n`);
-	process.stdout.write(`${DIM}Use ↑/↓ to navigate, Enter to edit, Esc to quit${RESET}\n\n`);
+	process.stdout.write(`${BOLD}${BRIGHT_WHITE}Profile Configuration${RESET}\n\n`);
+	process.stdout.write(`${DIM}[${CYAN}↑↓${RESET}${DIM}]${RESET} Navigate  ${DIM}[Enter]${RESET} Edit  ${DIM}[Esc]${RESET} Quit\n\n`);
 
 	const sections: Section[] = ['name', 'ai', 'languages', 'frameworks', 'tools', 'topics', 'depth'];
 
@@ -75,9 +75,9 @@ function renderMainMenu(selectedSection: number, profile: any) {
 
 async function editName(profile: any): Promise<any> {
 	clearScreen();
-	process.stdout.write(`${BOLD}${GREEN}Edit Profile Name${RESET}\n\n`);
+	process.stdout.write(`${DIM}Profile Configuration ${RESET}${DIM}›${RESET} ${BOLD}${BRIGHT_WHITE}Edit Profile Name${RESET}\n\n`);
 	process.stdout.write(`${DIM}Current:${RESET} ${profile.name}\n\n`);
-	process.stdout.write(`${DIM}Press Esc or Ctrl+C to cancel${RESET}\n\n`);
+	process.stdout.write(`${DIM}[Esc]${RESET} Cancel\n\n`);
 
 	const name = await readLine(`${CYAN}New name:${RESET} `);
 	if (name === null) {
@@ -106,8 +106,8 @@ async function editDepth(profile: any): Promise<any> {
 		itemCount: depths.length,
 		render: (cursor) => {
 			clearScreen();
-			process.stdout.write(`${BOLD}${GREEN}Depth & Focus${RESET}\n\n`);
-			process.stdout.write(`${DIM}↑/↓ navigate • Space to select • Enter to edit focus • Esc to go back${RESET}\n\n`);
+			process.stdout.write(`${DIM}Profile Configuration ${RESET}${DIM}›${RESET} ${BOLD}${BRIGHT_WHITE}Depth & Focus${RESET}\n\n`);
+			process.stdout.write(`${DIM}[${CYAN}↑↓${RESET}${DIM}]${RESET} Navigate  ${DIM}[Space]${RESET} Select  ${DIM}[Enter]${RESET} Edit focus  ${DIM}[Esc]${RESET} Back\n\n`);
 
 			process.stdout.write(`${DIM}Generation depth:${RESET}\n`);
 			for (let i = 0; i < depths.length; i++) {
@@ -126,9 +126,9 @@ async function editDepth(profile: any): Promise<any> {
 		onSpace: (cursor) => { selectedDepth = cursor; },
 		async onEnter(cursor) {
 			clearScreen();
-			process.stdout.write(`${BOLD}${GREEN}Custom Focus${RESET}\n\n`);
+			process.stdout.write(`${DIM}Profile Configuration ${RESET}${DIM}›${RESET} ${BOLD}${BRIGHT_WHITE}Custom Focus${RESET}\n\n`);
 			process.stdout.write(`${DIM}Current:${RESET} ${tempFocus || 'none'}\n\n`);
-			process.stdout.write(`${DIM}Leave empty to clear, Esc to cancel${RESET}\n\n`);
+			process.stdout.write(`${DIM}Leave empty to clear  [Esc]${RESET} Cancel\n\n`);
 
 			const newFocus = await readLine(`${CYAN}Focus:${RESET} `);
 			if (newFocus !== null) {
@@ -163,8 +163,8 @@ async function editList(
 		get itemCount() { return allOptions.length; },
 		render: (cursor) => {
 			clearScreen();
-			process.stdout.write(`${BOLD}${GREEN}${title}${RESET}\n\n`);
-			process.stdout.write(`${DIM}Use ↑/↓ to navigate, Space to toggle, Enter to add custom, Esc to go back${RESET}\n\n`);
+			process.stdout.write(`${DIM}Profile Configuration ${RESET}${DIM}›${RESET} ${BOLD}${BRIGHT_WHITE}${title}${RESET}\n\n`);
+			process.stdout.write(`${DIM}[${CYAN}↑↓${RESET}${DIM}]${RESET} Navigate  ${DIM}[Space]${RESET} Toggle  ${DIM}[Enter]${RESET} Add custom  ${DIM}[Esc]${RESET} Back\n\n`);
 
 			for (let i = 0; i < allOptions.length; i++) {
 				const option = allOptions[i];
@@ -190,7 +190,7 @@ async function editList(
 		},
 		async onEnter() {
 			clearScreen();
-			process.stdout.write(`${BOLD}${GREEN}Add Custom ${title}${RESET}\n\n`);
+			process.stdout.write(`${DIM}Profile Configuration ${RESET}${DIM}›${RESET} ${BOLD}${BRIGHT_WHITE}Add Custom ${title}${RESET}\n\n`);
 			const custom = await readLine(`${CYAN}Enter item:${RESET} `);
 			if (custom && custom.length > 0 && !allOptions.includes(custom)) {
 				current.add(custom);
@@ -214,7 +214,7 @@ async function editList(
 
 async function editProviderKey(provider: Provider, hasKey: boolean): Promise<string | null> {
 	clearScreen();
-	process.stdout.write(`${BOLD}${GREEN}${PROVIDER_LABELS[provider]}${RESET}\n\n`);
+	process.stdout.write(`${DIM}Profile Configuration ${RESET}${DIM}›${RESET} ${BOLD}${BRIGHT_WHITE}${PROVIDER_LABELS[provider]}${RESET}\n\n`);
 
 	// Show capabilities
 	const caps = PROVIDERS[provider].capabilities;
@@ -276,8 +276,8 @@ async function editAi(profile: any): Promise<any> {
 		itemCount: PROVIDER_ID_LIST.length,
 		render: (cursor) => {
 			clearScreen();
-			process.stdout.write(`${BOLD}${GREEN}AI Configuration${RESET}\n\n`);
-			process.stdout.write(`${DIM}↑/↓ navigate • ←/→ select column • Space to toggle • Enter to edit key • Esc to go back${RESET}\n\n`);
+			process.stdout.write(`${DIM}Profile Configuration ${RESET}${DIM}›${RESET} ${BOLD}${BRIGHT_WHITE}AI Configuration${RESET}\n\n`);
+			process.stdout.write(`${DIM}[${CYAN}↑↓${RESET}${DIM}]${RESET} Navigate  ${DIM}[${CYAN}←→${RESET}${DIM}]${RESET} Column  ${DIM}[Space]${RESET} Toggle  ${DIM}[Enter]${RESET} Edit key  ${DIM}[Esc]${RESET} Back\n\n`);
 
 			// Cost estimate
 			if (selections.curation && selections.synthesis) {

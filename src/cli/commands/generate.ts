@@ -5,7 +5,9 @@ import { DEPTHS, type GenerationDepth } from '../../lib/utils/constants';
 import { isConfigurationComplete, STEPS, PROVIDER_LABELS, type ProviderStep } from '../../lib/utils/providers';
 import { canSync, download, upload } from '../sync';
 import { BASE } from '../api';
-import { BIN, showHelp, BOLD, RESET, DIM, CYAN } from '../ui';
+import { BIN, showHelp, BOLD, RESET, DIM, CYAN, YELLOW } from '../ui';
+import { timeAgo } from '../time';
+import type { Diff } from '../config';
 
 function getProvidersText(selections: { search: string | null; curation: string | null; synthesis: string | null }): string {
 	const providers = new Set<string>();
@@ -24,15 +26,26 @@ function getProvidersText(selections: { search: string | null; curation: string 
 function showPreGenScreen(
 	trackingText: string,
 	providersText: string,
-	depthIndex: number
+	depthIndex: number,
+	hasTodayDiff: boolean,
+	replacing: boolean,
+	lastDiff: Diff | undefined
 ): void {
 	const CLEAR = '\x1b[2J\x1b[H';
 	const lines: string[] = [];
 
+	if (replacing) {
+		lines.push(`${BOLD}Generate a new diff${RESET}  ${YELLOW}replaces today's diff${RESET}`);
+	} else {
+		lines.push(`${BOLD}Generate a new diff${RESET}`);
+	}
 	lines.push('');
-	lines.push(`  ${BOLD}Ready to generate${RESET}`);
-	lines.push('');
-	lines.push(`  ${DIM}Tracking${RESET}   ${trackingText}`);
+	if (lastDiff) {
+		const title = lastDiff.title || 'Untitled';
+		const ago = timeAgo(lastDiff.generated_at);
+		lines.push(`${DIM}Latest${RESET}     ${title}  ${DIM}${ago}${RESET}`);
+	}
+	lines.push(`${DIM}Tracking${RESET}   ${trackingText}`);
 
 	// Depth selector
 	const depthParts = DEPTHS.map((d, i) => {
@@ -40,25 +53,31 @@ function showPreGenScreen(
 		return `${DIM}${d.label}${RESET}`;
 	});
 	const depthLine = depthParts.join(`${DIM}  \u25B8  ${RESET}`);
-	lines.push(`  ${DIM}Depth${RESET}      ${depthLine}`);
+	lines.push(`${DIM}Depth${RESET}      ${depthLine}`);
 
 	lines.push('');
-	lines.push(`  ${DIM}Using ${providersText}${RESET}`);
+	lines.push(`${DIM}Using ${providersText}${RESET}`);
 	lines.push('');
-	lines.push(`  ${DIM}[Enter]${RESET} Generate  ${DIM}[${CYAN}\u2190\u2192${RESET}${DIM}]${RESET} Depth  ${DIM}[Esc]${RESET} Cancel`);
-	lines.push('');
+	let footer = `${DIM}[Enter]${RESET} Generate  ${DIM}[${CYAN}←→${RESET}${DIM}]${RESET} Depth`;
+	if (hasTodayDiff) {
+		footer += `  ${DIM}[r]${RESET} ${replacing ? 'Keep both' : 'Replace'}`;
+	}
+	footer += `  ${DIM}[Esc]${RESET} Cancel`;
+	lines.push(footer);
 
 	process.stdout.write(CLEAR + lines.join('\n'));
 }
 
 type PreGenResult =
-	| { action: 'generate'; depth: GenerationDepth }
+	| { action: 'generate'; depth: GenerationDepth; replace: boolean }
 	| { action: 'cancel' }
 	| { action: 'quit' };
 
 async function interactivePreGen(
 	profile: { languages: string[]; frameworks: string[]; tools: string[]; depth?: string },
-	selections: { search: string | null; curation: string | null; synthesis: string | null }
+	selections: { search: string | null; curation: string | null; synthesis: string | null },
+	hasTodayDiff: boolean,
+	lastDiff: Diff | undefined
 ): Promise<PreGenResult> {
 	const tracking = [...(profile.languages || []), ...(profile.frameworks || []), ...(profile.tools || [])];
 	const trackingText = tracking.length > 0 ? tracking.join(' \u00B7 ') : 'No topics configured';
@@ -67,8 +86,9 @@ async function interactivePreGen(
 	const profileDepth = (profile.depth as GenerationDepth) || 'standard';
 	let depthIndex = DEPTHS.findIndex(d => d.id === profileDepth);
 	if (depthIndex === -1) depthIndex = 1;
+	let replacing = hasTodayDiff;
 
-	showPreGenScreen(trackingText, providersText, depthIndex);
+	showPreGenScreen(trackingText, providersText, depthIndex, hasTodayDiff, replacing, lastDiff);
 
 	return new Promise((resolve) => {
 		process.stdin.setRawMode(true);
@@ -85,7 +105,7 @@ async function interactivePreGen(
 			if (ch === '\r' || ch === '\n') {
 				cleanup();
 				process.stdout.write('\x1b[2J\x1b[H');
-				resolve({ action: 'generate', depth: DEPTHS[depthIndex].id });
+				resolve({ action: 'generate', depth: DEPTHS[depthIndex].id, replace: replacing });
 			} else if (ch === '\x1b' && ch.length === 1) {
 				// Esc: cancel, go back
 				cleanup();
@@ -96,11 +116,14 @@ async function interactivePreGen(
 				cleanup();
 				process.stdout.write('\x1b[2J\x1b[H');
 				resolve({ action: 'quit' });
+			} else if (ch === 'r' && hasTodayDiff) {
+				replacing = !replacing;
+				showPreGenScreen(trackingText, providersText, depthIndex, hasTodayDiff, replacing, lastDiff);
 			} else if (ch === '\x1b[D' || ch === '\x1b[C') {
 				// Left / Right arrow
 				if (ch === '\x1b[D' && depthIndex > 0) depthIndex--;
 				if (ch === '\x1b[C' && depthIndex < DEPTHS.length - 1) depthIndex++;
-				showPreGenScreen(trackingText, providersText, depthIndex);
+				showPreGenScreen(trackingText, providersText, depthIndex, hasTodayDiff, replacing, lastDiff);
 			}
 		};
 
@@ -156,17 +179,24 @@ Options:
 		process.exit(1);
 	}
 
+	// Check if today's diff already exists (for UI hint and replacement)
+	const existingDiffs = getDiffs();
+	const today = new Date().toDateString();
+	const replacing = existingDiffs.length > 0 && new Date(existingDiffs[0].generated_at).toDateString() === today;
+
 	// Determine depth: interactive screen or immediate
 	let depth: GenerationDepth;
+	let replace = replacing; // default: replace if today's diff exists
 	const skipInteractive = args.includes('--now') || !process.stdin.isTTY;
 
 	if (skipInteractive) {
 		depth = (profile.depth as GenerationDepth) || 'standard';
 	} else {
-		const result = await interactivePreGen(profile, selections);
+		const result = await interactivePreGen(profile, selections, replacing, existingDiffs[0]);
 		if (result.action === 'cancel') return 'cancel';
 		if (result.action === 'quit') return 'quit';
 		depth = result.depth;
+		replace = result.replace;
 	}
 
 	// Sync down before generating to get latest state
@@ -216,9 +246,8 @@ Options:
 			}
 		});
 
-		// Replace today's existing diff if present
-		const today = new Date().toDateString();
-		if (diffs.length > 0 && new Date(diffs[0].generated_at).toDateString() === today) {
+		// Replace today's existing diff if requested
+		if (replace && diffs.length > 0 && new Date(diffs[0].generated_at).toDateString() === today) {
 			const oldId = diffs[0].id;
 			diffs = diffs.slice(1);
 			trackDiffDeleted(oldId);
