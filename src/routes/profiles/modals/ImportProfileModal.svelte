@@ -35,7 +35,7 @@
 	$effect(() => {
 		profileId;
 		password;
-		if (error) error = '';
+		error = '';
 	});
 
 	// Clean up scanner when modal closes
