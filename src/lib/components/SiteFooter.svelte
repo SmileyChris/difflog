@@ -166,9 +166,9 @@
 	</nav>
 </footer>
 
-<div class="changelog-wrapper">
+<div class="changelog-wrapper" class:changelog-sticky={showDot}>
 	{#if dev}
-		<a href="/design" class="design-link">Design</a>
+		<a href="/design" class="design-link">design system</a>
 	{/if}
 	<button class="changelog-btn" onclick={show}>
 		v{version}
@@ -320,6 +320,8 @@
 	.design-link {
 		margin-right: 0.75rem;
 		opacity: 0.6;
+		font-family: var(--font-mono);
+		font-size: 0.75rem;
 	}
 
 	.design-link:hover {
@@ -330,6 +332,16 @@
 	.changelog-wrapper {
 		text-align: right;
 		padding: 0 1rem;
+	}
+
+	.changelog-sticky {
+		position: fixed;
+		bottom: 0;
+		right: 0;
+		z-index: 100;
+		padding: 0.5rem 1rem;
+		background: var(--bg-surface);
+		border-top-left-radius: var(--radius-lg);
 	}
 
 	.changelog-btn {
