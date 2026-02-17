@@ -119,7 +119,7 @@
 									{:else if profile.syncedAt === null}
 										<span class="profile-status profile-status-warning" title="Profile not found on server">not on server</span>
 									{:else}
-										<span class="profile-status profile-status-local">local</span>
+										<span class="profile-status profile-status-local">{isDemoProfile(profile) ? 'demo' : 'local'}</span>
 									{/if}
 									{#if !profile.syncedAt && !isDemoProfile(profile)}
 										<button class="profile-status-share" onclick={(e) => { e.stopPropagation(); startShare(id); }}>&#8599; upload</button>

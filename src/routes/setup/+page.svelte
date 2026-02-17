@@ -2,9 +2,9 @@
 	import { goto } from "$app/navigation";
 	import { updateProfile, getSyncState } from "$lib/stores/sync.svelte";
 	import RemoveFromServerModal from "./RemoveFromServerModal.svelte";
-	import { ShareProfileModal } from "../profiles/modals";
+	import { ShareProfileModal, ShareInfoModal } from "../profiles/modals";
 	import { createProfile } from "$lib/stores/operations.svelte";
-	import { profiles, activeProfileId, getProfile } from "$lib/stores/profiles.svelte";
+	import { profiles, activeProfileId, getProfile, isDemoProfile } from "$lib/stores/profiles.svelte";
 	import { getAnthropicKey } from "$lib/utils/sync";
 	import { SiteFooter, ChipSelector, InputField } from "$lib/components";
 	import {
@@ -83,6 +83,7 @@
 	let setupError = $state("");
 	let removeModalOpen = $state(false);
 	let shareModalOpen = $state(false);
+	let shareInfoOpen = $state(false);
 
 	let formData = $state(_init.formData);
 
@@ -385,7 +386,7 @@
 		saving = true;
 		try {
 			createProfile({
-				name: "Demo",
+				name: "Developer",
 				apiKeys: { anthropic: "demo-key-placeholder" },
 				providerSelections: {
 					search: "anthropic",
@@ -493,29 +494,37 @@
 					{#if isSynced}
 						<span class="sync-tag sync-tag-shared">synced</span>
 						<button
+							class="btn-link upload-link"
+							onclick={() => (shareInfoOpen = true)}
+						>
+							Share your profile
+						</button>
+						<button
 							class="btn-link remove-link"
 							onclick={() => (removeModalOpen = true)}
 						>
 							Remove from server
 						</button>
 					{:else}
-						<span class="sync-tag sync-tag-local">local</span>
-						<button
-							class="btn-link upload-link"
-							onclick={() => (shareModalOpen = true)}
-						>
-							Upload to server
-						</button>
+						<span class="sync-tag sync-tag-local">{isDemoProfile() ? 'demo' : 'local'}</span>
+						{#if !isDemoProfile()}
+							<button
+								class="btn-link upload-link"
+								onclick={() => (shareModalOpen = true)}
+							>
+								Upload to server
+							</button>
+						{/if}
 					{/if}
 				</p>
 			{:else}
-				<p class="step-desc-link">
+				<p class="step-desc-link import-link">
 					<a
 						href="/profiles"
 						class="link-subtle"
 						onclick={() =>
 							sessionStorage.setItem("openImport", "1")}
-						>Have an uploaded profile? Sign in here.</a
+						><span class="import-icon">&#9729;</span>Have an uploaded profile? Import it here.</a
 					>
 				</p>
 			{/if}
@@ -536,7 +545,7 @@
 					<div class="demo-option">
 						<p class="demo-text">Just want to explore?</p>
 						<button class="btn-link" onclick={createDemoProfile}
-							>Try demo mode</button
+							>Create a demo profile</button
 						>
 					</div>
 				{/if}
@@ -1078,6 +1087,11 @@
 			bind:open={removeModalOpen}
 			onclose={() => (removeModalOpen = false)}
 		/>
+		<ShareInfoModal
+			bind:open={shareInfoOpen}
+			profileId={activeProfileId.value}
+			onclose={() => (shareInfoOpen = false)}
+		/>
 	{:else}
 		<ShareProfileModal
 			bind:open={shareModalOpen}
@@ -1225,7 +1239,6 @@
 	.demo-text {
 		color: var(--text-hint);
 		font-size: 0.85rem;
-		margin-bottom: 0.5rem;
 	}
 
 	.setup-error {
@@ -1280,6 +1293,17 @@
 
 	.step-desc-link {
 		margin-top: 0.5rem;
+	}
+
+	.import-link {
+		text-align: center;
+		margin-bottom: 1.5rem;
+	}
+
+	.import-icon {
+		text-decoration: none;
+		display: inline-block;
+		padding-right: 0.35rem;
 	}
 
 	.sync-tag-row {

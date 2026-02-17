@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { getProfile } from '$lib/stores/profiles.svelte';
+	import { getProfile, isDemoProfile } from '$lib/stores/profiles.svelte';
 	import { getHistory } from '$lib/stores/history.svelte';
 	import { getStars, getStarCountLabel } from '$lib/stores/stars.svelte';
 	import { getCachedPassword, hasPendingChanges } from '$lib/stores/sync.svelte';
@@ -76,7 +76,12 @@
 </PageHeader>
 
 <main id="content">
-	{#if needsSyncPrompt()}
+	{#if isDemoProfile()}
+		<div class="demo-banner">
+			<span>This is a demo profile with sample data.</span>
+			<a href="/setup" class="demo-banner-link">Create your own profile</a>
+		</div>
+	{:else if needsSyncPrompt()}
 		<div class="sync-banner">
 			<span>You have unsynced changes.</span>
 			<button class="sync-banner-btn" onclick={() => openSyncDropdown()}>Sync now</button>
@@ -147,5 +152,25 @@
 
 	.sync-banner-dismiss:hover {
 		color: var(--text-secondary);
+	}
+
+	.demo-banner {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.75rem 1rem;
+		background: var(--bg-chip);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		margin-bottom: 1rem;
+		font-size: 0.9rem;
+		color: var(--text-subtle);
+	}
+
+	.demo-banner-link {
+		margin-left: auto;
+		color: var(--accent);
+		font-size: 0.85rem;
+		white-space: nowrap;
 	}
 </style>
