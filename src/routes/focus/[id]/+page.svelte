@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { tick } from 'svelte';
 	import { type Diff } from '$lib/stores/history.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { formatDiffDate } from '$lib/utils/time';
@@ -48,6 +49,8 @@
 	let currentIndex = $state(0);
 	let focusedItem = $state(0);
 	let articleEl: HTMLElement | null = $state(null);
+	let bodyEl: HTMLElement | null = $state(null);
+	let topOffset = $state(0);
 
 	// Reset when diff changes
 	$effect(() => {
@@ -57,6 +60,45 @@
 	});
 
 	const article = $derived(articles[currentIndex]);
+
+	function wrapEmoji(html: string): string {
+		return html.replace(/([\p{Emoji_Presentation}\p{Extended_Pictographic}])/gu, '<span class="focus-cat-emoji">$1</span>');
+	}
+
+	// Calculate fixed top offset: center the tallest article group in the viewport
+	$effect(() => {
+		if (!bodyEl || articles.length === 0) return;
+
+		// Measure using a clone of the actual article container for accurate styling
+		const existing = bodyEl.querySelector('.focus-article');
+		if (!existing) return;
+
+		const clone = existing.cloneNode(false) as HTMLElement;
+		clone.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;padding-top:0;padding-bottom:0';
+		clone.removeAttribute('onfocusin');
+		bodyEl.appendChild(clone);
+
+		// Clone the category nav
+		const catNav = existing.querySelector('.focus-categories');
+		if (catNav) clone.appendChild(catNav.cloneNode(true));
+
+		// Measure each article's content
+		const contentDiv = document.createElement('div');
+		contentDiv.className = 'focus-article-content';
+		clone.appendChild(contentDiv);
+
+		let tallest = 0;
+		for (const art of articles) {
+			contentDiv.innerHTML = art.html;
+			tallest = Math.max(tallest, clone.scrollHeight);
+		}
+
+		bodyEl.removeChild(clone);
+
+		const bodyHeight = bodyEl.clientHeight;
+		const offset = Math.max(0, (bodyHeight - tallest) / 2);
+		topOffset = offset;
+	});
 
 	// Get focusable items from the DOM after render
 	function getItems(): Element[] {
@@ -72,17 +114,8 @@
 	$effect(() => {
 		if (!articleEl) return;
 		const items = getItems();
-		const titleRow = articleEl.querySelector('.focus-title-row');
-
-		titleRow?.classList.add('focus-title-dimmed');
 		items.forEach((el, i) => {
-			if (i === focusedItem) {
-				el.classList.add('focus-active');
-				el.classList.remove('focus-dimmed');
-			} else {
-				el.classList.add('focus-dimmed');
-				el.classList.remove('focus-active');
-			}
+			el.classList.toggle('focus-active', i === focusedItem);
 		});
 
 		// Scroll focused item into view and focus its first link (unless Tab triggered this)
@@ -114,16 +147,31 @@
 		}
 	}
 
-	function prevSection() {
+	function handleContentClick(e: MouseEvent) {
+		const target = e.target as HTMLElement;
+		const item = target.closest('[data-p]');
+		if (!item) return;
+		const items = getItems();
+		const idx = items.indexOf(item);
+		if (idx >= 0 && idx !== focusedItem) {
+			focusedItem = idx;
+		}
+	}
+
+	async function prevSection() {
 		if (currentIndex > 0) {
 			currentIndex--;
+			focusedItem = -1;
+			await tick();
 			focusedItem = 0;
 		}
 	}
 
-	function nextSection() {
+	async function nextSection() {
 		if (currentIndex < articles.length - 1) {
 			currentIndex++;
+			focusedItem = -1;
+			await tick();
 			focusedItem = 0;
 		}
 	}
@@ -186,6 +234,7 @@
 				nextItem();
 				break;
 			case 'Escape':
+			case 'q':
 				exit();
 				break;
 		}
@@ -198,10 +247,6 @@
 		return articleEl ? getItems().length : 0;
 	});
 
-	const positionLabel = $derived.by(() => {
-		if (articles.length === 0) return '';
-		return `${currentIndex + 1} of ${articles.length} categories`;
-	});
 </script>
 
 <svelte:head>
@@ -221,33 +266,33 @@
 		</span>
 	</header>
 
-	<div class="focus-body">
-		{#if article}
-			{#key currentIndex}
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div class="focus-article" bind:this={articleEl} onfocusin={handleFocusIn}>
-					<div class="focus-title-row">
-						<h2 class="md-h2">{@html article.title}</h2>
-						{#if itemCount > 0}
-							<span class="focus-item-position">{Math.max(0, focusedItem) + 1}/{itemCount}</span>
-						{/if}
+	<div class="focus-body" bind:this={bodyEl}>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="focus-article" bind:this={articleEl} onfocusin={handleFocusIn} style:padding-top={topOffset + 'px'}>
+			<nav class="focus-categories">
+				{#each articles as cat, i}
+					<button
+						class="focus-cat-label"
+						class:focus-cat-active={i === currentIndex}
+						onclick={async () => { currentIndex = i; focusedItem = -1; await tick(); focusedItem = 0; }}
+					>
+						{@html wrapEmoji(cat.title)}
+					</button>
+				{/each}
+			</nav>
+			{#if article}
+				{#key currentIndex}
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div class="focus-article-content" onclick={handleContentClick}>
+						{@html article.html}
 					</div>
-					{@html article.html}
-				</div>
-			{/key}
-		{:else}
-			<div class="focus-article">
-				<p class="md-p" style="color: var(--text-subtle);">No articles found in this diff.</p>
-			</div>
-		{/if}
+				{/key}
+			{/if}
+		</div>
 	</div>
 
 	<footer class="focus-footer">
-		<div class="focus-nav">
-			<button class="focus-nav-btn" onclick={prevSection} disabled={currentIndex === 0} aria-label="Previous category">&#8249;</button>
-			<span class="focus-position">{positionLabel}</span>
-			<button class="focus-nav-btn" onclick={nextSection} disabled={currentIndex >= articles.length - 1} aria-label="Next category">&#8250;</button>
-		</div>
-		<span class="focus-hints"><span class="focus-key">esc</span> to exit <span class="focus-dot">·</span> <span class="focus-key">← →</span> categories <span class="focus-dot">·</span> <span class="focus-key">↑ ↓</span> articles</span>
+		<span class="focus-hints"><span class="focus-key">esc</span> to exit <span class="focus-dot">·</span> <span class="focus-key">← →</span> categories <span class="focus-dot">·</span> <span class="focus-key">↑ ↓</span> articles{#if itemCount > 0} <span class="focus-item-position">{Math.max(0, focusedItem) + 1}/{itemCount}</span>{/if}</span>
 	</footer>
 </div>

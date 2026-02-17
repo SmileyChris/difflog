@@ -77,34 +77,91 @@
   display: flex;
   justify-content: center;
   padding: 0 1.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+
+.focus-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.focus-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.focus-body::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 3px;
+}
+
+.focus-body::-webkit-scrollbar-thumb:hover {
+  background: var(--text-disabled);
 }
 
 .focus-article {
   max-width: 640px;
   width: 100%;
-  padding: 1rem 0 4rem;
+  padding-bottom: 4rem;
   font-size: 1.05rem;
   line-height: 1.7;
 }
 
-.focus-title-row {
+/* Category navigation list */
+.focus-categories {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  transition: opacity 0.25s ease;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
-.focus-title-row .md-h2 {
-  margin-bottom: 0;
+.focus-article-content {
+  animation: focus-fade-in 0.15s ease;
+}
+
+.focus-cat-label {
+  background: none;
+  border: none;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-disabled);
+  opacity: 0.75;
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: var(--radius);
+  transition: color 0.15s, background 0.15s, opacity 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.focus-cat-label:hover {
+  color: var(--text-subtle);
+  opacity: 0.9;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.focus-cat-label .focus-cat-emoji {
+  opacity: 0.65;
+  transition: opacity 0.15s;
+}
+
+.focus-cat-label.focus-cat-active {
+  color: var(--text-heading);
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.focus-cat-label.focus-cat-active .focus-cat-emoji {
+  opacity: 1;
 }
 
 .focus-item-position {
-  font-size: 0.75rem;
-  color: var(--text-disabled);
+  font-size: inherit;
+  color: var(--text-hint);
   font-family: var(--font-mono);
-  flex-shrink: 0;
+  margin-left: 0.75em;
 }
 
 .focus-article .md-h2 {
@@ -126,6 +183,7 @@
 .focus-article .md-h3 {
   font-size: 1.15rem;
   margin-top: 1.5rem;
+  opacity: 0.15;
   transition: opacity 0.25s ease;
 }
 
@@ -133,10 +191,38 @@
 .focus-article .md-list-item {
   font-size: 1.05rem;
   line-height: 1.75;
+  opacity: 0.15;
+  color: #fff;
+  transition: opacity 0.25s ease, color 0.25s ease;
+}
+
+.focus-article .md-p:not(.focus-active):hover,
+.focus-article .md-list-item:not(.focus-active):hover {
+  opacity: 0.25;
+}
+
+.focus-article [data-p]:not(.focus-active) {
+  cursor: default;
+}
+
+.focus-article [data-p]:not(.focus-active) a {
+  pointer-events: none;
+}
+
+.focus-article .md-p.focus-active,
+.focus-article .md-list-item.focus-active {
+  color: var(--text-primary);
+}
+
+.focus-article-content {
+  animation: focus-fade-in 0.15s ease;
+}
+
+.focus-article .md-hr {
+  opacity: 0.15;
   transition: opacity 0.25s ease;
 }
 
-.focus-article .md-hr,
 .focus-article .md-list {
   transition: opacity 0.25s ease;
 }
@@ -149,44 +235,6 @@
   flex-direction: column;
   align-items: center;
   gap: 0.35rem;
-}
-
-.focus-nav {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.focus-nav-btn {
-  background: none;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  color: var(--text-subtle);
-  width: 2.25rem;
-  height: 2.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 1.1rem;
-  transition: border-color 0.15s, color 0.15s;
-}
-
-.focus-nav-btn:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.focus-nav-btn:disabled {
-  opacity: 0.25;
-  cursor: default;
-}
-
-.focus-position {
-  font-size: 0.8rem;
-  color: var(--text-hint);
-  min-width: 4rem;
-  text-align: center;
 }
 
 .focus-hints {
@@ -204,11 +252,7 @@
   opacity: 0.4;
 }
 
-/* Item focus dimming */
-.focus-dimmed {
-  opacity: 0.15 !important;
-}
-
+/* Item focus */
 .focus-active {
   opacity: 1 !important;
 }
