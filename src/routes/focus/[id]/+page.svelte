@@ -121,34 +121,35 @@
 		touchStartY = e.touches[0].clientY;
 	}
 
-	function handleTouchEnd(e: TouchEvent) {
+	function slideTo(target: Diff, dir: 'left' | 'right') {
 		if (swiping) return;
-		const dx = e.changedTouches[0].clientX - touchStartX;
-		const dy = e.changedTouches[0].clientY - touchStartY;
-
-		// Only trigger if horizontal swipe is dominant and long enough
-		if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-
-		const target = dx > 0 ? prevDiff : nextDiff;
-		if (!target) return;
-
 		swiping = true;
 		cardPositions.set(diff.id, visibleCard);
-		const dir = dx > 0 ? 'right' : 'left';
 		slideDirection = dir;
 
-		// After slide-out animation, navigate and slide in
 		setTimeout(() => {
 			slideIn = dir === 'left' ? 'right' : 'left';
 			slideDirection = null;
 			goto(`/focus/${target.id}`).then(() => {
-				// Slide-in clears after animation
 				setTimeout(() => {
 					slideIn = null;
 					swiping = false;
 				}, 250);
 			});
 		}, 200);
+	}
+
+	function handleTouchEnd(e: TouchEvent) {
+		if (swiping) return;
+		const dx = e.changedTouches[0].clientX - touchStartX;
+		const dy = e.changedTouches[0].clientY - touchStartY;
+
+		if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+
+		const target = dx > 0 ? prevDiff : nextDiff;
+		if (!target) return;
+
+		slideTo(target, dx > 0 ? 'right' : 'left');
 	}
 
 	// IntersectionObserver to track which card is visible
@@ -474,9 +475,9 @@
 			class:focus-slide-in-right={slideIn === 'right'}
 		>
 			<span class="focus-card-category-label">
-				<span class="focus-nav-arrow" class:focus-nav-disabled={!prevDiff}>‹</span>
+				<button class="focus-nav-arrow" class:focus-nav-disabled={!prevDiff} disabled={!prevDiff} onclick={() => prevDiff && slideTo(prevDiff, 'right')}>‹</button>
 				{new Date(diff.generated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-				<span class="focus-nav-arrow" class:focus-nav-disabled={!nextDiff}>›</span>
+				<button class="focus-nav-arrow" class:focus-nav-disabled={!nextDiff} disabled={!nextDiff} onclick={() => nextDiff && slideTo(nextDiff, 'left')}>›</button>
 			</span>
 			<span></span>
 			{#if visibleCard > 0 && visibleCard <= flatCards.length}
