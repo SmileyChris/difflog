@@ -541,41 +541,45 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1.25rem;
+    gap: 1rem;
   }
 
-  .focus-end-logo {
-    display: flex;
+  .focus-end-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    line-height: 1.3;
+    margin: 0;
+    text-align: center;
+  }
+
+  .focus-end-caught-up {
+    font-size: 0.95rem;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .focus-end-diamond {
+    position: relative;
+    display: inline-flex;
     align-items: center;
-    margin-bottom: 0.25rem;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
   }
 
-  .focus-end-logo .focus-logo-mark {
-    font-size: 1.5rem;
-    width: 3rem;
-    height: 3rem;
-    opacity: 1;
-  }
-
-  .focus-end-logo .focus-logo-mark::after {
-    font-size: 3rem;
-  }
-
-  .focus-end-status {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .focus-end-check {
-    font-size: 1.25rem;
+  .focus-end-diamond::after {
+    content: '\25C7';
+    position: absolute;
+    font-size: 2rem;
     color: var(--accent);
   }
 
-  .focus-end-label {
-    font-size: 1.1rem;
-    color: var(--text-subtle);
-    font-weight: 500;
+  .focus-end-check {
+    position: relative;
+    z-index: 1;
+    font-size: 1.15rem;
+    color: var(--accent);
   }
 
   .focus-end-actions {
@@ -616,4 +620,94 @@
   .focus-end-btn-accent:hover {
     background: rgba(var(--accent-rgb, 255, 255, 255), 0.12);
   }
+
+  /* Jump menu */
+  .focus-jump-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+  }
+
+  .focus-jump-menu {
+    position: fixed;
+    bottom: 3.5rem;
+    right: 1.25rem;
+    z-index: 201;
+    background: var(--bg-surface, #1a1a1a);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 10rem;
+    max-height: 60vh;
+    overflow-y: auto;
+    animation: focus-jump-in 0.2s ease;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .focus-jump-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0.65rem;
+    background: none;
+    border: none;
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 0.8rem;
+    color: var(--text-subtle);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s, color 0.1s;
+    white-space: nowrap;
+  }
+
+  .focus-jump-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+  }
+
+  .focus-jump-item.focus-jump-active {
+    color: var(--accent);
+  }
+
+  .focus-jump-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .focus-jump-count {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-hint);
+    flex-shrink: 0;
+  }
+
+  .focus-card-position {
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0.25rem 0.4rem;
+    border-radius: calc(var(--radius) - 2px);
+    transition: background 0.15s;
+  }
+
+  .focus-card-position:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  @keyframes focus-jump-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .focus-card-position-diamond {
+    font-size: 0.9rem;
+    color: var(--text-hint);
+  }
+
 }

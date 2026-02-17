@@ -89,6 +89,38 @@
 	let visibleCard = $state(0);
 	let cardsContainerEl: HTMLElement | null = $state(null);
 	const cardPositions = new Map<string, number>();
+	let showJumpMenu = $state(false);
+
+	// Category jump targets: first card index for each category
+	const categoryJumps = $derived.by(() => {
+		if (!flatCards.length) return [];
+		const jumps: { label: string; cardIndex: number; count: number }[] = [];
+		let currentCat = '';
+		for (let i = 0; i < flatCards.length; i++) {
+			if (flatCards[i].categoryTitle !== currentCat) {
+				currentCat = flatCards[i].categoryTitle;
+				jumps.push({ label: currentCat, cardIndex: i + 1, count: 0 });
+			}
+			jumps[jumps.length - 1].count++;
+		}
+		return jumps;
+	});
+
+	// Which category jump is active based on visibleCard
+	const activeCategoryJump = $derived(
+		visibleCard < 1 || visibleCard > flatCards.length
+			? -1
+			: categoryJumps.findIndex((j, i) => {
+				const next = categoryJumps[i + 1];
+				return visibleCard >= j.cardIndex && (!next || visibleCard < next.cardIndex);
+			})
+	);
+
+	function jumpToCard(index: number) {
+		showJumpMenu = false;
+		const card = cardsContainerEl?.querySelector(`[data-card-index="${index}"]`);
+		if (card) card.scrollIntoView({ behavior: 'smooth' });
+	}
 
 	const currentCategory = $derived(
 		visibleCard > 0 && visibleCard <= flatCards.length
@@ -445,19 +477,15 @@
 			<!-- End card -->
 			<div class="focus-card focus-end-card" data-card-index={flatCards.length + 1}>
 				<div class="focus-end-content">
-					<div class="focus-end-logo">
-						<span class="focus-logo-mark">&#9670;</span>
-					</div>
-					<div class="focus-end-status">
-						<span class="focus-end-check">✓</span>
-						<span class="focus-end-label">All caught up</span>
-					</div>
+					<span class="focus-end-diamond"><span class="focus-end-check">✔</span></span>
+					<span class="focus-end-caught-up">All caught up</span>
+					<h2 class="focus-end-title">{diff.title}</h2>
 					<nav class="focus-end-actions">
 						{#if nextDiff}
-							<a href="/focus/{nextDiff.id}" class="focus-end-btn">Newer diff →</a>
+							<button class="focus-end-btn" onclick={() => slideTo(nextDiff, 'left')}>Newer diff →</button>
 						{/if}
 						{#if prevDiff}
-							<a href="/focus/{prevDiff.id}" class="focus-end-btn">← Older diff</a>
+							<button class="focus-end-btn" onclick={() => slideTo(prevDiff, 'right')}>← Older diff</button>
 						{/if}
 						{#if new Date(diff.generated_at).toDateString() !== new Date().toDateString()}
 							<a href="/generate" class="focus-end-btn focus-end-btn-accent">Generate new diff</a>
@@ -479,13 +507,37 @@
 				{new Date(diff.generated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
 				<button class="focus-nav-arrow" class:focus-nav-disabled={!nextDiff} disabled={!nextDiff} onclick={() => nextDiff && slideTo(nextDiff, 'left')}>›</button>
 			</span>
-			<span></span>
+			{#if visibleCard === 0}<span class="focus-swipe-hint">swipe ↑</span>{:else}<span></span>{/if}
 			{#if visibleCard > 0 && visibleCard <= flatCards.length}
-				<span class="focus-card-position">{visibleCard} / {flatCards.length}</span>
+				<button class="focus-card-position" onclick={() => showJumpMenu = !showJumpMenu}>{visibleCard} / {flatCards.length}</button>
 			{:else}
-				<span></span>
+				{#if visibleCard === 0}
+					<button class="focus-card-position focus-card-position-diamond" onclick={() => showJumpMenu = !showJumpMenu}>◆</button>
+				{:else}
+					<button class="focus-card-position focus-card-position-diamond" onclick={() => showJumpMenu = !showJumpMenu}>✓</button>
+				{/if}
 			{/if}
 		</footer>
+
+		{#if showJumpMenu}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div class="focus-jump-backdrop" onclick={() => showJumpMenu = false}></div>
+			<nav class="focus-jump-menu">
+				<button class="focus-jump-item" class:focus-jump-active={visibleCard === 0} onclick={() => jumpToCard(0)}>
+					<span class="focus-jump-label">◆ Cover</span>
+				</button>
+				{#each categoryJumps as cat, i}
+					<button class="focus-jump-item" class:focus-jump-active={i === activeCategoryJump} onclick={() => jumpToCard(cat.cardIndex)}>
+						<span class="focus-jump-label">{cat.label}</span>
+						<span class="focus-jump-count">{cat.count}</span>
+					</button>
+				{/each}
+				<button class="focus-jump-item" class:focus-jump-active={visibleCard > flatCards.length} onclick={() => jumpToCard(flatCards.length + 1)}>
+					<span class="focus-jump-label">✓ Complete</span>
+				</button>
+			</nav>
+		{/if}
 	{:else}
 		<!-- Desktop: keyboard-driven spotlight layout -->
 		<header class="focus-header">
