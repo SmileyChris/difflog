@@ -1,0 +1,206 @@
+.focus-page {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 100;
+}
+
+.focus-header {
+  padding: 1rem 1.5rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.focus-wordmark {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-hint);
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  transition: color 0.15s;
+}
+
+.focus-wordmark:hover {
+  color: var(--accent);
+}
+
+.focus-diamond {
+  font-size: 0.4em;
+  vertical-align: 0.3em;
+  margin: 0 0.05em;
+  opacity: 0.7;
+}
+
+.focus-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  padding: 0 1.5rem;
+}
+
+.focus-article {
+  max-width: 640px;
+  width: 100%;
+  padding: 1rem 0 4rem;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.focus-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  transition: opacity 0.25s ease;
+}
+
+.focus-title-row .md-h2 {
+  margin-bottom: 0;
+}
+
+.focus-item-position {
+  font-size: 0.75rem;
+  color: var(--text-disabled);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.focus-article .md-h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin-bottom: 1rem;
+  cursor: default;
+  list-style: none;
+  padding: 0;
+  transition: opacity 0.25s ease;
+}
+
+.focus-article .md-h2::marker,
+.focus-article .md-h2::-webkit-details-marker {
+  display: none;
+}
+
+.focus-article .md-h3 {
+  font-size: 1.15rem;
+  margin-top: 1.5rem;
+  transition: opacity 0.25s ease;
+}
+
+.focus-article .md-p,
+.focus-article .md-list-item {
+  font-size: 1.05rem;
+  line-height: 1.75;
+  transition: opacity 0.25s ease;
+}
+
+.focus-article .md-hr,
+.focus-article .md-list {
+  transition: opacity 0.25s ease;
+}
+
+.focus-footer {
+  padding: 0.75rem 1.5rem 1rem;
+  text-align: center;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.focus-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.focus-nav-btn {
+  background: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  color: var(--text-subtle);
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.focus-nav-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.focus-nav-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.focus-position {
+  font-size: 0.8rem;
+  color: var(--text-hint);
+  min-width: 4rem;
+  text-align: center;
+}
+
+.focus-hints {
+  font-size: 0.7rem;
+  color: var(--text-disabled);
+  letter-spacing: 0.02em;
+}
+
+/* Item focus dimming */
+.focus-dimmed {
+  opacity: 0.15 !important;
+}
+
+.focus-active {
+  opacity: 1 !important;
+}
+
+.focus-article a:focus-visible {
+  outline: 1px solid var(--text-disabled);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.focus-title-dimmed {
+  opacity: 0.6 !important;
+}
+
+/* Fade transition */
+.focus-article {
+  animation: focus-fade-in 0.15s ease;
+}
+
+@keyframes focus-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 640px) {
+  .focus-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .focus-body {
+    padding: 0 1rem;
+  }
+
+  .focus-footer {
+    padding: 0.5rem 1rem 0.75rem;
+  }
+
+  .focus-hints {
+    display: none;
+  }
+}

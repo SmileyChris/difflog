@@ -103,7 +103,10 @@
 					<span class="diff-title-icon">&#9632;</span>
 					<span>{diff.title}</span>
 				</h1>
-				<ShareDropdown {diff} />
+				<div class="diff-title-actions">
+					<a href="/focus/{diff.id}" class="focus-link" title="Focus mode">Focus</a>
+					<ShareDropdown {diff} />
+				</div>
 			</div>
 		{/if}
 	{/snippet}
@@ -209,6 +212,27 @@
 
 	.diff-title-row .diff-title {
 		padding: 0;
+	}
+
+	.diff-title-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		flex-shrink: 0;
+	}
+
+	.focus-link {
+		font-size: 0.7rem;
+		color: var(--text-disabled);
+		text-decoration: none;
+		padding: 0.35rem 0.5rem;
+		border-radius: var(--radius-sm);
+		transition: color 0.15s, background 0.15s;
+	}
+
+	.focus-link:hover {
+		color: var(--text-subtle);
+		background: rgba(255, 255, 255, 0.05);
 	}
 
 	.diff-footer {
