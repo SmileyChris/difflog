@@ -88,9 +88,12 @@
 	// --- Mobile state ---
 	let visibleCard = $state(0);
 	let cardsContainerEl: HTMLElement | null = $state(null);
+	const cardPositions = new Map<string, number>();
 
 	const currentCategory = $derived(
-		flatCards.length > 0 ? flatCards[visibleCard]?.categoryTitle ?? '' : ''
+		visibleCard > 0 && visibleCard <= flatCards.length
+			? flatCards[visibleCard - 1]?.categoryTitle ?? ''
+			: ''
 	);
 
 	// Prev/next diffs for end card
@@ -105,6 +108,48 @@
 		const idx = history.findIndex((d) => d.id === diff.id);
 		return idx > 0 ? history[idx - 1] : null;
 	});
+
+	// Horizontal swipe to navigate between diffs with slide animation
+	let touchStartX = 0;
+	let touchStartY = 0;
+	let slideDirection: 'left' | 'right' | null = $state(null);
+	let slideIn: 'left' | 'right' | null = $state(null);
+	let swiping = false;
+
+	function handleTouchStart(e: TouchEvent) {
+		touchStartX = e.touches[0].clientX;
+		touchStartY = e.touches[0].clientY;
+	}
+
+	function handleTouchEnd(e: TouchEvent) {
+		if (swiping) return;
+		const dx = e.changedTouches[0].clientX - touchStartX;
+		const dy = e.changedTouches[0].clientY - touchStartY;
+
+		// Only trigger if horizontal swipe is dominant and long enough
+		if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+
+		const target = dx > 0 ? prevDiff : nextDiff;
+		if (!target) return;
+
+		swiping = true;
+		cardPositions.set(diff.id, visibleCard);
+		const dir = dx > 0 ? 'right' : 'left';
+		slideDirection = dir;
+
+		// After slide-out animation, navigate and slide in
+		setTimeout(() => {
+			slideIn = dir === 'left' ? 'right' : 'left';
+			slideDirection = null;
+			goto(`/focus/${target.id}`).then(() => {
+				// Slide-in clears after animation
+				setTimeout(() => {
+					slideIn = null;
+					swiping = false;
+				}, 250);
+			});
+		}, 200);
+	}
 
 	// IntersectionObserver to track which card is visible
 	$effect(() => {
@@ -137,13 +182,25 @@
 	let bodyEl: HTMLElement | null = $state(null);
 	let topOffset = $state(0);
 
-	// Reset when diff changes
+	// Reset when diff changes — restore saved card position if available
 	$effect(() => {
-		void diff?.id;
+		const id = diff?.id;
+		if (!id) return;
 		currentIndex = 0;
 		focusedItem = 0;
-		visibleCard = 0;
-		if (cardsContainerEl) cardsContainerEl.scrollTop = 0;
+		const saved = cardPositions.get(id) ?? 0;
+		visibleCard = saved;
+		if (cardsContainerEl) {
+			if (saved > 0) {
+				// Scroll to saved card after DOM updates
+				tick().then(() => {
+					const card = cardsContainerEl?.querySelector(`[data-card-index="${saved}"]`);
+					if (card) card.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+				});
+			} else {
+				cardsContainerEl.scrollTop = 0;
+			}
+		}
 	});
 
 	const article = $derived(articles[currentIndex]);
@@ -352,12 +409,31 @@
 				<span class="focus-wordmark focus-wordmark-faded">diff<span class="focus-diamond">&#9670;</span>log</span>
 				<span class="focus-mode-label-mobile"><span class="focus-mode-f">f</span>ocus</span>
 			</span>
-			<button class="focus-close-btn" class:focus-close-bright={visibleCard >= flatCards.length} onclick={exit} aria-label="Close focus mode">✕</button>
+			<button class="focus-close-btn" class:focus-close-bright={visibleCard > flatCards.length} onclick={exit} aria-label="Close focus mode">✕</button>
 		</header>
 
-		<div class="focus-cards" bind:this={cardsContainerEl}>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="focus-cards"
+			class:focus-slide-out-left={slideDirection === 'left'}
+			class:focus-slide-out-right={slideDirection === 'right'}
+			class:focus-slide-in-left={slideIn === 'left'}
+			class:focus-slide-in-right={slideIn === 'right'}
+			bind:this={cardsContainerEl}
+			ontouchstart={handleTouchStart}
+			ontouchend={handleTouchEnd}
+		>
+			<!-- Title card -->
+			<div class="focus-card focus-title-card" data-card-index="0">
+				<div class="focus-title-card-content">
+					<span class="focus-logo-mark">&#9670;</span>
+					<h1 class="focus-title-card-heading">{diff.title}</h1>
+					<span class="focus-title-card-meta">{flatCards.length} articles · {articles.length} categories</span>
+				</div>
+			</div>
+
 			{#each flatCards as card, i (card.globalIndex)}
-				<div class="focus-card" data-card-index={i}>
+				<div class="focus-card" data-card-index={i + 1}>
 					<div class="focus-card-category">{card.categoryTitle}</div>
 					<div class="focus-card-content">
 						{@html card.html}
@@ -366,7 +442,7 @@
 			{/each}
 
 			<!-- End card -->
-			<div class="focus-card focus-end-card" data-card-index={flatCards.length}>
+			<div class="focus-card focus-end-card" data-card-index={flatCards.length + 1}>
 				<div class="focus-end-content">
 					<div class="focus-end-logo">
 						<span class="focus-logo-mark">&#9670;</span>
@@ -390,15 +466,23 @@
 			</div>
 		</div>
 
-		<footer class="focus-footer focus-footer-mobile">
-			{#if flatCards.length > 0 && visibleCard < flatCards.length}
-				<span class="focus-card-category-label">{new Date(diff.generated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-				{#if visibleCard === 0}
-					<span class="focus-swipe-hint">swipe up</span>
-				{:else}
-					<span></span>
-				{/if}
-				<span class="focus-card-position">{visibleCard + 1} / {flatCards.length}</span>
+		<footer
+			class="focus-footer focus-footer-mobile"
+			class:focus-slide-out-left={slideDirection === 'left'}
+			class:focus-slide-out-right={slideDirection === 'right'}
+			class:focus-slide-in-left={slideIn === 'left'}
+			class:focus-slide-in-right={slideIn === 'right'}
+		>
+			<span class="focus-card-category-label">
+				<span class="focus-nav-arrow" class:focus-nav-disabled={!prevDiff}>‹</span>
+				{new Date(diff.generated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+				<span class="focus-nav-arrow" class:focus-nav-disabled={!nextDiff}>›</span>
+			</span>
+			<span></span>
+			{#if visibleCard > 0 && visibleCard <= flatCards.length}
+				<span class="focus-card-position">{visibleCard} / {flatCards.length}</span>
+			{:else}
+				<span></span>
 			{/if}
 		</footer>
 	{:else}

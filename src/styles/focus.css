@@ -361,6 +361,43 @@
     display: none;
   }
 
+  /* Slide transitions for diff navigation */
+  .focus-slide-out-left {
+    animation: focus-slide-out-left 0.2s ease-in forwards;
+  }
+
+  .focus-slide-out-right {
+    animation: focus-slide-out-right 0.2s ease-in forwards;
+  }
+
+  .focus-slide-in-left {
+    animation: focus-slide-in-left 0.25s ease-out forwards;
+  }
+
+  .focus-slide-in-right {
+    animation: focus-slide-in-right 0.25s ease-out forwards;
+  }
+
+  @keyframes focus-slide-out-left {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(-30%); opacity: 0; }
+  }
+
+  @keyframes focus-slide-out-right {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(30%); opacity: 0; }
+  }
+
+  @keyframes focus-slide-in-left {
+    from { transform: translateX(-30%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  @keyframes focus-slide-in-right {
+    from { transform: translateX(30%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
   /* Individual card */
   .focus-card {
     scroll-snap-align: start;
@@ -435,6 +472,19 @@
   .focus-card-category-label {
     font-size: 0.7rem;
     color: var(--text-disabled);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .focus-nav-arrow {
+    font-size: 0.9rem;
+    color: var(--accent);
+    transition: opacity 0.15s;
+  }
+
+  .focus-nav-disabled {
+    opacity: 0.3;
   }
 
   .focus-swipe-hint {
@@ -446,6 +496,33 @@
   @keyframes focus-swipe-hint {
     0%, 100% { opacity: 0.4; transform: translateY(0); }
     50% { opacity: 0.8; transform: translateY(-3px); }
+  }
+
+  /* Title card */
+  .focus-title-card {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+
+  .focus-title-card-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .focus-title-card-heading {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    line-height: 1.3;
+    margin: 0;
+  }
+
+  .focus-title-card-meta {
+    font-size: 0.8rem;
+    color: var(--text-disabled);
   }
 
   /* End card */
