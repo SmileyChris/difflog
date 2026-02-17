@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { tick } from 'svelte';
-	import { type Diff } from '$lib/stores/history.svelte';
+	import { tick, onMount } from 'svelte';
+	import { browser } from '$app/environment';
+	import { type Diff, getHistory } from '$lib/stores/history.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { formatDiffDate } from '$lib/utils/time';
 	import '../../../styles/focus.css';
@@ -46,6 +47,90 @@
 		return parts;
 	});
 
+	// --- Mobile detection ---
+	let isMobile = $state(false);
+
+	onMount(() => {
+		const mq = window.matchMedia('(max-width: 640px)');
+		isMobile = mq.matches;
+		const handler = (e: MediaQueryListEvent) => { isMobile = e.matches; };
+		mq.addEventListener('change', handler);
+		return () => mq.removeEventListener('change', handler);
+	});
+
+	// --- Flat cards for mobile: one entry per [data-p] element ---
+	type FlatCard = { categoryTitle: string; html: string; globalIndex: number };
+
+	const flatCards = $derived.by((): FlatCard[] => {
+		if (!browser || !articles.length) return [];
+
+		const cards: FlatCard[] = [];
+		const tmp = document.createElement('div');
+
+		for (const art of articles) {
+			// Decode HTML entities (e.g. &amp; → &) by going through textContent
+			tmp.innerHTML = art.title;
+			const catTitle = tmp.textContent?.trim() ?? '';
+			tmp.innerHTML = art.html;
+			const items = tmp.querySelectorAll('[data-p]');
+			items.forEach((el) => {
+				cards.push({
+					categoryTitle: catTitle,
+					html: el.outerHTML,
+					globalIndex: cards.length
+				});
+			});
+		}
+
+		return cards;
+	});
+
+	// --- Mobile state ---
+	let visibleCard = $state(0);
+	let cardsContainerEl: HTMLElement | null = $state(null);
+
+	const currentCategory = $derived(
+		flatCards.length > 0 ? flatCards[visibleCard]?.categoryTitle ?? '' : ''
+	);
+
+	// Prev/next diffs for end card
+	const prevDiff = $derived.by(() => {
+		const history = getHistory();
+		const idx = history.findIndex((d) => d.id === diff.id);
+		return idx >= 0 && idx < history.length - 1 ? history[idx + 1] : null;
+	});
+
+	const nextDiff = $derived.by(() => {
+		const history = getHistory();
+		const idx = history.findIndex((d) => d.id === diff.id);
+		return idx > 0 ? history[idx - 1] : null;
+	});
+
+	// IntersectionObserver to track which card is visible
+	$effect(() => {
+		if (!isMobile || !cardsContainerEl) return;
+
+		const cards = cardsContainerEl.querySelectorAll('.focus-card');
+		if (!cards.length) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					if (entry.isIntersecting) {
+						const idx = Number((entry.target as HTMLElement).dataset.cardIndex);
+						if (!isNaN(idx)) visibleCard = idx;
+					}
+				}
+			},
+			{ root: cardsContainerEl, threshold: 0.5 }
+		);
+
+		cards.forEach((card) => observer.observe(card));
+
+		return () => observer.disconnect();
+	});
+
+	// --- Desktop state ---
 	let currentIndex = $state(0);
 	let focusedItem = $state(0);
 	let articleEl: HTMLElement | null = $state(null);
@@ -57,6 +142,8 @@
 		void diff?.id;
 		currentIndex = 0;
 		focusedItem = 0;
+		visibleCard = 0;
+		if (cardsContainerEl) cardsContainerEl.scrollTop = 0;
 	});
 
 	const article = $derived(articles[currentIndex]);
@@ -214,6 +301,7 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
+		if (isMobile) return;
 		switch (e.key) {
 			case 'ArrowLeft':
 			case 'h':
@@ -255,44 +343,104 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="focus-page">
-	<header class="focus-header">
-		<span class="focus-header-group">
-			<a href="/d/{diff.id}" class="focus-header-link">
-				<span class="focus-logo-mark">&#9670;</span>
-				<span class="focus-wordmark">diff<span class="focus-diamond">&#9670;</span>log</span>
-			</a>
-			<span class="focus-mode-label">focus mode</span>
-		</span>
-	</header>
+<div class="focus-page" class:focus-page-mobile={isMobile}>
+	{#if isMobile}
+		<!-- Mobile: swipeable card layout -->
+		<header class="focus-header focus-header-mobile">
+			<span class="focus-header-group">
+				<span class="focus-logo-mark focus-logo-faded">&#9670;</span>
+				<span class="focus-wordmark focus-wordmark-faded">diff<span class="focus-diamond">&#9670;</span>log</span>
+				<span class="focus-mode-label-mobile"><span class="focus-mode-f">f</span>ocus</span>
+			</span>
+			<button class="focus-close-btn" class:focus-close-bright={visibleCard >= flatCards.length} onclick={exit} aria-label="Close focus mode">✕</button>
+		</header>
 
-	<div class="focus-body" bind:this={bodyEl}>
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="focus-article" bind:this={articleEl} onfocusin={handleFocusIn} style:padding-top={topOffset + 'px'}>
-			<nav class="focus-categories">
-				{#each articles as cat, i}
-					<button
-						class="focus-cat-label"
-						class:focus-cat-active={i === currentIndex}
-						onclick={async () => { currentIndex = i; focusedItem = -1; await tick(); focusedItem = 0; }}
-					>
-						{@html wrapEmoji(cat.title)}
-					</button>
-				{/each}
-			</nav>
-			{#if article}
-				{#key currentIndex}
-					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<div class="focus-article-content" onclick={handleContentClick}>
-						{@html article.html}
+		<div class="focus-cards" bind:this={cardsContainerEl}>
+			{#each flatCards as card, i (card.globalIndex)}
+				<div class="focus-card" data-card-index={i}>
+					<div class="focus-card-category">{card.categoryTitle}</div>
+					<div class="focus-card-content">
+						{@html card.html}
 					</div>
-				{/key}
-			{/if}
-		</div>
-	</div>
+				</div>
+			{/each}
 
-	<footer class="focus-footer">
-		<span class="focus-hints"><span class="focus-key">esc</span> to exit <span class="focus-dot">·</span> <span class="focus-key">← →</span> categories <span class="focus-dot">·</span> <span class="focus-key">↑ ↓</span> articles{#if itemCount > 0} <span class="focus-item-position">{Math.max(0, focusedItem) + 1}/{itemCount}</span>{/if}</span>
-	</footer>
+			<!-- End card -->
+			<div class="focus-card focus-end-card" data-card-index={flatCards.length}>
+				<div class="focus-end-content">
+					<div class="focus-end-logo">
+						<span class="focus-logo-mark">&#9670;</span>
+					</div>
+					<div class="focus-end-status">
+						<span class="focus-end-check">✓</span>
+						<span class="focus-end-label">All caught up</span>
+					</div>
+					<nav class="focus-end-actions">
+						{#if nextDiff}
+							<a href="/focus/{nextDiff.id}" class="focus-end-btn">Newer diff →</a>
+						{/if}
+						{#if prevDiff}
+							<a href="/focus/{prevDiff.id}" class="focus-end-btn">← Older diff</a>
+						{/if}
+						{#if new Date(diff.generated_at).toDateString() !== new Date().toDateString()}
+							<a href="/generate" class="focus-end-btn focus-end-btn-accent">Generate new diff</a>
+						{/if}
+					</nav>
+				</div>
+			</div>
+		</div>
+
+		<footer class="focus-footer focus-footer-mobile">
+			{#if flatCards.length > 0 && visibleCard < flatCards.length}
+				<span class="focus-card-category-label">{new Date(diff.generated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+				{#if visibleCard === 0}
+					<span class="focus-swipe-hint">swipe up</span>
+				{:else}
+					<span></span>
+				{/if}
+				<span class="focus-card-position">{visibleCard + 1} / {flatCards.length}</span>
+			{/if}
+		</footer>
+	{:else}
+		<!-- Desktop: keyboard-driven spotlight layout -->
+		<header class="focus-header">
+			<span class="focus-header-group">
+				<a href="/d/{diff.id}" class="focus-header-link">
+					<span class="focus-logo-mark">&#9670;</span>
+					<span class="focus-wordmark">diff<span class="focus-diamond">&#9670;</span>log</span>
+				</a>
+				<span class="focus-mode-label">focus mode</span>
+			</span>
+		</header>
+
+		<div class="focus-body" bind:this={bodyEl}>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="focus-article" bind:this={articleEl} onfocusin={handleFocusIn} style:padding-top={topOffset + 'px'}>
+				<nav class="focus-categories">
+					{#each articles as cat, i}
+						<button
+							class="focus-cat-label"
+							class:focus-cat-active={i === currentIndex}
+							onclick={async () => { currentIndex = i; focusedItem = -1; await tick(); focusedItem = 0; }}
+						>
+							{@html wrapEmoji(cat.title)}
+						</button>
+					{/each}
+				</nav>
+				{#if article}
+					{#key currentIndex}
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div class="focus-article-content" onclick={handleContentClick}>
+							{@html article.html}
+						</div>
+					{/key}
+				{/if}
+			</div>
+		</div>
+
+		<footer class="focus-footer">
+			<span class="focus-hints"><span class="focus-key">esc</span> to exit <span class="focus-dot">·</span> <span class="focus-key">← →</span> categories <span class="focus-dot">·</span> <span class="focus-key">↑ ↓</span> articles{#if itemCount > 0} <span class="focus-item-position">{Math.max(0, focusedItem) + 1}/{itemCount}</span>{/if}</span>
+		</footer>
+	{/if}
 </div>

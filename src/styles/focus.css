@@ -293,4 +293,245 @@
   .focus-hints {
     display: none;
   }
+
+  /* --- Mobile card layout --- */
+
+  .focus-header-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+  }
+
+  .focus-logo-faded {
+    opacity: 0.3;
+  }
+
+  .focus-logo-faded::after {
+    opacity: 0.3;
+  }
+
+  .focus-wordmark-faded {
+    opacity: 0.3;
+  }
+
+  .focus-mode-label-mobile {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-disabled);
+    letter-spacing: 0.1em;
+    margin-left: 0.35rem;
+  }
+
+  .focus-mode-f {
+    color: var(--accent);
+  }
+
+  .focus-close-btn {
+    background: none;
+    border: none;
+    color: var(--text-disabled);
+    font-size: 1.25rem;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.15s;
+  }
+
+  .focus-close-btn:hover,
+  .focus-close-bright {
+    color: var(--text-primary);
+  }
+
+  /* Hide desktop-only elements */
+  .focus-page-mobile .focus-categories,
+  .focus-page-mobile .focus-article {
+    display: none;
+  }
+
+  /* Snap-scroll card container */
+  .focus-cards {
+    flex: 1;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .focus-cards::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Individual card */
+  .focus-card {
+    scroll-snap-align: start;
+    min-height: calc(100vh - 6.5rem); /* viewport minus header + footer */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1.5rem 2rem;
+    box-sizing: border-box;
+  }
+
+  .focus-card-category {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    opacity: 0.8;
+  }
+
+  .focus-card-content {
+    font-size: 1.35rem;
+    line-height: 1.8;
+    color: var(--text-primary);
+    padding-left: 1rem;
+  }
+
+  /* Hide stray bullets from list items rendered as standalone cards */
+  .focus-card-content .md-list-item {
+    list-style: none;
+    padding-left: 1rem;
+  }
+
+  .focus-card-content .md-list {
+    padding-left: 0;
+    margin: 0;
+  }
+
+  /* Override dimming and markdown font sizes: all card content is full opacity, large text */
+  .focus-card-content [data-p] {
+    opacity: 1 !important;
+    color: var(--text-primary) !important;
+    font-size: inherit !important;
+  }
+
+  .focus-card-content [data-p] a {
+    pointer-events: auto !important;
+  }
+
+  .focus-card-content .md-h3 {
+    opacity: 1;
+    font-size: 1.1rem;
+    margin-top: 0;
+  }
+
+  /* Mobile footer */
+  .focus-footer-mobile {
+    padding: 0.5rem 1.25rem 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+  }
+
+  .focus-card-position {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-hint);
+  }
+
+  .focus-card-category-label {
+    font-size: 0.7rem;
+    color: var(--text-disabled);
+  }
+
+  .focus-swipe-hint {
+    font-size: 0.65rem;
+    color: var(--text-disabled);
+    animation: focus-swipe-hint 1.5s ease-in-out infinite;
+  }
+
+  @keyframes focus-swipe-hint {
+    0%, 100% { opacity: 0.4; transform: translateY(0); }
+    50% { opacity: 0.8; transform: translateY(-3px); }
+  }
+
+  /* End card */
+  .focus-end-card {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+
+  .focus-end-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .focus-end-logo {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.25rem;
+  }
+
+  .focus-end-logo .focus-logo-mark {
+    font-size: 1.5rem;
+    width: 3rem;
+    height: 3rem;
+    opacity: 1;
+  }
+
+  .focus-end-logo .focus-logo-mark::after {
+    font-size: 3rem;
+  }
+
+  .focus-end-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .focus-end-check {
+    font-size: 1.25rem;
+    color: var(--accent);
+  }
+
+  .focus-end-label {
+    font-size: 1.1rem;
+    color: var(--text-subtle);
+    font-weight: 500;
+  }
+
+  .focus-end-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-top: 0.75rem;
+    width: 100%;
+    max-width: 14rem;
+  }
+
+  .focus-end-btn {
+    display: block;
+    padding: 0.6rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-align: center;
+    text-decoration: none;
+    color: var(--text-subtle);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .focus-end-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+  }
+
+  .focus-end-btn-accent {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(var(--accent-rgb, 255, 255, 255), 0.05);
+  }
+
+  .focus-end-btn-accent:hover {
+    background: rgba(var(--accent-rgb, 255, 255, 255), 0.12);
+  }
 }
