@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { getProfile } from '$lib/stores/profiles.svelte';
 	import { getHistory, type Diff } from '$lib/stores/history.svelte';
 	import DiffContent from './DiffContent.svelte';
@@ -67,7 +68,17 @@
 	});
 
 	const diffLabel = $derived(isArchive ? 'From the archives' : "Here's your latest diff");
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+			const tag = (e.target as HTMLElement)?.tagName;
+			if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+			goto(`/focus/${diff.id}`);
+		}
+	}
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="welcome-bar">
 	<h2 class="welcome-heading-lg">{welcomeHeading}</h2>
@@ -104,7 +115,7 @@
 					<span>{diff.title}</span>
 				</h1>
 				<div class="diff-title-actions">
-					<a href="/focus/{diff.id}" class="focus-link" title="Focus mode">Focus</a>
+					<a href="/focus/{diff.id}" class="focus-link" title="Focus mode (f)"><span class="focus-link-key">f</span>ocus</a>
 					<ShareDropdown {diff} />
 				</div>
 			</div>
@@ -228,6 +239,15 @@
 		padding: 0.35rem 0.5rem;
 		border-radius: var(--radius-sm);
 		transition: color 0.15s, background 0.15s;
+	}
+
+	.focus-link-key {
+		color: var(--accent);
+		opacity: 0.8;
+	}
+
+	.focus-link:hover .focus-link-key {
+		opacity: 1;
 	}
 
 	.focus-link:hover {
