@@ -200,7 +200,7 @@
 
 	const positionLabel = $derived.by(() => {
 		if (articles.length === 0) return '';
-		return `${currentIndex + 1} of ${articles.length}`;
+		return `${currentIndex + 1} of ${articles.length} categories`;
 	});
 </script>
 
