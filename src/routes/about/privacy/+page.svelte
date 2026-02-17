@@ -57,7 +57,7 @@
 	<section>
 		<h3>Data Deletion</h3>
 		<p>To delete your local data, clear your browser's localStorage for this site.</p>
-		<p>If you've enabled cloud sync: individual diffs can be deleted from the Archive page, which permanently removes them from our servers. To fully delete your account, first delete all diffs while synced — this ensures other devices won't re-upload them. Then delete your profile from the Profiles page to remove all remaining data from our servers.</p>
+		<p>If you've enabled cloud sync, you can remove your profile from the server using the "Remove from server" option in profile settings. This requires re-entering your password and permanently deletes all synced data (profile, diffs, and stars) from our servers. Your local data is kept, and the profile reverts to local-only.</p>
 	</section>
 
 	{#if !getProfile()}

@@ -22,6 +22,7 @@ import {
 	uploadContent,
 	downloadContent,
 	updatePassword as updatePasswordApi,
+	deleteProfileFromServer,
 	type PendingChanges,
 	type SyncStatus,
 	type Profile,
@@ -612,6 +613,32 @@ export function deleteProfileWithSync(id: string): void {
 		const remaining = Object.keys(profiles.value);
 		activeProfileId.value = remaining.length > 0 ? remaining[0] : null;
 	}
+}
+
+// Remove profile from server (revert to local-only)
+export async function removeFromServer(password: string): Promise<void> {
+	const profile = getProfile();
+	if (!activeProfileId.value || !profile?.syncedAt) {
+		throw new Error('Profile not synced to server');
+	}
+	if (!profile.passwordSalt) {
+		throw new Error('Profile missing password data');
+	}
+
+	await deleteProfileFromServer(activeProfileId.value, password, profile.passwordSalt);
+
+	// Clear sync state locally (keep profile data, just mark as local-only)
+	updateProfileBase({
+		syncedAt: null,
+		passwordSalt: undefined,
+		salt: undefined,
+		diffsHash: undefined,
+		starsHash: undefined,
+		keysHash: undefined
+	});
+	setCachedPassword(null);
+	clearRememberedPassword(activeProfileId.value);
+	clearPendingSync();
 }
 
 // Sync if stale (for visibility change)

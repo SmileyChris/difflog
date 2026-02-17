@@ -94,17 +94,17 @@
 	onclose={handleClose}
 >
 	{#if !success}
-		<div class="share-info">
-			<div class="share-info-item">
-				<span class="share-info-icon">&#128274;</span>
+		<div class="prof-info">
+			<div class="prof-info-item">
+				<span class="prof-info-icon">&#128274;</span>
 				<span>Your API key and data will be re-encrypted</span>
 			</div>
-			<div class="share-info-item">
-				<span class="share-info-icon">&#9729;</span>
+			<div class="prof-info-item">
+				<span class="prof-info-icon">&#9729;</span>
 				<span>Server data updated atomically</span>
 			</div>
-			<div class="share-info-item">
-				<span class="share-info-icon">&#128273;</span>
+			<div class="prof-info-item">
+				<span class="prof-info-icon">&#128273;</span>
 				<span>Old password will no longer work</span>
 			</div>
 		</div>
@@ -152,3 +152,29 @@
 		{/if}
 	{/snippet}
 </ModalDialog>
+
+<style>
+	.prof-info {
+		margin-bottom: 1.5rem;
+		padding: 1rem;
+		background: var(--bg-chip);
+		border-radius: var(--radius-md);
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.prof-info-item {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		font-size: 0.85rem;
+		color: var(--text-secondary);
+	}
+
+	.prof-info-icon {
+		font-size: 1rem;
+		width: 1.5rem;
+		text-align: center;
+	}
+</style>

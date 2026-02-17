@@ -355,30 +355,6 @@
 		color: var(--accent);
 	}
 
-	:global(.prof-info) {
-		margin: 1rem 0 1.5rem;
-		padding: 1rem;
-		background: var(--bg-chip);
-		border-radius: var(--radius-md);
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	:global(.prof-info-item) {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		font-size: 0.85rem;
-		color: var(--text-secondary);
-	}
-
-	:global(.prof-info-icon) {
-		font-size: 1rem;
-		width: 1.5rem;
-		text-align: center;
-	}
-
 	.profiles-list {
 		display: flex;
 		flex-direction: column;

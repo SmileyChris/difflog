@@ -79,7 +79,7 @@
 <ModalDialog
 	bind:this={dialog}
 	title="Upload Profile"
-	subtitle="Your profile data and API key will be encrypted with your password, then uploaded securely."
+	subtitle="Encrypt and upload your profile to the cloud."
 	{error}
 	size="sm"
 	dark={true}
@@ -131,3 +131,29 @@
 		</button>
 	{/snippet}
 </ModalDialog>
+
+<style>
+	.prof-info {
+		margin-bottom: 1.5rem;
+		padding: 1rem;
+		background: var(--bg-chip);
+		border-radius: var(--radius-md);
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.prof-info-item {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		font-size: 0.85rem;
+		color: var(--text-secondary);
+	}
+
+	.prof-info-icon {
+		font-size: 1rem;
+		width: 1.5rem;
+		text-align: center;
+	}
+</style>

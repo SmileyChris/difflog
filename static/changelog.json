@@ -5,7 +5,10 @@
       "date": "2026-02-17",
       "summary": "Quick share codes for profile import",
       "description": "Share profiles with a short temporary code instead of a full UUID. Generate a code like diff-ab3k, share it verbally or via text, and the recipient enters it to import — no QR scanner or copy-paste needed.",
-      "changes": []
+      "changes": [
+        { "type": "feature", "text": "Password-confirmed dialog for removing synced profiles from the server", "in": "3.3.1" },
+        { "type": "feature", "text": "Upload to server link on local profiles in the setup wizard", "in": "3.3.1" }
+      ]
     },
     {
       "version": "3.2",

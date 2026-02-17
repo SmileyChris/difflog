@@ -354,6 +354,20 @@ The `syncedAt` property indicates sync status:
 | `null` | Was synced, not on server | "not on server" warning |
 | `"2026-01-26T..."` | Synced and on server | "synced [date]" |
 
+## Remove from Server
+
+Users can permanently delete their synced profile from the server via the setup wizard. This requires re-entering the sync password for confirmation.
+
+The `removeFromServer(password)` function:
+
+1. Verifies the password against the server's stored hash
+2. Calls `DELETE /api/profile/{id}` to remove all server data (profile, diffs, stars)
+3. Clears local sync state (`syncedAt`, `passwordSalt`, `salt`, hashes)
+4. Clears cached and remembered passwords
+5. Clears pending sync queue
+
+The profile reverts to local-only — all local data (diffs, stars, settings) is preserved.
+
 ## Security Considerations
 
 !!! note "End-to-End Encryption"

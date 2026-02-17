@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
-	import { updateProfile } from "$lib/stores/sync.svelte";
+	import { updateProfile, getSyncState } from "$lib/stores/sync.svelte";
+	import RemoveFromServerModal from "./RemoveFromServerModal.svelte";
+	import { ShareProfileModal } from "../profiles/modals";
 	import { createProfile } from "$lib/stores/operations.svelte";
-	import { profiles, activeProfileId } from "$lib/stores/profiles.svelte";
+	import { profiles, activeProfileId, getProfile } from "$lib/stores/profiles.svelte";
 	import { getAnthropicKey } from "$lib/utils/sync";
 	import { SiteFooter, ChipSelector, InputField } from "$lib/components";
 	import {
@@ -79,6 +81,8 @@
 	let step = $state(_init.step);
 	let saving = $state(false);
 	let setupError = $state("");
+	let removeModalOpen = $state(false);
+	let shareModalOpen = $state(false);
 
 	let formData = $state(_init.formData);
 
@@ -326,6 +330,8 @@
 		goto(hasExistingProfiles ? "/profiles" : "/about");
 	}
 
+	const isSynced = $derived(isEditing && getSyncState() !== 'local');
+
 	async function saveProfile() {
 		setupError = "";
 
@@ -482,6 +488,27 @@
 					ecosystem and surface only what's changed since you last
 					checked in.
 				</p>
+				{#if isEditing}
+				<p class="step-desc-link sync-tag-row">
+					{#if isSynced}
+						<span class="sync-tag sync-tag-shared">synced</span>
+						<button
+							class="btn-link remove-link"
+							onclick={() => (removeModalOpen = true)}
+						>
+							Remove from server
+						</button>
+					{:else}
+						<span class="sync-tag sync-tag-local">local</span>
+						<button
+							class="btn-link upload-link"
+							onclick={() => (shareModalOpen = true)}
+						>
+							Upload to server
+						</button>
+					{/if}
+				</p>
+			{:else}
 				<p class="step-desc-link">
 					<a
 						href="/profiles"
@@ -491,6 +518,7 @@
 						>Have an uploaded profile? Sign in here.</a
 					>
 				</p>
+			{/if}
 
 				<InputField
 					label={hasExistingProfiles
@@ -1044,6 +1072,21 @@
 	</div>
 </main>
 
+{#if isEditing && activeProfileId.value}
+	{#if isSynced}
+		<RemoveFromServerModal
+			bind:open={removeModalOpen}
+			onclose={() => (removeModalOpen = false)}
+		/>
+	{:else}
+		<ShareProfileModal
+			bind:open={shareModalOpen}
+			profileId={activeProfileId.value}
+			onclose={() => (shareModalOpen = false)}
+		/>
+	{/if}
+{/if}
+
 <SiteFooter />
 
 <style>
@@ -1237,6 +1280,53 @@
 
 	.step-desc-link {
 		margin-top: 0.5rem;
+	}
+
+	.sync-tag-row {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.sync-tag {
+		font-size: 0.65rem;
+		font-weight: 500;
+		padding: 0.15rem 0.4rem;
+		border-radius: var(--radius-sm);
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+
+	.sync-tag-local {
+		color: var(--text-subtle);
+		background: rgba(255, 255, 255, 0.08);
+		border: 1px solid var(--border-subtle);
+	}
+
+	.sync-tag-shared {
+		color: var(--text-subtle);
+		background: var(--info-bg);
+		border: 1px solid var(--info-border);
+	}
+
+	.remove-link {
+		color: var(--danger);
+		opacity: 0.7;
+	}
+
+	.remove-link:hover {
+		color: var(--danger);
+		opacity: 1;
+	}
+
+	.upload-link {
+		color: var(--text-subtle);
+		opacity: 0.7;
+	}
+
+	.upload-link:hover {
+		color: var(--accent);
+		opacity: 1;
 	}
 
 	/* Cost Estimate */

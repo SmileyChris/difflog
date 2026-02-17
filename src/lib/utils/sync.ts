@@ -662,3 +662,17 @@ export async function updatePassword(
 
   return { passwordSalt: newPasswordSalt, salt: newSalt };
 }
+
+/**
+ * Delete a profile from the server (removes all synced data)
+ */
+export async function deleteProfileFromServer(
+  profileId: string,
+  password: string,
+  passwordSalt: string
+): Promise<void> {
+  const passwordHash = await hashPasswordForTransport(password, passwordSalt);
+  await fetchJson(`/api/profile/${profileId}?password_hash=${encodeURIComponent(passwordHash)}`, {
+    method: 'DELETE'
+  });
+}
