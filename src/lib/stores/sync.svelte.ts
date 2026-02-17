@@ -29,6 +29,7 @@ import {
 	type Diff,
 	type Star
 } from '$lib/utils/sync';
+import { fetchJson } from '$lib/utils/api';
 
 // Persisted state
 const _pendingSync = persist<Record<string, PendingChanges>>('difflog-pending-sync', {});
@@ -430,6 +431,27 @@ async function downloadContentInternal(password: string): Promise<{ downloaded: 
 	}
 }
 
+// Refresh passwordSalt from server (unauthenticated endpoint)
+// Returns true if the salt was updated
+async function refreshPasswordSalt(): Promise<boolean> {
+	if (!activeProfileId.value) return false;
+	try {
+		const shareData = await fetchJson<{ password_salt?: string }>(
+			`/api/share/${activeProfileId.value}`
+		);
+		if (shareData.password_salt) {
+			const profile = getProfile();
+			if (profile && shareData.password_salt !== profile.passwordSalt) {
+				updateProfileBase({ passwordSalt: shareData.password_salt });
+				return true;
+			}
+		}
+	} catch {
+		// Share endpoint may fail if profile was deleted; ignore
+	}
+	return false;
+}
+
 // Full sync
 export async function syncContent(password: string): Promise<{ uploaded: number; downloaded: number; status: 'synced' | 'uploaded' | 'downloaded' }> {
 	const profile = getProfile();
@@ -437,7 +459,24 @@ export async function syncContent(password: string): Promise<{ uploaded: number;
 		throw new Error('Profile not synced to server');
 	}
 
-	const downloadResult = await downloadContentInternal(password);
+	let downloadResult: { downloaded: number };
+	try {
+		downloadResult = await downloadContentInternal(password);
+	} catch (e: unknown) {
+		// If 401, the passwordSalt may have changed (password was updated on another device).
+		// Fetch the current salt from the server and retry once.
+		if (e instanceof ApiError && e.status === 401) {
+			const updated = await refreshPasswordSalt();
+			if (updated) {
+				downloadResult = await downloadContentInternal(password);
+			} else {
+				throw e;
+			}
+		} else {
+			throw e;
+		}
+	}
+
 	const uploadResult = await uploadContentInternal(password);
 
 	setCachedPassword(password);
@@ -466,7 +505,20 @@ export async function autoSync(): Promise<void> {
 	if (_syncing) return;
 
 	try {
-		await downloadContentInternal(password);
+		try {
+			await downloadContentInternal(password);
+		} catch (e: unknown) {
+			if (e instanceof ApiError && e.status === 401) {
+				const updated = await refreshPasswordSalt();
+				if (updated) {
+					await downloadContentInternal(password);
+				} else {
+					throw e;
+				}
+			} else {
+				throw e;
+			}
+		}
 		if (hasPendingChanges()) {
 			await uploadContentInternal(password);
 		}

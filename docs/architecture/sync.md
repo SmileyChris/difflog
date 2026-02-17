@@ -170,9 +170,13 @@ async function autoSync(): Promise<void> {
 !!! important "Deletion Preservation"
     The download phase preserves `deletedDiffs` and `deletedStars` so they're available when upload runs. Without this, deletions would be lost between download and upload.
 
-### Password Validation During Auto-Sync
+### Password Change on Another Device
 
-If auto-sync fails with a 401 "Invalid password" error (e.g., password was changed on another device), the cached password is automatically cleared:
+When a password is changed on one device, other devices have a stale `passwordSalt` stored locally. This means even the correct new password would produce the wrong transport hash.
+
+**Automatic salt refresh:** On a 401 error, the client fetches the current `passwordSalt` from the unauthenticated `/api/share/{id}` endpoint. If the salt has changed, it updates the local profile and retries the sync once. This makes password changes seamless across devices — entering the new password "just works."
+
+**If the salt hasn't changed** (genuinely wrong password), the cached password is cleared:
 
 - Session storage password is cleared
 - Any remembered password for this profile is cleared
