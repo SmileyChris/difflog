@@ -14,17 +14,54 @@
   flex-shrink: 0;
 }
 
-.focus-wordmark {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-hint);
-  text-decoration: none;
-  letter-spacing: 0.1em;
-  transition: color 0.15s;
+.focus-header-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
-.focus-wordmark:hover {
+.focus-header-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-decoration: none;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.focus-header-link:hover {
+  opacity: 1;
+}
+
+.focus-logo-mark {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1.1rem;
   color: var(--accent);
+}
+
+.focus-logo-mark::after {
+  content: '\25C7';
+  position: absolute;
+  font-size: 2rem;
+  color: var(--accent);
+}
+
+.focus-wordmark {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  letter-spacing: 0.1em;
+}
+
+.focus-mode-label {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--text-disabled);
 }
 
 .focus-diamond {
@@ -156,6 +193,15 @@
   font-size: 0.7rem;
   color: var(--text-disabled);
   letter-spacing: 0.02em;
+}
+
+.focus-key {
+  color: var(--accent);
+}
+
+.focus-dot {
+  margin: 0 0.4em;
+  opacity: 0.4;
 }
 
 /* Item focus dimming */

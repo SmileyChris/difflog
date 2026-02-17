@@ -212,7 +212,13 @@
 
 <div class="focus-page">
 	<header class="focus-header">
-		<a href="/d/{diff.id}" class="focus-wordmark">diff<span class="focus-diamond">&#9670;</span>log</a>
+		<span class="focus-header-group">
+			<a href="/d/{diff.id}" class="focus-header-link">
+				<span class="focus-logo-mark">&#9670;</span>
+				<span class="focus-wordmark">diff<span class="focus-diamond">&#9670;</span>log</span>
+			</a>
+			<span class="focus-mode-label">focus mode</span>
+		</span>
 	</header>
 
 	<div class="focus-body">
@@ -242,6 +248,6 @@
 			<span class="focus-position">{positionLabel}</span>
 			<button class="focus-nav-btn" onclick={nextSection} disabled={currentIndex >= articles.length - 1} aria-label="Next category">&#8250;</button>
 		</div>
-		<span class="focus-hints">esc to exit · ← → categories · ↑ ↓ articles</span>
+		<span class="focus-hints"><span class="focus-key">esc</span> to exit <span class="focus-dot">·</span> <span class="focus-key">← →</span> categories <span class="focus-dot">·</span> <span class="focus-key">↑ ↓</span> articles</span>
 	</footer>
 </div>
