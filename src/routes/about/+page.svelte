@@ -1,8 +1,14 @@
 <script lang="ts">
   import { getProfile } from "$lib/stores/profiles.svelte";
+  import { isMobile } from "$lib/stores/mobile.svelte";
   import { page } from "$app/state";
+  import ChangelogModal from "$lib/components/ChangelogModal.svelte";
 
+  const version = __APP_VERSION__;
   const installUrl = $derived(`${page.url.origin}/install.sh`);
+
+  let changelogEl: ChangelogModal;
+  let hasUnseen = $state(false);
 </script>
 
 <svelte:head>
@@ -13,6 +19,14 @@
   <h1 class="splash-title">
     diff<span class="splash-diamond">&#9670;</span>log
   </h1>
+  {#if isMobile.value}
+    <button class="splash-version" onclick={() => changelogEl?.open()}>
+      v{version}
+      {#if hasUnseen}
+        <span class="splash-version-dot"></span>
+      {/if}
+    </button>
+  {/if}
   <p class="splash-tagline">
     Catch up on what matters. Your personalized dev diff.
   </p>
@@ -63,33 +77,37 @@
     Bring your own AI platform key — ~$0.05/diff, full privacy
   </p>
 
-  <div class="cli-section">
-    <div class="cli-header">
-      <span class="cli-icon">&gt;<span class="cli-cursor">_</span></span>
-      <div>
-        <strong>Also available as a CLI</strong>
-        <span>Generate and read diffs from your terminal</span>
+  {#if !isMobile.value}
+    <div class="cli-section">
+      <div class="cli-header">
+        <span class="cli-icon">&gt;<span class="cli-cursor">_</span></span>
+        <div>
+          <strong>Also available as a CLI</strong>
+          <span>Generate and read diffs from your terminal</span>
+        </div>
+        <div class="cli-links">
+          <a
+            href="https://github.com/SmileyChris/difflog/releases"
+            target="_blank"
+            rel="noopener">Releases</a
+          >
+          <span class="cli-sep">&#183;</span>
+          <a
+            href="https://smileychris.github.io/difflog/cli/"
+            target="_blank"
+            rel="noopener">Docs</a
+          >
+        </div>
       </div>
-      <div class="cli-links">
-        <a
-          href="https://github.com/SmileyChris/difflog/releases"
-          target="_blank"
-          rel="noopener">Releases</a
-        >
-        <span class="cli-sep">&#183;</span>
-        <a
-          href="https://smileychris.github.io/difflog/cli/"
-          target="_blank"
-          rel="noopener">Docs</a
-        >
-      </div>
+      <code>
+        <span class="bash">$&nbsp;</span>curl -fsSL {installUrl} | sh
+        <span class="bash"><br />$&nbsp;</span><span>difflog --help</span>
+      </code>
     </div>
-    <code>
-      <span class="bash">$&nbsp;</span>curl -fsSL {installUrl} | sh
-      <span class="bash"><br />$&nbsp;</span><span>difflog --help</span>
-    </code>
-  </div>
+  {/if}
 </div>
+
+<ChangelogModal bind:this={changelogEl} bind:hasUnseen />
 
 <style>
   .about-centered {
@@ -98,7 +116,7 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 3rem 1rem;
+    padding: 0 1rem;
     flex: 1;
     min-height: calc(100vh - 10rem);
   }
@@ -116,6 +134,35 @@
     font-size: 0.35em;
     vertical-align: 0.35em;
     margin: 0 0.05em;
+  }
+
+  .splash-version {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: none;
+    border: 1px solid var(--border-subtle);
+    border-radius: 2rem;
+    padding: 0.3rem 0.75rem;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-subtle);
+    margin-bottom: 0.5rem;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .splash-version:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .splash-version-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    flex-shrink: 0;
   }
 
   .splash-tagline {

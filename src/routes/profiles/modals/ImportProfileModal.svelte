@@ -187,6 +187,7 @@
 			if (remember) {
 				rememberPassword(password);
 			}
+			handleClose();
 			goto('/');
 		} catch (e: unknown) {
 			error = e instanceof Error ? e.message : 'Failed to import profile';

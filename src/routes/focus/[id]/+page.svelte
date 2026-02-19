@@ -5,6 +5,7 @@
 	import { type Diff, getHistory } from '$lib/stores/history.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { formatDiffDate } from '$lib/utils/time';
+	import CardView from '$lib/components/mobile/CardView.svelte';
 	import '../../../styles/focus.css';
 
 	let { data } = $props();
@@ -58,155 +59,8 @@
 		return () => mq.removeEventListener('change', handler);
 	});
 
-	// --- Flat cards for mobile: one entry per [data-p] element ---
-	type FlatCard = { categoryTitle: string; html: string; globalIndex: number };
-
-	const flatCards = $derived.by((): FlatCard[] => {
-		if (!browser || !articles.length) return [];
-
-		const cards: FlatCard[] = [];
-		const tmp = document.createElement('div');
-
-		for (const art of articles) {
-			// Decode HTML entities (e.g. &amp; → &) by going through textContent
-			tmp.innerHTML = art.title;
-			const catTitle = tmp.textContent?.trim() ?? '';
-			tmp.innerHTML = art.html;
-			const items = tmp.querySelectorAll('[data-p]');
-			items.forEach((el) => {
-				cards.push({
-					categoryTitle: catTitle,
-					html: el.outerHTML,
-					globalIndex: cards.length
-				});
-			});
-		}
-
-		return cards;
-	});
-
 	// --- Mobile state ---
 	let visibleCard = $state(0);
-	let cardsContainerEl: HTMLElement | null = $state(null);
-	const cardPositions = new Map<string, number>();
-	let showJumpMenu = $state(false);
-
-	// Category jump targets: first card index for each category
-	const categoryJumps = $derived.by(() => {
-		if (!flatCards.length) return [];
-		const jumps: { label: string; cardIndex: number; count: number }[] = [];
-		let currentCat = '';
-		for (let i = 0; i < flatCards.length; i++) {
-			if (flatCards[i].categoryTitle !== currentCat) {
-				currentCat = flatCards[i].categoryTitle;
-				jumps.push({ label: currentCat, cardIndex: i + 1, count: 0 });
-			}
-			jumps[jumps.length - 1].count++;
-		}
-		return jumps;
-	});
-
-	// Which category jump is active based on visibleCard
-	const activeCategoryJump = $derived(
-		visibleCard < 1 || visibleCard > flatCards.length
-			? -1
-			: categoryJumps.findIndex((j, i) => {
-				const next = categoryJumps[i + 1];
-				return visibleCard >= j.cardIndex && (!next || visibleCard < next.cardIndex);
-			})
-	);
-
-	function jumpToCard(index: number) {
-		showJumpMenu = false;
-		const card = cardsContainerEl?.querySelector(`[data-card-index="${index}"]`);
-		if (card) card.scrollIntoView({ behavior: 'smooth' });
-	}
-
-	const currentCategory = $derived(
-		visibleCard > 0 && visibleCard <= flatCards.length
-			? flatCards[visibleCard - 1]?.categoryTitle ?? ''
-			: ''
-	);
-
-	// Prev/next diffs for end card
-	const prevDiff = $derived.by(() => {
-		const history = getHistory();
-		const idx = history.findIndex((d) => d.id === diff.id);
-		return idx >= 0 && idx < history.length - 1 ? history[idx + 1] : null;
-	});
-
-	const nextDiff = $derived.by(() => {
-		const history = getHistory();
-		const idx = history.findIndex((d) => d.id === diff.id);
-		return idx > 0 ? history[idx - 1] : null;
-	});
-
-	// Horizontal swipe to navigate between diffs with slide animation
-	let touchStartX = 0;
-	let touchStartY = 0;
-	let slideDirection: 'left' | 'right' | null = $state(null);
-	let slideIn: 'left' | 'right' | null = $state(null);
-	let swiping = false;
-
-	function handleTouchStart(e: TouchEvent) {
-		touchStartX = e.touches[0].clientX;
-		touchStartY = e.touches[0].clientY;
-	}
-
-	function slideTo(target: Diff, dir: 'left' | 'right') {
-		if (swiping) return;
-		swiping = true;
-		cardPositions.set(diff.id, visibleCard);
-		slideDirection = dir;
-
-		setTimeout(() => {
-			slideIn = dir === 'left' ? 'right' : 'left';
-			slideDirection = null;
-			goto(`/focus/${target.id}`).then(() => {
-				setTimeout(() => {
-					slideIn = null;
-					swiping = false;
-				}, 250);
-			});
-		}, 200);
-	}
-
-	function handleTouchEnd(e: TouchEvent) {
-		if (swiping) return;
-		const dx = e.changedTouches[0].clientX - touchStartX;
-		const dy = e.changedTouches[0].clientY - touchStartY;
-
-		if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-
-		const target = dx > 0 ? prevDiff : nextDiff;
-		if (!target) return;
-
-		slideTo(target, dx > 0 ? 'right' : 'left');
-	}
-
-	// IntersectionObserver to track which card is visible
-	$effect(() => {
-		if (!isMobile || !cardsContainerEl) return;
-
-		const cards = cardsContainerEl.querySelectorAll('.focus-card');
-		if (!cards.length) return;
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				for (const entry of entries) {
-					if (entry.isIntersecting) {
-						const idx = Number((entry.target as HTMLElement).dataset.cardIndex);
-						if (!isNaN(idx)) visibleCard = idx;
-					}
-				}
-			},
-			{ root: cardsContainerEl, threshold: 0.5 }
-		);
-
-		cards.forEach((card) => observer.observe(card));
-
-		return () => observer.disconnect();
-	});
 
 	// --- Desktop state ---
 	let currentIndex = $state(0);
@@ -215,25 +69,12 @@
 	let bodyEl: HTMLElement | null = $state(null);
 	let topOffset = $state(0);
 
-	// Reset when diff changes — restore saved card position if available
+	// Reset when diff changes
 	$effect(() => {
 		const id = diff?.id;
 		if (!id) return;
 		currentIndex = 0;
 		focusedItem = 0;
-		const saved = cardPositions.get(id) ?? 0;
-		visibleCard = saved;
-		if (cardsContainerEl) {
-			if (saved > 0) {
-				// Scroll to saved card after DOM updates
-				tick().then(() => {
-					const card = cardsContainerEl?.querySelector(`[data-card-index="${saved}"]`);
-					if (card) card.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
-				});
-			} else {
-				cardsContainerEl.scrollTop = 0;
-			}
-		}
 	});
 
 	const article = $derived(articles[currentIndex]);
@@ -246,7 +87,6 @@
 	$effect(() => {
 		if (!bodyEl || articles.length === 0) return;
 
-		// Measure using a clone of the actual article container for accurate styling
 		const existing = bodyEl.querySelector('.focus-article');
 		if (!existing) return;
 
@@ -255,11 +95,9 @@
 		clone.removeAttribute('onfocusin');
 		bodyEl.appendChild(clone);
 
-		// Clone the category nav
 		const catNav = existing.querySelector('.focus-categories');
 		if (catNav) clone.appendChild(catNav.cloneNode(true));
 
-		// Measure each article's content
 		const contentDiv = document.createElement('div');
 		contentDiv.className = 'focus-article-content';
 		clone.appendChild(contentDiv);
@@ -295,7 +133,6 @@
 			el.classList.toggle('focus-active', i === focusedItem);
 		});
 
-		// Scroll focused item into view and focus its first link (unless Tab triggered this)
 		const active = items[focusedItem];
 		if (active) {
 			active.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -309,7 +146,6 @@
 		}
 	});
 
-	// When Tab/Shift-Tab moves focus to a link in a different article, follow it
 	function handleFocusIn(e: FocusEvent) {
 		if (settingFocus) return;
 		const target = e.target as HTMLElement;
@@ -359,10 +195,8 @@
 		if (focusedItem > 0) {
 			focusedItem--;
 		} else if (currentIndex > 0) {
-			// Cross to previous category's last item
 			currentIndex--;
-			// Need to defer to after DOM updates with new section content
-			focusedItem = -1; // sentinel: will be corrected by effect below
+			focusedItem = -1;
 		}
 	}
 
@@ -372,7 +206,6 @@
 		if (focusedItem < count - 1) {
 			focusedItem++;
 		} else if (currentIndex < articles.length - 1) {
-			// Cross to next category's first item
 			currentIndex++;
 			focusedItem = 0;
 		}
@@ -419,9 +252,7 @@
 	}
 
 	const itemCount = $derived.by(() => {
-		// Re-derive when article changes (can't call getItems reactively since it needs DOM)
 		void article;
-		// Will be correct after effect runs; use a fallback for display
 		return articleEl ? getItems().length : 0;
 	});
 
@@ -435,109 +266,22 @@
 
 <div class="focus-page" class:focus-page-mobile={isMobile}>
 	{#if isMobile}
-		<!-- Mobile: swipeable card layout -->
+		<!-- Mobile: swipeable card layout via CardView component -->
 		<header class="focus-header focus-header-mobile">
 			<span class="focus-header-group">
 				<span class="focus-logo-mark focus-logo-faded">&#9670;</span>
 				<span class="focus-wordmark focus-wordmark-faded">diff<span class="focus-diamond">&#9670;</span>log</span>
 				<span class="focus-mode-label-mobile"><span class="focus-mode-f">f</span>ocus</span>
 			</span>
-			<button class="focus-close-btn" class:focus-close-bright={visibleCard > flatCards.length} onclick={exit} aria-label="Close focus mode">✕</button>
+			<button class="focus-close-btn" class:focus-close-bright={visibleCard > 0} onclick={exit} aria-label="Close focus mode">&#10005;</button>
 		</header>
 
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div
-			class="focus-cards"
-			class:focus-slide-out-left={slideDirection === 'left'}
-			class:focus-slide-out-right={slideDirection === 'right'}
-			class:focus-slide-in-left={slideIn === 'left'}
-			class:focus-slide-in-right={slideIn === 'right'}
-			bind:this={cardsContainerEl}
-			ontouchstart={handleTouchStart}
-			ontouchend={handleTouchEnd}
-		>
-			<!-- Title card -->
-			<div class="focus-card focus-title-card" data-card-index="0">
-				<div class="focus-title-card-content">
-					<span class="focus-logo-mark">&#9670;</span>
-					<h1 class="focus-title-card-heading">{diff.title}</h1>
-					<span class="focus-title-card-meta">{flatCards.length} articles · {articles.length} categories</span>
-				</div>
-			</div>
-
-			{#each flatCards as card, i (card.globalIndex)}
-				<div class="focus-card" data-card-index={i + 1}>
-					<div class="focus-card-category">{card.categoryTitle}</div>
-					<div class="focus-card-content">
-						{@html card.html}
-					</div>
-				</div>
-			{/each}
-
-			<!-- End card -->
-			<div class="focus-card focus-end-card" data-card-index={flatCards.length + 1}>
-				<div class="focus-end-content">
-					<span class="focus-end-diamond"><span class="focus-end-check">✔</span></span>
-					<span class="focus-end-caught-up">All caught up</span>
-					<h2 class="focus-end-title">{diff.title}</h2>
-					<nav class="focus-end-actions">
-						{#if nextDiff}
-							<button class="focus-end-btn" onclick={() => slideTo(nextDiff, 'left')}>Newer diff →</button>
-						{/if}
-						{#if prevDiff}
-							<button class="focus-end-btn" onclick={() => slideTo(prevDiff, 'right')}>← Older diff</button>
-						{/if}
-						{#if new Date(diff.generated_at).toDateString() !== new Date().toDateString()}
-							<a href="/generate" class="focus-end-btn focus-end-btn-accent">Generate new diff</a>
-						{/if}
-					</nav>
-				</div>
-			</div>
-		</div>
-
-		<footer
-			class="focus-footer focus-footer-mobile"
-			class:focus-slide-out-left={slideDirection === 'left'}
-			class:focus-slide-out-right={slideDirection === 'right'}
-			class:focus-slide-in-left={slideIn === 'left'}
-			class:focus-slide-in-right={slideIn === 'right'}
-		>
-			<span class="focus-card-category-label">
-				<button class="focus-nav-arrow" class:focus-nav-disabled={!prevDiff} disabled={!prevDiff} onclick={() => prevDiff && slideTo(prevDiff, 'right')}>‹</button>
-				{new Date(diff.generated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-				<button class="focus-nav-arrow" class:focus-nav-disabled={!nextDiff} disabled={!nextDiff} onclick={() => nextDiff && slideTo(nextDiff, 'left')}>›</button>
-			</span>
-			{#if visibleCard === 0}<span class="focus-swipe-hint">swipe ↑</span>{:else}<span></span>{/if}
-			{#if visibleCard > 0 && visibleCard <= flatCards.length}
-				<button class="focus-card-position" onclick={() => showJumpMenu = !showJumpMenu}>{visibleCard} / {flatCards.length}</button>
-			{:else}
-				{#if visibleCard === 0}
-					<button class="focus-card-position focus-card-position-diamond" onclick={() => showJumpMenu = !showJumpMenu}>◆</button>
-				{:else}
-					<button class="focus-card-position focus-card-position-diamond" onclick={() => showJumpMenu = !showJumpMenu}>✓</button>
-				{/if}
-			{/if}
-		</footer>
-
-		{#if showJumpMenu}
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<div class="focus-jump-backdrop" onclick={() => showJumpMenu = false}></div>
-			<nav class="focus-jump-menu">
-				<button class="focus-jump-item" class:focus-jump-active={visibleCard === 0} onclick={() => jumpToCard(0)}>
-					<span class="focus-jump-label">◆ Cover</span>
-				</button>
-				{#each categoryJumps as cat, i}
-					<button class="focus-jump-item" class:focus-jump-active={i === activeCategoryJump} onclick={() => jumpToCard(cat.cardIndex)}>
-						<span class="focus-jump-label">{cat.label}</span>
-						<span class="focus-jump-count">{cat.count}</span>
-					</button>
-				{/each}
-				<button class="focus-jump-item" class:focus-jump-active={visibleCard > flatCards.length} onclick={() => jumpToCard(flatCards.length + 1)}>
-					<span class="focus-jump-label">✓ Complete</span>
-				</button>
-			</nav>
-		{/if}
+		<CardView
+			{diff}
+			basePath="/focus"
+			onExit={exit}
+			bind:visibleCard
+		/>
 	{:else}
 		<!-- Desktop: keyboard-driven spotlight layout -->
 		<header class="focus-header">

@@ -2,7 +2,7 @@
 	import { goto } from "$app/navigation";
 	import { updateProfile, getSyncState } from "$lib/stores/sync.svelte";
 	import RemoveFromServerModal from "./RemoveFromServerModal.svelte";
-	import { ShareProfileModal, ShareInfoModal } from "../profiles/modals";
+	import { ImportProfileModal, ShareProfileModal, ShareInfoModal } from "../profiles/modals";
 	import { createProfile } from "$lib/stores/operations.svelte";
 	import { profiles, activeProfileId, getProfile, isDemoProfile } from "$lib/stores/profiles.svelte";
 	import { getAnthropicKey } from "$lib/utils/sync";
@@ -14,6 +14,7 @@
 		TOOLS,
 		TOPICS,
 	} from "$lib/utils/constants";
+	import { showImportModal } from '$lib/stores/ui.svelte';
 	import {
 		validateAnthropicKey,
 		validateSerperKey,
@@ -519,12 +520,10 @@
 				</p>
 			{:else}
 				<p class="step-desc-link import-link">
-					<a
-						href="/profiles"
-						class="link-subtle"
-						onclick={() =>
-							sessionStorage.setItem("openImport", "1")}
-						><span class="import-icon">&#9729;</span>Have an uploaded profile? Import it here.</a
+					<button
+						class="link-subtle import-link-btn"
+						onclick={() => (showImportModal.value = true)}
+						><span class="import-icon">&#9729;</span>Already set up on another device?</button
 					>
 				</p>
 			{/if}
@@ -1101,6 +1100,11 @@
 	{/if}
 {/if}
 
+<ImportProfileModal
+	bind:open={showImportModal.value}
+	onclose={() => {}}
+/>
+
 <SiteFooter />
 
 <style>
@@ -1304,6 +1308,14 @@
 		text-decoration: none;
 		display: inline-block;
 		padding-right: 0.35rem;
+	}
+
+	.import-link-btn {
+		background: none;
+		border: none;
+		cursor: pointer;
+		font: inherit;
+		padding: 0.25rem 0.5rem;
 	}
 
 	.sync-tag-row {

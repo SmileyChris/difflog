@@ -1,11 +1,13 @@
 <script lang="ts">
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { getProfile } from '$lib/stores/profiles.svelte';
 	import { getStars, getStarCountLabel } from '$lib/stores/stars.svelte';
 	import { generating } from '$lib/stores/ui.svelte';
-	import { type Diff } from '$lib/stores/history.svelte';
+	import { type Diff, getHistory } from '$lib/stores/history.svelte';
+	import { isMobile, mobileDiff } from '$lib/stores/mobile.svelte';
 	import { HeaderNav, DiffView, DiffContent, SiteFooter, PageHeader } from '$lib/components';
+	import CardView from '$lib/components/mobile/CardView.svelte';
 
 	let { data } = $props();
 
@@ -14,6 +16,12 @@
 	const isLocal = $derived(data.isLocal === true);
 	const viewAsPublic = $derived((page.state as Record<string, unknown>)?.viewAsPublic === true);
 	const showLocalMode = $derived(isLocal && !viewAsPublic);
+	const forceScroll = $derived(page.url?.searchParams?.get('scroll') === '1');
+
+	// Set mobile diff context for layout's Actions panel
+	$effect(() => {
+		mobileDiff.diff = showLocalMode && diff ? diff : null;
+	});
 
 	afterNavigate(() => {
 		const pIndex = (page.state as Record<string, unknown>)?.scrollToPIndex as number | null
@@ -39,13 +47,42 @@
 			);
 		}, 200);
 	});
+
+	const showMobileCards = $derived(showLocalMode && isMobile.value && !forceScroll && diff);
+
+	// Check if this is the latest diff — show ◆ to navigate to generate card
+	const isLatest = $derived.by(() => {
+		if (!diff) return false;
+		const history = getHistory();
+		return history.length > 0 && history[0].id === diff.id;
+	});
+
+	function handleExit() {
+		// no-op in diff view — user is already on the diff page
+	}
+
+	function handleNewest() {
+		goto('/');
+	}
 </script>
 
 <svelte:head>
 	<title>{diff?.title ? `${diff.title} - diff·log` : 'diff·log'}</title>
 </svelte:head>
 
-{#if showLocalMode}
+{#if showMobileCards}
+	<div class="mobile-diff-page">
+		<CardView
+			diff={diff}
+			basePath="/d"
+			onExit={handleExit}
+			bind:visibleCard={mobileDiff.visibleCard}
+			tabBarHeight={48}
+			onFlatCards={(cards) => mobileDiff.flatCards = cards}
+			onNewest={isLatest ? handleNewest : undefined}
+		/>
+	</div>
+{:else if showLocalMode}
 	<PageHeader>
 		{#if getStars()?.length > 0}
 			<a href="/stars" class="header-link">
@@ -68,6 +105,7 @@
 			</DiffView>
 		{/if}
 	</main>
+	<SiteFooter />
 {:else}
 	<PageHeader subtitle={viewAsPublic
 		? `shared by ${getProfile()?.name || 'Anonymous'}`
@@ -93,9 +131,8 @@
 			/>
 		{/if}
 	</main>
+	<SiteFooter />
 {/if}
-
-<SiteFooter />
 
 <style>
 	.public-diff-page {

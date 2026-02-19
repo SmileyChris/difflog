@@ -8,6 +8,7 @@ export { hasStageCache, clearStageCache };
 let _activeGeneration: Promise<GenerateResult> | null = null;
 
 let _generating = $state(false);
+let _showImportModal = $state(false);
 let _generationError = $state<string | null>(null);
 let _generationResult = $state<Diff | null>(null);
 let _syncDropdownPassword = $state('');
@@ -17,6 +18,11 @@ let _syncResultTimeout: ReturnType<typeof setTimeout> | null = null;
 let _syncButtonEl: HTMLElement | null = null;
 
 // State accessors
+export const showImportModal = {
+	get value() { return _showImportModal; },
+	set value(val: boolean) { _showImportModal = val; }
+};
+
 export const generating = {
 	get value() { return _generating; },
 	set value(val: boolean) { _generating = val; }

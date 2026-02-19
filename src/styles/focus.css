@@ -492,6 +492,12 @@
     opacity: 0.3;
   }
 
+  .focus-nav-diamond {
+    font-size: 0.75rem;
+    vertical-align: 0.1em;
+    margin-left: 0.15rem;
+  }
+
   .focus-swipe-hint {
     font-size: 0.65rem;
     color: var(--text-disabled);
@@ -705,9 +711,10 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  .focus-card-position-diamond {
-    font-size: 0.9rem;
-    color: var(--text-hint);
+  .focus-card-hamburger {
+    font-size: 0.85rem;
+    color: var(--text-disabled);
+    margin-left: 0.2rem;
   }
 
 }

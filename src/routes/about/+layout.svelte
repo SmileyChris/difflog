@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { page } from "$app/state";
 	import { getProfile } from "$lib/stores/profiles.svelte";
+	import { isMobile } from "$lib/stores/mobile.svelte";
 	import { PageHeader, HeaderNav } from "$lib/components";
+	import MobileHeader from "$lib/components/mobile/MobileHeader.svelte";
 
 	interface Props {
 		children: import("svelte").Snippet;
@@ -11,13 +13,14 @@
 
 	const currentPath = $derived(page.url.pathname);
 	const profile = $derived(getProfile());
+	const mobileLoggedIn = $derived(isMobile.value && !!profile);
 
 	function isActive(path: string): boolean {
 		return currentPath === path;
 	}
 </script>
 
-{#snippet aboutNav(labels: { about: string })}
+{#snippet aboutNav(labels: { about: string; opensource?: boolean })}
 	{#if isActive("/about")}
 		<span class="about-nav-link about-nav-link-active">{labels.about}</span>
 	{:else}
@@ -35,6 +38,14 @@
 	{:else}
 		<a href="/about/terms" class="about-nav-link">terms</a>
 	{/if}
+	{#if labels.opensource}
+		<span class="about-nav-sep">&#9670;</span>
+		{#if isActive("/about/opensource")}
+			<span class="about-nav-link about-nav-link-active"><span class="heart-red">&hearts;</span> opensource</span>
+		{:else}
+			<a href="/about/opensource" class="about-nav-link"><span class="heart-red">&hearts;</span> opensource</a>
+		{/if}
+	{/if}
 {/snippet}
 
 {#if !profile}
@@ -43,7 +54,12 @@
 	</nav>
 {/if}
 
-{#if profile}
+{#if mobileLoggedIn}
+	<MobileHeader />
+	<nav class="about-nav about-nav-mobile">
+		{@render aboutNav({ about: "about", opensource: true })}
+	</nav>
+{:else if profile}
 	<PageHeader>
 		{#snippet subtitleContent()}
 			<nav class="about-nav-inline">
@@ -58,17 +74,15 @@
 	{@render children()}
 </main>
 
-<footer>
-	{#if profile}
-		<a href="/">&larr; back home</a>
-		<span class="about-footer-sep">&#9670;</span>
-	{/if}
-	<a
-		href="https://smileychris.github.io/difflog/"
-		target="_blank"
-		rel="noopener"><span class="heart-red">&hearts;</span> opensource</a
-	>
-</footer>
+{#if !mobileLoggedIn}
+	<footer>
+		{#if profile}
+			<a href="/">&larr; back home</a>
+			<span class="about-footer-sep">&#9670;</span>
+		{/if}
+		<a href="/about/opensource"><span class="heart-red">&hearts;</span> opensource</a>
+	</footer>
+{/if}
 
 <style>
 	.about-nav {
@@ -113,6 +127,13 @@
 		color: var(--accent);
 		opacity: 0.5;
 		font-size: 0.5em;
+	}
+
+	.about-nav-mobile {
+		top: 0.5rem;
+		margin-top: 0.75rem;
+		box-shadow: none;
+		border-color: var(--border-subtle);
 	}
 
 	.about-nav-inline {
@@ -301,6 +322,17 @@
 		left: -1rem;
 	}
 
+	:global(article section a) {
+		color: var(--text-subtle);
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		transition: color 0.15s;
+	}
+
+	:global(article section a:hover) {
+		color: var(--accent);
+	}
+
 	:global(article section strong) {
 		color: var(--text-heading);
 		font-weight: 600;
@@ -311,16 +343,6 @@
 		color: var(--text-disabled);
 		margin-top: 2rem;
 		text-align: center;
-	}
-
-	:global(.about-centered) {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		text-align: center;
-		padding: 3rem 1rem;
-		flex: 1;
 	}
 
 	:global(.about-back) {

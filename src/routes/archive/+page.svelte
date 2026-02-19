@@ -1,10 +1,17 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { getProfile } from '$lib/stores/profiles.svelte';
+
+	onMount(() => {
+		if (!getProfile()) goto('/', { replaceState: true });
+	});
 	import { getHistory, type Diff } from '$lib/stores/history.svelte';
 	import { getStars, getStarCountLabel } from '$lib/stores/stars.svelte';
 	import { deleteDiff } from '$lib/stores/operations.svelte';
 	import { Card, HeaderNav, EmptyState, IconButton, ShareDropdown, SiteFooter, PageHeader } from '$lib/components';
+	import { isMobile } from '$lib/stores/mobile.svelte';
+	import MobileHeader from '$lib/components/mobile/MobileHeader.svelte';
 
 	function goToDiff(diffId: string) {
 		goto(`/d/${diffId}`);
@@ -48,14 +55,18 @@
 	<title>diff·log - Archive</title>
 </svelte:head>
 
-<PageHeader pageTitle="archive" subtitle="{history.length} saved diffs" icon="square">
-	{#if stars?.length > 0}
-		<a href="/stars" class="header-link">
-			<span class="header-link-icon">&#9733;</span> {getStarCountLabel()}
-		</a>
-	{/if}
-	<HeaderNav />
-</PageHeader>
+{#if isMobile.value}
+	<MobileHeader />
+{:else}
+	<PageHeader pageTitle="archive" subtitle="{history.length} saved diffs" icon="square">
+		{#if stars?.length > 0}
+			<a href="/stars" class="header-link">
+				<span class="header-link-icon">&#9733;</span> {getStarCountLabel()}
+			</a>
+		{/if}
+		<HeaderNav />
+	</PageHeader>
+{/if}
 
 <main id="content">
 	{#if history.length === 0}

@@ -1,4 +1,5 @@
 export { default as Card } from './Card.svelte';
+export { default as ChangelogModal } from './ChangelogModal.svelte';
 export { default as ChipSelector } from './ChipSelector.svelte';
 export { default as DiffContent } from './DiffContent.svelte';
 export { default as DiffView } from './DiffView.svelte';

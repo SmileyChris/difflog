@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { profiles, activeProfileId, isDemoProfile } from '$lib/stores/profiles.svelte';
+	import { profiles, activeProfileId, isDemoProfile, getProfile } from '$lib/stores/profiles.svelte';
+
+	onMount(() => {
+		if (!getProfile() && !showImportModal.value) goto('/', { replaceState: true });
+	});
 	import { histories } from '$lib/stores/history.svelte';
 	import { bookmarks } from '$lib/stores/stars.svelte';
 	import {
@@ -10,6 +14,10 @@
 		hasRememberedPasswordFor
 	} from '$lib/stores/sync.svelte';
 	import { Card, IconButton, SyncDropdown, SiteFooter, PageHeader } from '$lib/components';
+	import { isMobile } from '$lib/stores/mobile.svelte';
+	import MobileHeader from '$lib/components/mobile/MobileHeader.svelte';
+	import MobileView from './MobileView.svelte';
+	import '../../styles/mobile.css';
 	import DetailRow from './DetailRow.svelte';
 	import {
 		ImportProfileModal,
@@ -17,22 +25,15 @@
 		ShareInfoModal,
 		PasswordUpdateModal
 	} from './modals';
+	import { showImportModal } from '$lib/stores/ui.svelte';
 
 	// Modal visibility state
-	let showImport = $state(false);
 	let showShare = $state(false);
 	let showInfo = $state(false);
 	let showPasswordUpdate = $state(false);
 
 	// Modal context (which profile the modal is operating on)
 	let modalProfileId = $state('');
-
-	onMount(() => {
-		if (sessionStorage.getItem('openImport')) {
-			sessionStorage.removeItem('openImport');
-			showImport = true;
-		}
-	});
 
 	function handleSwitchProfile(id: string) {
 		if (!switchProfileWithSync(id)) return;
@@ -89,6 +90,11 @@
 <svelte:head>
 	<title>diff·log - Profiles</title>
 </svelte:head>
+
+{#if isMobile.value}
+	<MobileHeader />
+	<MobileView onshare={() => { modalProfileId = activeProfileId.value ?? ''; showShare = true; }} onshareinfo={() => { modalProfileId = activeProfileId.value ?? ''; showInfo = true; }} />
+{:else}
 
 <PageHeader pageTitle="profiles" subtitle="Manage your profiles" icon="user" />
 
@@ -204,39 +210,42 @@
 			</Card>
 		</a>
 
-		<Card variant="action" clickable={true} onclick={() => (showImport = true)}>
+		<Card variant="action" clickable={true} onclick={() => (showImportModal.value = true)}>
 			<div class="profile-card-action-icon">&#8595;</div>
 			<div class="profile-card-name">Import Existing</div>
 			<div class="profile-card-id">Add from another device</div>
 		</Card>
 	</div>
 
-	<!-- Modals -->
-	<ImportProfileModal
-		bind:open={showImport}
-		onclose={() => {}}
-	/>
-
-	<ShareProfileModal
-		bind:open={showShare}
-		profileId={modalProfileId}
-		onclose={() => {}}
-	/>
-
-	<ShareInfoModal
-		bind:open={showInfo}
-		profileId={modalProfileId}
-		onclose={() => {}}
-	/>
-
-	<PasswordUpdateModal
-		bind:open={showPasswordUpdate}
-		profileId={modalProfileId}
-		onclose={() => {}}
-	/>
 </main>
 
 <SiteFooter />
+
+{/if}
+
+<!-- Modals (shared, outside mobile/desktop conditional) -->
+<ImportProfileModal
+	bind:open={showImportModal.value}
+	onclose={() => {}}
+/>
+
+<ShareProfileModal
+	bind:open={showShare}
+	profileId={modalProfileId}
+	onclose={() => {}}
+/>
+
+<ShareInfoModal
+	bind:open={showInfo}
+	profileId={modalProfileId}
+	onclose={() => {}}
+/>
+
+<PasswordUpdateModal
+	bind:open={showPasswordUpdate}
+	profileId={modalProfileId}
+	onclose={() => {}}
+/>
 
 <style>
 	.profiles-section-title {

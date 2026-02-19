@@ -5,6 +5,8 @@
 	import { removeStar } from '$lib/stores/operations.svelte';
 	import { timeAgo } from '$lib/utils/time.svelte';
 	import { Card, HeaderNav, EmptyState, IconButton, SiteFooter, PageHeader } from '$lib/components';
+	import { isMobile } from '$lib/stores/mobile.svelte';
+	import MobileHeader from '$lib/components/mobile/MobileHeader.svelte';
 
 	function goToStar(star: Star) {
 		goto(`/d/${star.diff_id}`, { state: { scrollToPIndex: star.p_index } });
@@ -17,9 +19,13 @@
 	<title>diff·log - Stars</title>
 </svelte:head>
 
-<PageHeader pageTitle="stars" subtitle={getStarCountLabel()} icon="star">
-	<HeaderNav />
-</PageHeader>
+{#if isMobile.value}
+	<MobileHeader />
+{:else}
+	<PageHeader pageTitle="stars" subtitle={getStarCountLabel()} icon="star">
+		<HeaderNav />
+	</PageHeader>
+{/if}
 
 <main id="content">
 	{#if !stars?.length}
