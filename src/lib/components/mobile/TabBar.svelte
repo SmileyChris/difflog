@@ -77,7 +77,7 @@
 		aria-label="History"
 	>
 		<span class="mobile-tab-icon mobile-tab-multi-diamond">&#9670;</span>
-		<span class="mobile-tab-label">History</span>
+		<span class="mobile-tab-label">Archive</span>
 	</button>
 
 	{#if hasStars}

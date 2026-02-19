@@ -12,6 +12,7 @@
 	import { Card, HeaderNav, EmptyState, IconButton, ShareDropdown, SiteFooter, PageHeader } from '$lib/components';
 	import { isMobile } from '$lib/stores/mobile.svelte';
 	import MobileHeader from '$lib/components/mobile/MobileHeader.svelte';
+	import MobileTimeline from './MobileTimeline.svelte';
 
 	function goToDiff(diffId: string) {
 		goto(`/d/${diffId}`);
@@ -57,6 +58,7 @@
 
 {#if isMobile.value}
 	<MobileHeader />
+	<MobileTimeline />
 {:else}
 	<PageHeader pageTitle="archive" subtitle="{history.length} saved diffs" icon="square">
 		{#if stars?.length > 0}
@@ -66,45 +68,45 @@
 		{/if}
 		<HeaderNav />
 	</PageHeader>
-{/if}
 
-<main id="content">
-	{#if history.length === 0}
-		<EmptyState icon="◼" message="No diffs yet">
-			{#snippet action()}
-				<a href="/" class="btn-primary">Generate your first diff</a>
-			{/snippet}
-		</EmptyState>
-	{:else}
-		<div class="archive-list">
-			{#each history as diff (diff.id)}
-				<Card clickable={true} onclick={() => goToDiff(diff.id)}>
-					{#snippet header()}
-						<span class="archive-date">{formatDate(diff.generated_at)}</span>
-						{#if diff.cost}
-							<span class="archive-cost">${diff.cost.toFixed(3)}</span>
+	<main id="content">
+		{#if history.length === 0}
+			<EmptyState icon="◼" message="No diffs yet">
+				{#snippet action()}
+					<a href="/" class="btn-primary">Generate your first diff</a>
+				{/snippet}
+			</EmptyState>
+		{:else}
+			<div class="archive-list">
+				{#each history as diff (diff.id)}
+					<Card clickable={true} onclick={() => goToDiff(diff.id)}>
+						{#snippet header()}
+							<span class="archive-date">{formatDate(diff.generated_at)}</span>
+							{#if diff.cost}
+								<span class="archive-cost">${diff.cost.toFixed(3)}</span>
+							{/if}
+							<div class="archive-actions">
+								<ShareDropdown {diff} />
+								<IconButton
+									icon="×"
+									variant="danger"
+									title="Delete diff"
+									onclick={(e) => { e.stopPropagation(); handleDeleteDiff(diff.id); }}
+								/>
+							</div>
+						{/snippet}
+						<div class="archive-title">{getTitle(diff)}</div>
+						{#if getCategories(diff).length > 0}
+							<div class="archive-categories">{getCategories(diff).join(', ')}</div>
 						{/if}
-						<div class="archive-actions">
-							<ShareDropdown {diff} />
-							<IconButton
-								icon="×"
-								variant="danger"
-								title="Delete diff"
-								onclick={(e) => { e.stopPropagation(); handleDeleteDiff(diff.id); }}
-							/>
-						</div>
-					{/snippet}
-					<div class="archive-title">{getTitle(diff)}</div>
-					{#if getCategories(diff).length > 0}
-						<div class="archive-categories">{getCategories(diff).join(', ')}</div>
-					{/if}
-				</Card>
-			{/each}
-		</div>
-	{/if}
-</main>
+					</Card>
+				{/each}
+			</div>
+		{/if}
+	</main>
 
-<SiteFooter />
+	<SiteFooter />
+{/if}
 
 <style>
 	.archive-list {
