@@ -97,8 +97,29 @@
 
 	// --- Card state ---
 	let cardsContainerEl: HTMLElement | null = $state(null);
-	const cardPositions = new Map<string, number>();
 	let showJumpMenu = $state(false);
+
+	const POSITIONS_KEY = 'difflog-card-positions';
+
+	function loadPositions(): Record<string, number> {
+		if (!browser) return {};
+		try {
+			return JSON.parse(localStorage.getItem(POSITIONS_KEY) || '{}');
+		} catch {
+			return {};
+		}
+	}
+
+	function savePosition(diffId: string, index: number) {
+		if (!browser) return;
+		const positions = loadPositions();
+		positions[diffId] = index;
+		localStorage.setItem(POSITIONS_KEY, JSON.stringify(positions));
+	}
+
+	function getSavedPosition(diffId: string): number {
+		return loadPositions()[diffId] ?? 0;
+	}
 
 	// Category jump targets: first card index for each category
 	const categoryJumps = $derived.by(() => {
@@ -159,7 +180,7 @@
 	function slideTo(target: Diff, dir: 'left' | 'right') {
 		if (swiping) return;
 		swiping = true;
-		cardPositions.set(diff.id, visibleCard);
+		savePosition(diff.id, visibleCard);
 		slideDirection = dir;
 
 		setTimeout(() => {
@@ -177,7 +198,7 @@
 	function slideOut(dir: 'left' | 'right', then: () => void) {
 		if (swiping) return;
 		swiping = true;
-		cardPositions.set(diff.id, visibleCard);
+		savePosition(diff.id, visibleCard);
 		slideDirection = dir;
 
 		setTimeout(() => {
@@ -219,7 +240,10 @@
 				for (const entry of entries) {
 					if (entry.isIntersecting) {
 						const idx = Number((entry.target as HTMLElement).dataset.cardIndex);
-						if (!isNaN(idx)) visibleCard = idx;
+						if (!isNaN(idx)) {
+							visibleCard = idx;
+							savePosition(diff.id, idx);
+						}
 					}
 				}
 			},
@@ -235,7 +259,7 @@
 	$effect(() => {
 		const id = diff?.id;
 		if (!id) return;
-		const saved = cardPositions.get(id) ?? 0;
+		const saved = getSavedPosition(id);
 		visibleCard = saved;
 		if (cardsContainerEl) {
 			if (saved > 0) {
