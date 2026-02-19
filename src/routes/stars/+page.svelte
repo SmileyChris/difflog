@@ -17,6 +17,16 @@
 		removeStar(star.diff_id, star.p_index);
 	}
 
+	function shortDate(dateStr: string): string {
+		const d = new Date(dateStr);
+		const day = d.getDate();
+		const month = d.toLocaleDateString('en-US', { month: 'short' });
+		if (d.getFullYear() !== new Date().getFullYear()) {
+			return `${day} ${month} ${d.getFullYear()}`;
+		}
+		return `${day} ${month}`;
+	}
+
 	const stars = $derived(getStars());
 </script>
 
@@ -51,20 +61,22 @@
 						onclick={() => goToStar(star)}
 					>
 						<div class="passage-content">
+							{#if star.added_at}<span class="passage-starred"><span class="passage-starred-icon">&#9733;</span> {timeAgo(star.added_at)}</span>{/if}
 							{@html starContent.html}
 						</div>
 						<div class="passage-meta">
 							<span class="passage-origin">
-								<span class="passage-star">&#9733;</span>
+								<span class="passage-diamond">&#9670;</span>
 								{starContent.diff_title}
 							</span>
-							<span class="passage-sep">/</span>
-							<span class="passage-time">{timeAgo(starContent.diff_date)}</span>
-							<button
-								class="passage-unstar"
-								title="Remove star"
-								onclick={(e) => handleUnstar(e, star)}
-							>unstar</button>
+							<span class="passage-date">{shortDate(starContent.diff_date)}</span>
+							{#if !isMobile.value}
+								<button
+									class="passage-unstar"
+									title="Remove star"
+									onclick={(e) => handleUnstar(e, star)}
+								>unstar</button>
+							{/if}
 						</div>
 					</div>
 				{:else}
@@ -77,14 +89,16 @@
 						</div>
 						<div class="passage-meta">
 							<span class="passage-origin">
-								<span class="passage-star passage-star-dim">&#9733;</span>
+								<span class="passage-diamond passage-diamond-dim">&#9670;</span>
 								Deleted diff
 							</span>
-							<button
-								class="passage-unstar passage-unstar-visible"
-								title="Remove star"
-								onclick={(e) => handleUnstar(e, star)}
-							>remove</button>
+							{#if !isMobile.value}
+								<button
+									class="passage-unstar passage-unstar-visible"
+									title="Remove star"
+									onclick={(e) => handleUnstar(e, star)}
+								>remove</button>
+							{/if}
 						</div>
 					</div>
 				{/if}
@@ -123,24 +137,15 @@
 	.passages {
 		display: flex;
 		flex-direction: column;
+		gap: 2rem;
 	}
 
 	/* Each passage */
 	.passage {
 		position: relative;
-		padding: 0.75rem 0;
-		border-bottom: 1px solid var(--border-subtle);
 		cursor: pointer;
 		transition: background 0.15s;
 		animation: passage-in 0.25s ease both;
-	}
-
-	.passage:first-child {
-		padding-top: 0.75rem;
-	}
-
-	.passage:last-child {
-		border-bottom: none;
 	}
 
 	.passage:hover {
@@ -152,14 +157,15 @@
 		border-radius: var(--radius);
 	}
 
-	/* Content — single line truncated */
+	/* Content — 2 line clamp */
 	.passage-content {
 		font-size: 0.85rem;
 		color: var(--text-primary);
-		line-height: 1.4;
+		line-height: 1.5;
 		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
 	}
 
 	.passage-content :global(.md-p),
@@ -168,7 +174,6 @@
 		font-size: inherit;
 		padding-left: 0;
 		border-left: none;
-		display: inline;
 	}
 
 	.passage-content :global(.md-p)::after,
@@ -181,16 +186,33 @@
 		list-style: none;
 		padding-left: 0;
 		margin: 0;
-		display: inline;
 	}
 
 	.passage-content :global(li) {
 		padding-left: 0;
-		display: inline;
 	}
 
 	.passage-content :global(li)::marker {
 		content: none;
+	}
+
+	.passage-content :global(a) {
+		color: inherit;
+		text-decoration: none;
+		pointer-events: none;
+	}
+
+	/* Starred time — floated right of article text */
+	.passage-starred {
+		float: right;
+		font-size: 0.65rem;
+		color: var(--text-disabled);
+		margin-left: 1rem;
+		line-height: 2;
+	}
+
+	.passage-starred-icon {
+		color: #d4a017;
 	}
 
 	.passage-content-orphan {
@@ -198,12 +220,12 @@
 		color: var(--text-disabled);
 	}
 
-	/* Meta line beneath content */
+	/* Meta row below content */
 	.passage-meta {
 		display: flex;
 		align-items: center;
 		gap: 0.4rem;
-		margin-top: 0.5rem;
+		margin-top: 0.35rem;
 		font-size: 0.7rem;
 		color: var(--text-hint);
 	}
@@ -212,28 +234,27 @@
 		display: flex;
 		align-items: center;
 		gap: 0.3rem;
+		min-width: 0;
 	}
 
-	.passage-star {
+	.passage-diamond {
 		color: var(--accent);
-		font-size: 0.6rem;
+		font-size: 0.5rem;
+		flex-shrink: 0;
 	}
 
-	.passage-star-dim {
+	.passage-diamond-dim {
 		color: var(--text-disabled);
 	}
 
-	.passage-sep {
-		color: var(--border-strong);
-	}
-
-	.passage-time {
+	.passage-date {
+		margin-left: auto;
 		color: var(--text-disabled);
+		flex-shrink: 0;
 	}
 
 	/* Unstar link */
 	.passage-unstar {
-		margin-left: auto;
 		background: none;
 		border: none;
 		padding: 0;

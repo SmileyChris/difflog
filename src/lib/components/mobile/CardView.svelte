@@ -254,7 +254,7 @@
 			addStar({
 				diff_id: diff.id,
 				p_index: card.pIndex,
-				created_at: new Date().toISOString()
+				added_at: new Date().toISOString()
 			});
 		}
 	}

@@ -78,7 +78,7 @@
 			onExit={handleExit}
 			bind:visibleCard={mobileDiff.visibleCard}
 			tabBarHeight={48}
-			onFlatCards={(cards) => mobileDiff.flatCards = cards}
+			onFlatCards={(cards) => { mobileDiff.flatCards = cards; }}
 			onNewest={isLatest ? handleNewest : undefined}
 		/>
 	</div>

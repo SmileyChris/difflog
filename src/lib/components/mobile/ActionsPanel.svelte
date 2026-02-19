@@ -38,7 +38,7 @@
 			addStar({
 				diff_id: diff.id,
 				p_index: currentPIndex,
-				created_at: new Date().toISOString()
+				added_at: new Date().toISOString()
 			});
 		}
 	}
