@@ -3,7 +3,8 @@
 	import { tick } from 'svelte';
 	import { browser } from '$app/environment';
 	import { type Diff, getHistory } from '$lib/stores/history.svelte';
-	import { isStarred, addStar, removeStar, getStars } from '$lib/stores/stars.svelte';
+	import { isStarred, getStars } from '$lib/stores/stars.svelte';
+	import { addStar, removeStar } from '$lib/stores/operations.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { formatDiffDate } from '$lib/utils/time';
 	import type { FlatCard } from './types';

@@ -123,10 +123,18 @@ export async function decryptAndMergeStars(
   }
 
   // Remove stars deleted on server
+  const beforeCount = merged.length;
   merged = merged.filter(s => {
     const id = starId(s);
-    return serverStarIds.has(id) || pendingDeletedStars.has(id) || pendingModifiedStars.has(id);
+    const keep = serverStarIds.has(id) || pendingDeletedStars.has(id) || pendingModifiedStars.has(id);
+    if (!keep) {
+      console.warn(`[Sync] Dropping local star ${id} — not on server (${serverStarIds.size} server stars), not in pending modified (${pendingModifiedStars.size}), not in pending deleted (${pendingDeletedStars.size})`);
+    }
+    return keep;
   });
+  if (merged.length < beforeCount) {
+    console.warn(`[Sync] Star merge: ${beforeCount} → ${merged.length} (dropped ${beforeCount - merged.length}). Server stars: [${[...serverStarIds].join(', ')}], Pending modified: [${[...pendingModifiedStars].join(', ')}]`);
+  }
 
   return { merged, downloaded, errors };
 }

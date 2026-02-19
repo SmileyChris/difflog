@@ -553,6 +553,7 @@ export async function downloadContent(
   // Decrypt and merge stars (skip if server indicated no changes)
   let filteredStars = [...localStars];
   if (!data.stars_skipped) {
+    console.warn(`[Sync] Star merge starting: ${localStars.length} local, ${data.stars.length} from server, ${pending.modifiedStars.length} pending modified, ${pending.deletedStars.length} pending deleted`);
     const starResult = await decryptAndMergeStars(data.stars, localStars, pending, password, salt);
     filteredStars = starResult.merged;
     totalDownloaded += starResult.downloaded;

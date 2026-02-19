@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { getProfile } from '$lib/stores/profiles.svelte';
-	import { isStarred, addStar, removeStar, starId } from '$lib/stores/stars.svelte';
+	import { isStarred, starId } from '$lib/stores/stars.svelte';
+	import { addStar, removeStar } from '$lib/stores/operations.svelte';
 	import { getCachedPassword, autoSync } from '$lib/stores/sync.svelte';
 	import { shareDiff, unshareDiff, getPublicDiffUrl } from '$lib/stores/operations.svelte';
 	import { type Diff } from '$lib/stores/history.svelte';

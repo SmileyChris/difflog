@@ -43,13 +43,13 @@ function setHistory(val: Diff[]): void {
 	}
 }
 
-// Actions
-export function addDiff(entry: Diff): void {
+// Base mutations (no sync tracking — use operations.svelte.ts addDiff/deleteDiff instead)
+export function addDiffBase(entry: Diff): void {
 	const history = getHistory();
 	setHistory([entry, ...history].slice(0, 50));
 }
 
-export function deleteDiff(id: string): void {
+export function deleteDiffBase(id: string): void {
 	const history = getHistory();
 	setHistory(history.filter((d: Diff) => d.id !== id));
 }

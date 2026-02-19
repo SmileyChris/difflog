@@ -54,7 +54,8 @@ export function isUnlocked(): boolean {
 }
 
 // Actions
-export function createProfile(data: {
+// Base mutation (no sync init — use operations.svelte.ts createProfile instead)
+export function createProfileBase(data: {
 	name: string;
 	apiKeys?: Profile['apiKeys'];
 	providerSelections?: Profile['providerSelections'];

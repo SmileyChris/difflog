@@ -9,15 +9,15 @@ import {
 	profiles,
 	activeProfileId,
 	getProfile,
-	createProfile as createProfileBase,
+	createProfileBase,
 	type Profile
 } from './profiles.svelte';
 
 import {
 	histories,
 	getHistory,
-	addDiff as addDiffBase,
-	deleteDiff as deleteDiffBase,
+	addDiffBase,
+	deleteDiffBase,
 	initHistoryForProfile,
 	type Diff
 } from './history.svelte';
@@ -25,8 +25,8 @@ import {
 import {
 	bookmarks,
 	getStars,
-	addStar as addStarBase,
-	removeStar as removeStarBase,
+	addStarBase,
+	removeStarBase,
 	removeStarsForDiff,
 	initStarsForProfile,
 	starId,

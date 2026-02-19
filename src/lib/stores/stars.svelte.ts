@@ -30,13 +30,13 @@ function setStars(val: Star[]): void {
 	}
 }
 
-// Actions
-export function addStar(entry: Star): void {
+// Base mutations (no sync tracking — use operations.svelte.ts addStar/removeStar instead)
+export function addStarBase(entry: Star): void {
 	const stars = getStars();
 	setStars([entry, ...stars]);
 }
 
-export function removeStar(diffId: string, pIndex: number): void {
+export function removeStarBase(diffId: string, pIndex: number): void {
 	const stars = getStars();
 	setStars(stars.filter((s: Star) => !(s.diff_id === diffId && s.p_index === pIndex)));
 }
