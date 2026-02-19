@@ -419,6 +419,13 @@
     opacity: 0.8;
   }
 
+  .focus-card-star {
+    margin-left: 0.4em;
+    font-size: 0.85rem;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
   .focus-card-content {
     font-size: 1.35rem;
     line-height: 1.8;

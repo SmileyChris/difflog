@@ -3,6 +3,7 @@
 	import { tick } from 'svelte';
 	import { browser } from '$app/environment';
 	import { type Diff, getHistory } from '$lib/stores/history.svelte';
+	import { isStarred, addStar, removeStar } from '$lib/stores/stars.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { formatDiffDate } from '$lib/utils/time';
 	import type { FlatCard } from './types';
@@ -208,6 +209,36 @@
 		}, 200);
 	}
 
+	// Double-tap to star/unstar
+	let lastTapTime = 0;
+
+	function handleDoubleTap(e: TouchEvent) {
+		const now = Date.now();
+		if (now - lastTapTime < 300) {
+			e.preventDefault();
+			toggleCurrentStar();
+			lastTapTime = 0;
+		} else {
+			lastTapTime = now;
+		}
+	}
+
+	function toggleCurrentStar() {
+		if (visibleCard < 1 || visibleCard > flatCards.length) return;
+		const card = flatCards[visibleCard - 1];
+		if (card.pIndex < 0) return;
+
+		if (isStarred(diff.id, card.pIndex)) {
+			removeStar(diff.id, card.pIndex);
+		} else {
+			addStar({
+				diff_id: diff.id,
+				p_index: card.pIndex,
+				created_at: new Date().toISOString()
+			});
+		}
+	}
+
 	function handleTouchEnd(e: TouchEvent) {
 		if (swiping) return;
 		const dx = e.changedTouches[0].clientX - touchStartX;
@@ -287,7 +318,7 @@
 	class:focus-slide-in-right={slideIn === 'right'}
 	bind:this={cardsContainerEl}
 	ontouchstart={handleTouchStart}
-	ontouchend={handleTouchEnd}
+	ontouchend={(e) => { handleDoubleTap(e); handleTouchEnd(e); }}
 >
 	<!-- Title card -->
 	<div class="focus-card focus-title-card" data-card-index="0" style:min-height={cardMinHeight}>
@@ -300,7 +331,7 @@
 
 	{#each flatCards as card, i (card.globalIndex)}
 		<div class="focus-card" data-card-index={i + 1} style:min-height={cardMinHeight}>
-			<div class="focus-card-category">{card.categoryTitle}</div>
+			<div class="focus-card-category">{card.categoryTitle}{#if isStarred(diff.id, card.pIndex)}<span class="focus-card-star">&#9733;</span>{/if}</div>
 			<div class="focus-card-content">
 				{@html card.html}
 			</div>
