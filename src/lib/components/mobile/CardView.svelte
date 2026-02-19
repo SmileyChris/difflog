@@ -3,7 +3,7 @@
 	import { tick } from 'svelte';
 	import { browser } from '$app/environment';
 	import { type Diff, getHistory } from '$lib/stores/history.svelte';
-	import { isStarred, addStar, removeStar } from '$lib/stores/stars.svelte';
+	import { isStarred, addStar, removeStar, getStars } from '$lib/stores/stars.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { formatDiffDate } from '$lib/utils/time';
 	import type { FlatCard } from './types';
@@ -89,6 +89,25 @@
 		}
 
 		return cards;
+	});
+
+	const starredCount = $derived(getStars().filter((s) => s.diff_id === diff.id).length);
+
+	// Current card index is visibleCard - 1 in flatCards (0-based)
+	const prevStarIndex = $derived.by(() => {
+		const current = visibleCard - 1; // flatCards index
+		for (let i = current - 1; i >= 0; i--) {
+			if (isStarred(diff.id, flatCards[i].pIndex)) return i + 1; // card index
+		}
+		return -1;
+	});
+
+	const nextStarIndex = $derived.by(() => {
+		const current = visibleCard - 1;
+		for (let i = current + 1; i < flatCards.length; i++) {
+			if (isStarred(diff.id, flatCards[i].pIndex)) return i + 1;
+		}
+		return -1;
 	});
 
 	// Notify parent when flatCards change
@@ -325,13 +344,36 @@
 		<div class="focus-title-card-content">
 			<span class="focus-logo-mark">&#9670;</span>
 			<h1 class="focus-title-card-heading">{diff.title}</h1>
-			<span class="focus-title-card-meta">{flatCards.length} articles · {articles.length} categories</span>
+			<span class="focus-title-card-meta">
+				<span>{flatCards.length} articles</span>
+				{#if starredCount > 0}
+					<span class="focus-title-card-dot"></span>
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<span class="focus-title-card-link" onclick={() => { const i = flatCards.findIndex((c) => isStarred(diff.id, c.pIndex)); if (i >= 0) jumpToCard(i + 1); }}>{starredCount} starred</span>
+				{/if}
+				<span class="focus-title-card-dot"></span>
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<span class="focus-title-card-link" onclick={() => showJumpMenu = !showJumpMenu}>{articles.length} categories</span>
+			</span>
 		</div>
 	</div>
 
 	{#each flatCards as card, i (card.globalIndex)}
-		<div class="focus-card" data-card-index={i + 1} style:min-height={cardMinHeight}>
-			<div class="focus-card-category">{card.categoryTitle}{#if isStarred(diff.id, card.pIndex)}<span class="focus-card-star">&#9733;</span>{/if}</div>
+		<div class="focus-card focus-content-card" class:focus-card-starred={isStarred(diff.id, card.pIndex)} data-card-index={i + 1} style:min-height={cardMinHeight}>
+			<div class="focus-card-category-row">
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<span class="focus-card-category" onclick={() => showJumpMenu = !showJumpMenu}>{card.categoryTitle}</span>
+				{#if isStarred(diff.id, card.pIndex)}
+					<span class="focus-star-nav">
+						<button class="focus-star-nav-btn" disabled={prevStarIndex < 0} onclick={() => jumpToCard(prevStarIndex)}>&#8249;</button>
+						<span class="focus-star-nav-icon">★</span>
+						<button class="focus-star-nav-btn" disabled={nextStarIndex < 0} onclick={() => jumpToCard(nextStarIndex)}>&#8250;</button>
+					</span>
+				{/if}
+			</div>
 			<div class="focus-card-content">
 				{@html card.html}
 			</div>
@@ -402,3 +444,30 @@
 		</button>
 	</nav>
 {/if}
+
+<style>
+	.focus-content-card::before {
+		content: '★';
+		position: absolute;
+		top: 0;
+		right: -20vw;
+		font-size: 120vw;
+		color: gold;
+		opacity: 0;
+		pointer-events: none;
+		line-height: 1;
+		transform: rotate(15deg) translateX(30vw);
+		transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+	}
+
+	.focus-card-starred::before {
+		opacity: 0.18;
+		transform: rotate(15deg) translateX(0);
+		background: radial-gradient(circle at center, gold, transparent 90%);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+	}
+
+
+</style>

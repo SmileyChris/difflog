@@ -407,6 +407,15 @@
     justify-content: center;
     padding: 1.5rem 2rem;
     box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .focus-card-category-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
   }
 
   .focus-card-category {
@@ -415,15 +424,39 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--accent);
-    margin-bottom: 1rem;
     opacity: 0.8;
   }
 
-  .focus-card-star {
-    margin-left: 0.4em;
-    font-size: 0.85rem;
-    text-transform: none;
-    letter-spacing: 0;
+  .focus-star-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    line-height: 1;
+  }
+
+  .focus-star-nav-icon {
+    color: gold;
+    font-size: 1rem;
+    opacity: 0.6;
+    line-height: 0;
+    transform: rotate(15deg);
+  }
+
+  .focus-star-nav-btn {
+    background: none;
+    border: none;
+    color: gold;
+    font-size: 1.4rem;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+    line-height: 0;
+  }
+
+  .focus-star-nav-btn:disabled {
+    opacity: 0.15;
+    cursor: default;
   }
 
   .focus-card-content {
@@ -539,8 +572,25 @@
   }
 
   .focus-title-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
     font-size: 0.8rem;
-    color: var(--text-disabled);
+    color: var(--text-hint);
+  }
+
+  .focus-title-card-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.5;
+  }
+
+  .focus-title-card-link {
+    cursor: pointer;
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
   }
 
   /* End card */
