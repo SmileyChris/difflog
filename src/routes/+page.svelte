@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { getProfile, isDemoProfile } from '$lib/stores/profiles.svelte';
@@ -7,13 +7,15 @@
 	import { getStars, getStarCountLabel } from '$lib/stores/stars.svelte';
 	import { getStreak } from '$lib/stores/history.svelte';
 	import { getCachedPassword, hasPendingChanges } from '$lib/stores/sync.svelte';
-	import { openSyncDropdown, generating } from '$lib/stores/ui.svelte';
+	import { openSyncDropdown, generating, generationError, hasStageCache, clearStageCache, clearGenerationState } from '$lib/stores/ui.svelte';
 	import { isMobile, mobileDiff } from '$lib/stores/mobile.svelte';
 	import { HeaderNav, DiffView, SiteFooter, PageHeader } from '$lib/components';
 	import CardView from '$lib/components/mobile/CardView.svelte';
 	import MobileHeader from '$lib/components/mobile/MobileHeader.svelte';
 	import StreakCalendar from './StreakCalendar.svelte';
 	import { daysSince } from '$lib/utils/time.svelte';
+	import { SCAN_MESSAGES } from '$lib/utils/constants';
+	import { startGeneration, estimatedTime, randomWaitTip } from '$lib/actions/startGeneration';
 
 	let syncBannerDismissed = $state(false);
 
@@ -24,10 +26,69 @@
 		mobileDiff.diff = diff;
 	});
 
+	// --- Mobile inline generation state ---
+	let mScanIndex = $state(0);
+	let mScanMessages = $state([...SCAN_MESSAGES].sort(() => Math.random() - 0.5));
+	let mWaitTip = $state(randomWaitTip());
+	let mScanInterval: ReturnType<typeof setInterval> | null = null;
+
+	function mStartScan() {
+		mScanInterval = setInterval(() => {
+			mScanIndex = (mScanIndex + 1) % mScanMessages.length;
+		}, 4400);
+	}
+
+	function mStopScan() {
+		if (mScanInterval) {
+			clearInterval(mScanInterval);
+			mScanInterval = null;
+		}
+	}
+
+	async function handleMobileGenerate() {
+		generationError.value = null;
+		mScanIndex = 0;
+		mScanMessages = [...SCAN_MESSAGES].sort(() => Math.random() - 0.5);
+		mWaitTip = randomWaitTip();
+
+		await startGeneration({
+			onScanStart: mStartScan,
+			onScanStop: mStopScan,
+			onSuccess: () => {
+				mStopScan();
+				slideToCards();
+			},
+		});
+	}
+
+	function handleMobileRetry() {
+		handleMobileGenerate();
+	}
+
+	function handleMobileStartFresh() {
+		clearStageCache();
+		handleMobileGenerate();
+	}
+
+	// Mobile generation state: 'ready' | 'generating' | 'error'
+	const mobileGenState = $derived.by(() => {
+		if (generating.value) return 'generating' as const;
+		if (generationError.value) return 'error' as const;
+		return 'ready' as const;
+	});
+
 	onMount(() => {
-		if (generating.value && !diff) {
+		// On mobile, resume scan animation on the card instead of redirecting
+		if (isMobile.value && generating.value) {
+			showGenerateCard = true;
+			mStartScan();
+		} else if (generating.value && !diff) {
 			goto('/generate');
 		}
+	});
+
+	onDestroy(() => {
+		mStopScan();
 	});
 
 	function goToDiffOnDate(isoDate: string) {
@@ -93,8 +154,17 @@
 
 	// Mobile state: toggle between generate card and diff card view
 	// Start on generate card when stale, on diff cards when fresh
+	// Only auto-set on initial load (not after generation completes, which would fight the slide)
 	let showGenerateCard = $state(false);
-	$effect(() => { showGenerateCard = isStale; });
+	let initialShowSet = false;
+	$effect(() => {
+		// Read isStale to track it
+		const stale = isStale;
+		if (!initialShowSet) {
+			initialShowSet = true;
+			showGenerateCard = stale;
+		}
+	});
 
 	// Slide animation state for generate card transitions
 	let slideDirection: 'left' | 'right' | null = $state(null);
@@ -116,7 +186,7 @@
 		setTimeout(() => { slideIn = null; }, 250);
 	}
 
-	// Swipe on generate card
+	// Swipe on generate card — disabled during generation
 	let genTouchStartX = 0;
 	let genTouchStartY = 0;
 
@@ -126,6 +196,7 @@
 	}
 
 	function handleGenTouchEnd(e: TouchEvent) {
+		if (mobileGenState !== 'ready') return;
 		const dx = e.changedTouches[0].clientX - genTouchStartX;
 		const dy = e.changedTouches[0].clientY - genTouchStartY;
 		// Swipe right → go to latest diff (older direction)
@@ -160,42 +231,77 @@
 			<MobileHeader />
 
 			<div class="mobile-gen-body">
-				<div class="mobile-gen-cta">
-					{#if catchUpLabel}
-						<span class="mobile-gen-ago">{catchUpLabel}</span>
-					{/if}
-					{#if isStale}
-						<p class="mobile-gen-text">{staleText}</p>
-					{/if}
-					{#if generating.value}
-						<a href="/generate" class="btn-primary btn-branded" aria-busy="true">Generating…</a>
-					{:else}
-						<a href="/generate" class="btn-primary btn-branded">{isTodayDiff ? 'Regenerate' : 'Generate new diff'}</a>
-					{/if}
-				</div>
-			</div>
-
-			<div class="mobile-gen-meta">
-				{#if profileInterests.length > 0}
-					<div class="mobile-gen-tags">
-						{#each profileInterests as tag}
-							<span class="mobile-gen-tag">{tag}</span>
-						{/each}
+				{#if mobileGenState === 'generating'}
+					<div class="mobile-gen-cta">
+						<div class="m-scan-animation">
+							<div class="m-scan-line"></div>
+						</div>
+						<div class="m-scan-message">
+							<span class="m-scan-icon">{mScanMessages[mScanIndex].icon}</span>
+							<p class="m-scan-text">{mScanMessages[mScanIndex].text}</p>
+						</div>
+						<div class="m-scan-progress">
+							{#each Array(8) as _, i}
+								<div class="m-progress-dot" class:m-progress-dot-active={i <= mScanIndex % 8}></div>
+							{/each}
+						</div>
+						<p class="m-scan-subtext">{estimatedTime(mWaitTip)}</p>
+					</div>
+				{:else if mobileGenState === 'error'}
+					<div class="mobile-gen-cta">
+						<span class="m-error-icon">&#9670;</span>
+						<span class="mobile-gen-ago">Generation failed</span>
+						<p class="m-error-detail">
+							{generationError.value?.replace(/^Generation failed:\s*/, '') ?? 'Unknown error'}
+						</p>
+						<button class="btn-primary btn-branded" onclick={handleMobileRetry}>
+							{hasStageCache() ? 'Resume' : 'Try Again'}
+						</button>
+						{#if hasStageCache()}
+							<button class="btn-secondary" onclick={handleMobileStartFresh}>Start Fresh</button>
+						{/if}
+						{#if diff}
+							<button class="btn-secondary" onclick={() => { clearGenerationState(); slideToCards(); }}>View last diff</button>
+						{/if}
+					</div>
+				{:else}
+					<div class="mobile-gen-cta">
+						{#if catchUpLabel}
+							<span class="mobile-gen-ago">{catchUpLabel}</span>
+						{/if}
+						{#if isStale}
+							<p class="mobile-gen-text">{staleText}</p>
+						{/if}
+						<button class="btn-primary btn-branded" onclick={handleMobileGenerate}>{isTodayDiff ? 'Regenerate' : 'Generate new diff'}</button>
 					</div>
 				{/if}
-				<div class="mobile-gen-stats">
-					{#if streak.streak > 0}
-						<span class="mobile-gen-stat"><span class="mobile-gen-stat-val">{streak.streak}</span> day streak</span>
-					{/if}
-					<span class="mobile-gen-stat"><span class="mobile-gen-stat-val">{historyCount}</span> {historyCount === 1 ? 'diff' : 'diffs'}</span>
-				</div>
 			</div>
+
+			{#if mobileGenState === 'ready'}
+				<div class="mobile-gen-meta">
+					{#if profileInterests.length > 0}
+						<div class="mobile-gen-tags">
+							{#each profileInterests as tag}
+								<span class="mobile-gen-tag">{tag}</span>
+							{/each}
+						</div>
+					{/if}
+					<div class="mobile-gen-stats">
+						{#if streak.streak > 0}
+							<span class="mobile-gen-stat"><span class="mobile-gen-stat-val">{streak.streak}</span> day streak</span>
+						{/if}
+						<span class="mobile-gen-stat"><span class="mobile-gen-stat-val">{historyCount}</span> {historyCount === 1 ? 'diff' : 'diffs'}</span>
+					</div>
+				</div>
+			{/if}
 		</div>
 
 		<footer class="mobile-gen-footer">
-			<span class="mobile-gen-nav">
-				<button class="mobile-gen-arrow" onclick={slideToCards}>&#8249;</button>
-			</span>
+			{#if mobileGenState === 'ready'}
+				<span class="mobile-gen-nav">
+					<button class="mobile-gen-arrow" onclick={slideToCards}>&#8249;</button>
+				</span>
+			{/if}
 		</footer>
 	{:else}
 		<div
@@ -435,5 +541,95 @@
 		cursor: pointer;
 		line-height: 1;
 		transition: opacity 0.15s;
+	}
+
+	/* Mobile inline generation: scan animation */
+	.m-scan-animation {
+		width: 200px;
+		height: 3px;
+		background: var(--bg-chip);
+		border-radius: 2px;
+		overflow: hidden;
+		position: relative;
+	}
+
+	.m-scan-line {
+		position: absolute;
+		width: 40%;
+		height: 100%;
+		background: linear-gradient(90deg, transparent, var(--accent), transparent);
+		animation: m-scan 1.5s ease-in-out infinite;
+	}
+
+	@keyframes m-scan {
+		0% { left: -40%; }
+		100% { left: 100%; }
+	}
+
+	.m-scan-message {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.6rem;
+		min-height: 1.75rem;
+	}
+
+	.m-scan-icon {
+		font-size: 1.1rem;
+		animation: m-pulse 1s ease-in-out infinite;
+	}
+
+	@keyframes m-pulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.5; }
+	}
+
+	.m-scan-text {
+		font-size: 0.85rem;
+		color: var(--accent);
+		margin: 0;
+		font-weight: 500;
+	}
+
+	.m-scan-progress {
+		display: flex;
+		gap: 0.35rem;
+	}
+
+	.m-progress-dot {
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: var(--bg-chip);
+		transition: background 0.3s;
+	}
+
+	.m-progress-dot-active {
+		background: var(--accent);
+	}
+
+	.m-scan-subtext {
+		font-size: 0.75rem;
+		color: var(--text-disabled);
+		margin: 0;
+	}
+
+	/* Mobile inline generation: error state */
+	.m-error-icon {
+		font-size: 1.5rem;
+		color: var(--error, #dc3545);
+	}
+
+	.m-error-detail {
+		font-size: 0.8rem;
+		color: var(--text-secondary);
+		background: var(--bg-chip);
+		border-left: 3px solid var(--error, #dc3545);
+		padding: 0.75rem 1rem;
+		border-radius: var(--radius-sm);
+		text-align: left;
+		line-height: 1.5;
+		margin: 0;
+		max-width: 18rem;
 	}
 </style>

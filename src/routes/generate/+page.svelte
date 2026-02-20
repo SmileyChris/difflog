@@ -4,36 +4,31 @@
 	import { browser } from "$app/environment";
 	import { getProfile, isDemoProfile } from "$lib/stores/profiles.svelte";
 	import { getHistory } from "$lib/stores/history.svelte";
-	import { updateProfile, autoSync } from "$lib/stores/sync.svelte";
 	import {
 		generating,
 		generationError,
-		runGeneration,
 		clearGenerationState,
 		hasStageCache,
 		clearStageCache,
 	} from "$lib/stores/ui.svelte";
-	import {
-		addDiff,
-		deleteDiff,
-	} from "$lib/stores/operations.svelte";
 	import { PageHeader, HeaderNav, SiteFooter } from "$lib/components";
 	import {
 		DEPTHS,
 		SCAN_MESSAGES,
-		WAIT_TIPS,
 		type GenerationDepth,
 	} from "$lib/utils/constants";
 	import { getCurrentDateFormatted } from "$lib/utils/time.svelte";
-	import type { ResolvedMapping } from "$lib/utils/sync";
+	import {
+		startGeneration,
+		estimatedTime,
+		randomWaitTip,
+	} from "$lib/actions/startGeneration";
 
 	let scanIndex = $state(0);
 	let scanMessages = $state(
 		[...SCAN_MESSAGES].sort(() => Math.random() - 0.5),
 	);
-	let waitTip = $state(
-		WAIT_TIPS[Math.floor(Math.random() * WAIT_TIPS.length)],
-	);
+	let waitTip = $state(randomWaitTip());
 	let scanInterval: ReturnType<typeof setInterval> | null = null;
 	let forceNew = $state(false);
 	let ctrlHeld = $state(false);
@@ -133,134 +128,33 @@
 		}, 4400);
 	}
 
-	async function startGeneration() {
-		if (isDemoProfile()) {
-			if (ctrlHeld) forceNew = true;
-			scanIndex = 0;
-			scanMessages = [...SCAN_MESSAGES].sort(() => Math.random() - 0.5);
-			generating.value = true;
-			startScanAnimation();
-			const { createDemoDiff } = await import("$lib/utils/demo");
-			await new Promise((r) => setTimeout(r, 2500));
-
-			// Handle replacing today's existing diff (unless force new)
-			const today = new Date().toDateString();
-			const history = getHistory();
-			if (
-				!forceNew &&
-				history.length > 0 &&
-				new Date(history[0].generated_at).toDateString() === today
-			) {
-				deleteDiff(history[0].id);
-			}
-			addDiff(createDemoDiff(getHistory()[0]?.title));
-			generating.value = false;
-			if (scanInterval) {
-				clearInterval(scanInterval);
-				scanInterval = null;
-			}
-			goto("/");
-			return;
-		}
-
-		const profile = getProfile();
-		if (!profile) {
-			generationError.value = "No profile found";
-			return;
-		}
-
-		// Ctrl held at click time means force new
-		if (ctrlHeld) forceNew = true;
-
-		// Reset UI state
-		scanIndex = 0;
-		scanMessages = [...SCAN_MESSAGES].sort(() => Math.random() - 0.5);
-		waitTip = WAIT_TIPS[Math.floor(Math.random() * WAIT_TIPS.length)];
-		startScanAnimation();
-
-		const lastDiff = getHistory()[0];
-		const selectedDepth = selectedDepthOverride || profile.depth || "standard";
-
-		try {
-			const result = await runGeneration({
-				profile: {
-					...profile,
-					languages: profile.languages || [],
-					frameworks: profile.frameworks || [],
-					tools: profile.tools || [],
-					topics: profile.topics || [],
-					depth: (profile.depth as GenerationDepth) || "standard",
-					providerSelections: {
-						synthesis:
-							profile.providerSelections?.synthesis || undefined,
-					},
-				},
-				selectedDepth,
-				lastDiffDate: lastDiff?.generated_at ?? null,
-				lastDiffContent: lastDiff?.content,
-				onMappingsResolved: (mappings) =>
-					updateProfile({
-						resolvedMappings: mappings as Record<
-							string,
-							ResolvedMapping
-						>,
-					}),
-			});
-
-			// Handle replacing today's existing diff (unless force new)
-			const today = new Date().toDateString();
-			const history = getHistory();
-			if (
-				!forceNew &&
-				history.length > 0 &&
-				new Date(history[0].generated_at).toDateString() === today
-			) {
-				deleteDiff(history[0].id);
-			}
-			addDiff(result.diff);
-			autoSync();
-
-			// Success - go home to view the new diff
-			clearGenerationState();
-			goto("/");
-		} catch {
-			// Error is already set by runGeneration, stay on page to show it
-			if (scanInterval) {
-				clearInterval(scanInterval);
-				scanInterval = null;
-			}
-		} finally {
-			if (browser) {
-				window.onbeforeunload = null;
-			}
+	function stopScanAnimation() {
+		if (scanInterval) {
+			clearInterval(scanInterval);
+			scanInterval = null;
 		}
 	}
 
-	function estimatedTime(): string {
-		const history = getHistory();
-		const durations = history
-			.map((h) => h.duration_seconds as number)
-			.filter((d) => d && d > 0);
-		let timeStr: string;
-		if (durations.length === 0) {
-			timeStr = "This usually takes 30–60 seconds...";
-		} else {
-			const avg = Math.round(
-				durations.reduce((a, b) => (a || 0) + (b || 0), 0) /
-					durations.length,
-			);
-			if (avg < 60) {
-				timeStr = `Usually takes about ${avg} seconds...`;
-			} else {
-				const mins = Math.floor(avg / 60);
-				const secs = avg % 60;
-				timeStr =
-					secs > 0
-						? `Usually takes about ${mins}m ${secs}s...`
-						: `Usually takes about ${mins} minute${mins > 1 ? "s" : ""}...`;
-			}
+	async function handleGenerate() {
+		if (ctrlHeld) forceNew = true;
+		scanIndex = 0;
+		scanMessages = [...SCAN_MESSAGES].sort(() => Math.random() - 0.5);
+		waitTip = randomWaitTip();
+
+		await startGeneration({
+			forceNew,
+			depthOverride: selectedDepthOverride,
+			onScanStart: startScanAnimation,
+			onScanStop: stopScanAnimation,
+			onSuccess: () => {
+				stopScanAnimation();
+				goto("/");
+			},
+		});
+
+		if (browser) {
+			window.onbeforeunload = null;
 		}
-		return waitTip ? `${timeStr} ${waitTip}` : timeStr;
 	}
 
 	function goHome() {
@@ -295,7 +189,7 @@
 					></div>
 				{/each}
 			</div>
-			<p class="generating-subtext">{estimatedTime()}</p>
+			<p class="generating-subtext">{estimatedTime(waitTip)}</p>
 		</div>
 	{:else if generationError.value}
 		<div class="welcome-area">
@@ -307,7 +201,7 @@
 			<div class="error-actions">
 				<button
 					class="btn-primary btn-lg btn-branded"
-					onclick={startGeneration}
+					onclick={handleGenerate}
 				>
 					{hasStageCache() ? "Resume" : "Try Again"}
 				</button>
@@ -317,7 +211,7 @@
 							class="btn-secondary"
 							onclick={() => {
 								clearStageCache();
-								startGeneration();
+								handleGenerate();
 							}}
 						>
 							Start Fresh
@@ -383,7 +277,7 @@
 
 			<button
 				class="btn-primary btn-lg btn-branded"
-				onclick={startGeneration}
+				onclick={handleGenerate}
 			>
 				{isTodayDiff && !ctrlHeld ? "Regenerate Diff" : "Generate Diff"}
 			</button>
