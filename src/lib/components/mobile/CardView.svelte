@@ -395,6 +395,7 @@
 			<span class="focus-end-diamond"><span class="focus-end-check">&#10004;</span></span>
 			<span class="focus-end-caught-up">All caught up</span>
 			<h2 class="focus-end-title">{diff.title}</h2>
+			<span class="focus-title-card-generated">Generated {timeAgoFrom(diff.generated_at, Date.now())}</span>
 			<nav class="focus-end-actions">
 				{#if nextDiff}
 					<button class="focus-end-btn" onclick={() => slideTo(nextDiff, 'left')}>Newer diff &rarr;</button>
@@ -440,16 +441,19 @@
 	<div class="focus-jump-backdrop" onclick={() => showJumpMenu = false}></div>
 	<nav class="focus-jump-menu">
 		<button class="focus-jump-item" class:focus-jump-active={visibleCard === 0} onclick={() => jumpToCard(0)}>
-			<span class="focus-jump-label">&#9670; Cover</span>
+			<span class="focus-jump-icon">&#9670;</span>
+			<span class="focus-jump-label">Cover</span>
 		</button>
 		{#each categoryJumps as cat, i}
 			<button class="focus-jump-item" class:focus-jump-active={i === activeCategoryJump} onclick={() => jumpToCard(cat.cardIndex)}>
-				<span class="focus-jump-label">{cat.label}</span>
+				<span class="focus-jump-icon">{cat.label.match(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u)?.[0] ?? ''}</span>
+				<span class="focus-jump-label">{cat.label.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]\s*/u, '')}</span>
 				<span class="focus-jump-count">{cat.count}</span>
 			</button>
 		{/each}
 		<button class="focus-jump-item" class:focus-jump-active={visibleCard > flatCards.length} onclick={() => jumpToCard(flatCards.length + 1)}>
-			<span class="focus-jump-label">&#10003; Complete</span>
+			<span class="focus-jump-icon">&#10003;</span>
+			<span class="focus-jump-label">Complete</span>
 		</button>
 	</nav>
 {/if}
