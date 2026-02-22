@@ -351,25 +351,33 @@ async function fetchDevTo(profile: Profile, days: number = 7, extraTags?: string
   const perTag = Math.max(3, Math.floor(12 / tags.length));
   const allItems: FeedItem[] = [];
 
-  const results = await Promise.allSettled(
-    tags.map(async (tag) => {
-      const res = await fetchWithTimeout(
-        `https://dev.to/api/articles?tag=${tag}&top=${days}&per_page=${perTag}`
-      );
-      const articles: DevToArticle[] = await res.json();
-      if (!Array.isArray(articles)) return [];
-      return articles.map((article) => ({
-        title: article.title || '',
-        url: article.url,
-        score: article.positive_reactions_count,
-        source: `Dev.to (${tag})`,
-      } as FeedItem));
-    })
-  );
+  // Batch requests 2 at a time with a delay to avoid Dev.to 429 rate limits
+  const BATCH_SIZE = 2;
+  const BATCH_DELAY = 250;
 
-  for (const result of results) {
-    if (result.status === 'fulfilled') {
-      allItems.push(...result.value);
+  for (let i = 0; i < tags.length; i += BATCH_SIZE) {
+    if (i > 0) await new Promise(r => setTimeout(r, BATCH_DELAY));
+    const batch = tags.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map(async (tag) => {
+        const res = await fetchWithTimeout(
+          `https://dev.to/api/articles?tag=${tag}&top=${days}&per_page=${perTag}`
+        );
+        const articles: DevToArticle[] = await res.json();
+        if (!Array.isArray(articles)) return [];
+        return articles.map((article) => ({
+          title: article.title || '',
+          url: article.url,
+          score: article.positive_reactions_count,
+          source: `Dev.to (${tag})`,
+        } as FeedItem));
+      })
+    );
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        allItems.push(...result.value);
+      }
     }
   }
 
