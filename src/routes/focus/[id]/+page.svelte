@@ -3,6 +3,8 @@
 	import { tick, onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { type Diff, getHistory } from '$lib/stores/history.svelte';
+	import { isStarred } from '$lib/stores/stars.svelte';
+	import { addStar, removeStar } from '$lib/stores/operations.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { formatDiffDate } from '$lib/utils/time';
 	import CardView from '$lib/components/mobile/CardView.svelte';
@@ -223,6 +225,19 @@
 		goto(`/d/${diff.id}`);
 	}
 
+	function toggleFocusedStar() {
+		const items = getItems();
+		const el = items[focusedItem];
+		if (!el) return;
+		const pIndex = parseInt(el.getAttribute('data-p') ?? '-1', 10);
+		if (pIndex < 0) return;
+		if (isStarred(diff.id, pIndex)) {
+			removeStar(diff.id, pIndex);
+		} else {
+			addStar({ diff_id: diff.id, p_index: pIndex, added_at: new Date().toISOString() });
+		}
+	}
+
 	function handleKeydown(e: KeyboardEvent) {
 		if (isMobile) return;
 		switch (e.key) {
@@ -243,6 +258,9 @@
 			case 'j':
 				e.preventDefault();
 				nextItem();
+				break;
+			case 's':
+				toggleFocusedStar();
 				break;
 			case 'Escape':
 			case 'q':
@@ -321,7 +339,7 @@
 		</div>
 
 		<footer class="focus-footer">
-			<span class="focus-hints"><span class="focus-key">esc</span> to exit <span class="focus-dot">·</span> <span class="focus-key">← →</span> categories <span class="focus-dot">·</span> <span class="focus-key">↑ ↓</span> articles{#if itemCount > 0} <span class="focus-item-position">{Math.max(0, focusedItem) + 1}/{itemCount}</span>{/if}</span>
+			<span class="focus-hints"><span class="focus-key">esc</span> to exit <span class="focus-dot">·</span> <span class="focus-key">← →</span> categories <span class="focus-dot">·</span> <span class="focus-key">↑ ↓</span> articles <span class="focus-dot">·</span> <span class="focus-key">s</span> star{#if itemCount > 0} <span class="focus-item-position">{Math.max(0, focusedItem) + 1}/{itemCount}</span>{/if}</span>
 		</footer>
 	{/if}
 </div>

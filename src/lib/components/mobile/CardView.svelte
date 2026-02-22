@@ -6,7 +6,7 @@
 	import { isStarred, getStars } from '$lib/stores/stars.svelte';
 	import { addStar, removeStar } from '$lib/stores/operations.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
-	import { formatDiffDate } from '$lib/utils/time';
+	import { formatDiffDate, timeAgoFrom } from '$lib/utils/time';
 	import type { FlatCard } from './types';
 	import '../../../styles/focus.css';
 
@@ -329,6 +329,8 @@
 		: 'calc(100vh - 6.5rem)');
 </script>
 
+<svelte:window onkeydown={(e) => { if (e.key === 's') toggleCurrentStar(); }} />
+
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="focus-cards"
@@ -358,6 +360,7 @@
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<span class="focus-title-card-link" onclick={() => showJumpMenu = !showJumpMenu}>{articles.length} categories</span>
 			</span>
+			<span class="focus-title-card-generated">Generated {timeAgoFrom(diff.generated_at, Date.now())}</span>
 		</div>
 	</div>
 
@@ -367,13 +370,18 @@
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<span class="focus-card-category" onclick={() => showJumpMenu = !showJumpMenu}>{card.categoryTitle}</span>
-				{#if isStarred(diff.id, card.pIndex)}
-					<span class="focus-star-nav">
-						<button class="focus-star-nav-btn" disabled={prevStarIndex < 0} onclick={() => jumpToCard(prevStarIndex)}>&#8249;</button>
-						<span class="focus-star-nav-icon">★</span>
-						<button class="focus-star-nav-btn" disabled={nextStarIndex < 0} onclick={() => jumpToCard(nextStarIndex)}>&#8250;</button>
-					</span>
-				{/if}
+				<span class="focus-star-nav">
+					<button class="focus-star-nav-btn" disabled={prevStarIndex < 0} onclick={() => jumpToCard(prevStarIndex)}>&#8249;</button>
+					<button class="focus-star-nav-icon" class:focus-star-nav-icon-active={isStarred(diff.id, card.pIndex)} title={isStarred(diff.id, card.pIndex) ? 'Unstar (s)' : 'Star (s)'} onclick={() => {
+						if (card.pIndex < 0) return;
+						if (isStarred(diff.id, card.pIndex)) {
+							removeStar(diff.id, card.pIndex);
+						} else {
+							addStar({ diff_id: diff.id, p_index: card.pIndex, added_at: new Date().toISOString() });
+						}
+					}}>★</button>
+					<button class="focus-star-nav-btn" disabled={nextStarIndex < 0} onclick={() => jumpToCard(nextStarIndex)}>&#8250;</button>
+				</span>
 			</div>
 			<div class="focus-card-content">
 				{@html card.html}
