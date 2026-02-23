@@ -404,7 +404,7 @@
 					<button class="focus-end-btn" onclick={() => slideTo(prevDiff, 'right')}>&larr; Older diff</button>
 				{/if}
 				{#if new Date(diff.generated_at).toDateString() !== new Date().toDateString()}
-					<a href="/generate" class="focus-end-btn focus-end-btn-accent">Generate new diff</a>
+					<a href="/regenerate" class="focus-end-btn focus-end-btn-accent">Generate new diff</a>
 				{/if}
 			</nav>
 		</div>
