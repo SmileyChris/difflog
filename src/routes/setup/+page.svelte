@@ -368,14 +368,15 @@
 					...keys,
 					providerSelections: selections,
 				});
+				goto("/profiles");
 			} else {
 				createProfile({
 					...formData,
 					...keys,
 					providerSelections: selections,
 				});
+				goto("/");
 			}
-			goto("/");
 		} catch (e: unknown) {
 			setupError =
 				e instanceof Error ? e.message : "Failed to save profile";

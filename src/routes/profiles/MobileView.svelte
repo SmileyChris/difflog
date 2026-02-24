@@ -12,6 +12,10 @@
 		syncDropdownRemember,
 	} from '$lib/stores/ui.svelte';
 	import { doSyncFromDropdown } from '$lib/stores/operations.svelte';
+	import { getHistory, getStreak } from '$lib/stores/history.svelte';
+	import { getStars } from '$lib/stores/stars.svelte';
+	import { daysSince } from '$lib/utils/time.svelte';
+	import { STREAK_TOLERANCE_DAYS } from '$lib/utils/streak';
 	import { DEPTHS } from '$lib/utils/constants';
 
 	interface Props {
@@ -25,9 +29,36 @@
 	const needsPassword = $derived(!getCachedPassword());
 	const lastSyncedAgo = $derived(getLastSyncedAgo());
 
-	const depthLabel = $derived(
-		DEPTHS.find((d) => d.id === profile?.depth)?.label ?? profile?.depth ?? ''
-	);
+	const history = $derived(getHistory());
+	const streak = $derived(getStreak());
+	const stars = $derived(getStars());
+
+	const diffsText = $derived.by(() => {
+		if (history.length === 0) return 'No diffs yet';
+		if (history.length === 1) return '1 diff';
+		const dates = history.map((d) => new Date(d.generated_at).getTime());
+		const days = Math.round((Math.max(...dates) - Math.min(...dates)) / 86400000);
+		return `${history.length} diffs spanning ${days} day${days === 1 ? '' : 's'}`;
+	});
+
+	const starsText = $derived.by(() => {
+		if (stars.length === 0) return 'No stars yet';
+		const uniqueDiffs = new Set(stars.map((s) => s.diff_id)).size;
+		return `${stars.length} star${stars.length === 1 ? '' : 's'} across ${uniqueDiffs} diff${uniqueDiffs === 1 ? '' : 's'}`;
+	});
+
+	const streakText = $derived.by(() => {
+		if (history.length === 0) return 'Generate your first diff';
+		if (streak.streak > 0 && streak.activeDates.length >= 2) return `${streak.streak} diff streak`;
+		if (streak.streak > 0) return 'Diff for two days to start a streak';
+		// streak lost — calculate when
+		const lastDate = history[0]?.generated_at;
+		if (lastDate) {
+			const lost = daysSince(lastDate) - STREAK_TOLERANCE_DAYS;
+			if (lost > 0) return `Streak lost ${lost} day${lost === 1 ? '' : 's'} ago`;
+		}
+		return 'Diff for two days to start a streak';
+	});
 
 	function handleKeyPress(e: KeyboardEvent) {
 		if (e.key === 'Enter') {
@@ -118,72 +149,99 @@
 			<section class="account-section">
 				<h2 class="account-section-title">Interests</h2>
 
-				{#if profile.languages?.length}
-					<div class="account-field">
-						<div class="account-field-header">
+				<div class="account-field">
+						<a href="/setup?edit=2" class="account-edit-sm" aria-label="Edit languages">&#9998;</a>
+						<div class="account-field-body">
 							<span class="account-field-label">Languages</span>
-							<a href="/setup?edit=2" class="account-edit-sm" aria-label="Edit languages">&#9998;</a>
-						</div>
-						<div class="account-chips">
-							{#each profile.languages as item}
-								<span class="account-tag">{item}</span>
-							{/each}
+							{#if profile.languages?.length}
+								<div class="account-chips">
+									{#each profile.languages as item}
+										<span class="account-tag">{item}</span>
+									{/each}
+								</div>
+							{:else}
+								<span class="account-empty">None selected</span>
+							{/if}
 						</div>
 					</div>
-				{/if}
 
-				{#if profile.frameworks?.length}
 					<div class="account-field">
-						<div class="account-field-header">
+						<a href="/setup?edit=3" class="account-edit-sm" aria-label="Edit frameworks">&#9998;</a>
+						<div class="account-field-body">
 							<span class="account-field-label">Frameworks</span>
-							<a href="/setup?edit=3" class="account-edit-sm" aria-label="Edit frameworks">&#9998;</a>
-						</div>
-						<div class="account-chips">
-							{#each profile.frameworks as item}
-								<span class="account-tag">{item}</span>
-							{/each}
+							{#if profile.frameworks?.length}
+								<div class="account-chips">
+									{#each profile.frameworks as item}
+										<span class="account-tag">{item}</span>
+									{/each}
+								</div>
+							{:else}
+								<span class="account-empty">None selected</span>
+							{/if}
 						</div>
 					</div>
-				{/if}
 
-				{#if profile.tools?.length}
 					<div class="account-field">
-						<div class="account-field-header">
+						<a href="/setup?edit=4" class="account-edit-sm" aria-label="Edit tools">&#9998;</a>
+						<div class="account-field-body">
 							<span class="account-field-label">Tools</span>
-							<a href="/setup?edit=4" class="account-edit-sm" aria-label="Edit tools">&#9998;</a>
-						</div>
-						<div class="account-chips">
-							{#each profile.tools as item}
-								<span class="account-tag">{item}</span>
-							{/each}
+							{#if profile.tools?.length}
+								<div class="account-chips">
+									{#each profile.tools as item}
+										<span class="account-tag">{item}</span>
+									{/each}
+								</div>
+							{:else}
+								<span class="account-empty">None selected</span>
+							{/if}
 						</div>
 					</div>
-				{/if}
 
-				{#if profile.topics?.length}
 					<div class="account-field">
-						<div class="account-field-header">
+						<a href="/setup?edit=5" class="account-edit-sm" aria-label="Edit topics">&#9998;</a>
+						<div class="account-field-body">
 							<span class="account-field-label">Topics</span>
-							<a href="/setup?edit=5" class="account-edit-sm" aria-label="Edit topics">&#9998;</a>
+							{#if profile.topics?.length}
+								<div class="account-chips">
+									{#each profile.topics as item}
+										<span class="account-tag">{item}</span>
+									{/each}
+								</div>
+							{:else}
+								<span class="account-empty">None selected</span>
+							{/if}
 						</div>
+					</div>
+
+				<div class="account-field">
+					<a href="/setup?edit=6" class="account-edit-sm" aria-label="Edit depth">&#9998;</a>
+					<div class="account-field-body">
+						<span class="account-field-label">Default Depth</span>
 						<div class="account-chips">
-							{#each profile.topics as item}
-								<span class="account-tag">{item}</span>
+							{#each DEPTHS as d}
+								<span class="account-tag" class:account-tag-active={(profile.depth || 'standard') === d.id}>{d.icon} {d.label}</span>
 							{/each}
 						</div>
 					</div>
-				{/if}
+				</div>
 
-				{#if depthLabel}
+				{#if profile.customFocus}
 					<div class="account-field">
-						<div class="account-field-header">
-							<span class="account-field-label">Depth</span>
+						<a href="/setup?edit=6" class="account-edit-sm" aria-label="Edit focus">&#9998;</a>
+						<div class="account-field-body">
+							<span class="account-field-label">Focus</span>
+							<span class="account-focus">{profile.customFocus}</span>
 						</div>
-						<span class="account-depth">{depthLabel}</span>
 					</div>
 				{/if}
 			</section>
 		{/if}
+
+		<footer class="account-stats">
+			<a href="/archive" class="account-stat-line"><span class="account-stat-icon">&#9670;</span> <span class="account-stat-text">{diffsText}</span></a>
+			<a href="/stars" class="account-stat-line"><span class="account-stat-icon">&#9733;</span> <span class="account-stat-text">{starsText}</span></a>
+			<span class="account-stat-line"><span class="account-stat-icon">&#128293;</span> {streakText}</span>
+		</footer>
 
 	</div>
 </div>
@@ -222,7 +280,7 @@
 		display: flex;
 		justify-content: center;
 		padding: 1.25rem 1.25rem 2rem;
-		min-height: 100%;
+		min-height: calc(100dvh - 5.5rem);
 	}
 
 	.account-content {
@@ -231,6 +289,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
+		flex: 1;
 	}
 
 	.account-section {
@@ -252,8 +311,8 @@
 		margin-left: auto;
 		color: var(--text-disabled);
 		text-decoration: none;
-		font-size: 0.85rem;
-		padding: 0.25rem;
+		font-size: 1.1rem;
+		padding: 0.35rem;
 		transition: color 0.15s;
 	}
 
@@ -263,14 +322,16 @@
 
 	.account-field {
 		display: flex;
-		flex-direction: column;
-		gap: 0.35rem;
+		flex-direction: row;
+		align-items: flex-start;
+		gap: 0.5rem;
 	}
 
-	.account-field-header {
+	.account-field-body {
 		display: flex;
-		align-items: center;
-		gap: 0.5rem;
+		flex-direction: column;
+		gap: 0.35rem;
+		flex: 1;
 	}
 
 	.account-field-label {
@@ -282,9 +343,10 @@
 	.account-edit-sm {
 		color: var(--text-disabled);
 		text-decoration: none;
-		font-size: 0.7rem;
-		padding: 0.1rem 0.2rem;
+		font-size: 1rem;
+		padding: 0.15rem 0.25rem;
 		transition: color 0.15s;
+		flex-shrink: 0;
 	}
 
 	.account-edit-sm:hover {
@@ -297,12 +359,6 @@
 		gap: 0.35rem;
 	}
 
-	.account-depth {
-		font-family: var(--font-mono);
-		font-size: 0.75rem;
-		color: var(--text-subtle);
-	}
-
 	.account-tag {
 		font-family: var(--font-mono);
 		font-size: 0.6rem;
@@ -311,5 +367,57 @@
 		padding: 0.2rem 0.45rem;
 		border-radius: var(--radius-sm);
 		letter-spacing: 0.02em;
+	}
+
+	.account-tag-active {
+		color: var(--accent);
+		background: var(--accent-bg);
+	}
+
+	.account-empty {
+		font-family: var(--font-mono);
+		font-size: 0.65rem;
+		color: var(--text-disabled);
+		font-style: italic;
+	}
+
+	.account-focus {
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
+		color: var(--text-subtle);
+		font-style: italic;
+	}
+
+	.account-stats {
+		margin-top: auto;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.5rem;
+		padding-top: 1.5rem;
+	}
+
+	.account-stat-icon {
+		font-size: 0.85rem;
+		color: var(--accent);
+	}
+
+	.account-stat-line {
+		font-size: 0.7rem;
+		color: var(--text-disabled);
+		text-decoration: none;
+		font-family: var(--font-mono);
+		letter-spacing: 0.02em;
+	}
+
+	a.account-stat-line .account-stat-text {
+		text-decoration: underline;
+		text-decoration-style: dotted;
+		text-underline-offset: 0.2em;
+		text-decoration-color: var(--text-disabled);
+	}
+
+	a.account-stat-line:hover {
+		color: var(--text-subtle);
 	}
 </style>
