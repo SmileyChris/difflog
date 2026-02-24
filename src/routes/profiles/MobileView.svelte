@@ -6,6 +6,8 @@
 		getSyncState,
 		getLastSyncedAgo,
 		getCachedPassword,
+		forgetPassword,
+		getHasRememberedPassword,
 	} from '$lib/stores/sync.svelte';
 	import {
 		syncDropdownPassword,
@@ -19,22 +21,10 @@
 	import { DEPTHS } from '$lib/utils/constants';
 	import { goto } from '$app/navigation';
 	import StreakCalendar from '../StreakCalendar.svelte';
+	import PasswordUpdateModal from './modals/PasswordUpdateModal.svelte';
 
+	let showPasswordUpdate = $state(false);
 	let showStreakCalendar = $state(false);
-
-	const hasActiveStreak = $derived(streak.streak > 1);
-
-	function goToDiffOnDate(isoDate: string) {
-		const match = history.find((d) => {
-			const dd = new Date(d.generated_at);
-			const iso = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`;
-			return iso === isoDate;
-		});
-		if (match) {
-			showStreakCalendar = false;
-			goto(`/d/${match.id}`);
-		}
-	}
 
 	interface Props {
 		onshare: () => void;
@@ -50,6 +40,20 @@
 	const history = $derived(getHistory());
 	const streak = $derived(getStreak());
 	const stars = $derived(getStars());
+
+	const hasActiveStreak = $derived(streak.streak > 1);
+
+	function goToDiffOnDate(isoDate: string) {
+		const match = history.find((d) => {
+			const dd = new Date(d.generated_at);
+			const iso = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`;
+			return iso === isoDate;
+		});
+		if (match) {
+			showStreakCalendar = false;
+			goto(`/d/${match.id}`);
+		}
+	}
 
 	const diffsText = $derived.by(() => {
 		if (history.length === 0) return 'No diffs yet';
@@ -102,7 +106,10 @@
 						<span class="mobile-account-badge">local</span>
 					{/if}
 				</div>
-				<a href="/setup?edit=1" class="account-edit" aria-label="Edit name">&#9998;</a>
+				{#if profile?.syncedAt}
+					<button class="account-password-btn" onclick={() => { showPasswordUpdate = true; }} title="Change password">***</button>
+				{/if}
+				<a href="/setup?edit=0" class="account-edit" aria-label="Edit name">&#9998;</a>
 			</div>
 
 			{#if profile?.syncedAt}
@@ -146,6 +153,7 @@
 							<span class="mobile-account-sync-ok">&#10003;</span>
 							<span>Synced {lastSyncedAgo}</span>
 						</div>
+						<button class="account-forget-btn" onclick={() => forgetPassword()}>{getHasRememberedPassword() ? 'forget stored password' : 'forget password'}</button>
 					{/if}
 				</div>
 			{/if}
@@ -156,9 +164,10 @@
 				</button>
 			{:else}
 				<button class="account-share-btn" onclick={onshare}>
-					&#8599; Upload &amp; share
+					&#8599; Upload profile
 				</button>
 			{/if}
+
 		</section>
 
 
@@ -278,6 +287,12 @@
 	</div>
 {/if}
 
+<PasswordUpdateModal
+	bind:open={showPasswordUpdate}
+	profileId={profile?.id ?? ''}
+	onclose={() => {}}
+/>
+
 <style>
 	.account-sync-card {
 		background: var(--bg-card);
@@ -295,13 +310,31 @@
 		font-weight: 500;
 		padding: 0.5rem 0.75rem;
 		cursor: pointer;
-		width: 100%;
+		align-self: flex-end;
 		transition: background 0.15s, border-color 0.15s;
 	}
 
 	.account-share-btn:hover {
 		background: var(--info-bg);
 		border-color: var(--info);
+	}
+
+	.account-forget-btn {
+		font-size: 0.65rem;
+		font-weight: 500;
+		padding: 0.15rem 0.4rem;
+		border-radius: var(--radius-sm);
+		color: var(--text-disabled);
+		background: transparent;
+		border: 1px solid var(--border-subtle);
+		cursor: pointer;
+		margin-top: 0.5rem;
+		font-family: inherit;
+	}
+
+	.account-forget-btn:hover {
+		color: var(--text-subtle);
+		border-color: var(--border-mid);
 	}
 
 	.mobile-account-paused-badge {
@@ -340,7 +373,6 @@
 	}
 
 	.account-edit {
-		margin-left: auto;
 		color: var(--text-disabled);
 		text-decoration: none;
 		font-size: 1.1rem;
@@ -349,6 +381,22 @@
 	}
 
 	.account-edit:hover {
+		color: var(--accent);
+	}
+
+	.account-password-btn {
+		background: none;
+		border: none;
+		padding: 0.35rem;
+		font-family: inherit;
+		font-size: 0.85rem;
+		color: var(--text-disabled);
+		cursor: pointer;
+		letter-spacing: 0.05em;
+		transition: color 0.15s;
+	}
+
+	.account-password-btn:hover {
 		color: var(--accent);
 	}
 
