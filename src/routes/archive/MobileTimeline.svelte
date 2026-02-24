@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { type Diff, getHistory } from '$lib/stores/history.svelte';
 	import { daysSince } from '$lib/utils/time.svelte';
@@ -35,9 +36,91 @@
 		return groups;
 	});
 
+	// Swipe-to-delete state
+	const SWIPE_DEAD_ZONE = 10;
+	const SWIPE_THRESHOLD = -56;
+	const SWIPE_MAX = -56;
+
+	let swipe = $state<{
+		id: string;
+		startX: number;
+		startY: number;
+		offsetX: number;
+		direction: 'horizontal' | 'vertical' | null;
+		animating: boolean;
+	} | null>(null);
+
+	let swipeOccurred = false;
+	let timelineEl: HTMLDivElement;
+
+	function handleSwipeStart(e: TouchEvent, diffId: string) {
+		if (swipe?.animating) return;
+		const touch = e.touches[0];
+		swipe = {
+			id: diffId,
+			startX: touch.clientX,
+			startY: touch.clientY,
+			offsetX: 0,
+			direction: null,
+			animating: false,
+		};
+	}
+
+	function handleSwipeMove(e: TouchEvent) {
+		if (!swipe || swipe.animating) return;
+		const touch = e.touches[0];
+		const dx = touch.clientX - swipe.startX;
+		const dy = touch.clientY - swipe.startY;
+
+		if (swipe.direction === null) {
+			const dist = Math.sqrt(dx * dx + dy * dy);
+			if (dist < SWIPE_DEAD_ZONE) return;
+			swipe.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+		}
+
+		if (swipe.direction === 'vertical') return;
+
+		e.preventDefault();
+		swipe.offsetX = Math.max(SWIPE_MAX, Math.min(0, dx));
+	}
+
+	function handleSwipeEnd() {
+		if (!swipe || swipe.animating) return;
+
+		if (swipe.direction === 'horizontal') {
+			swipeOccurred = true;
+			setTimeout(() => swipeOccurred = false, 0);
+		}
+
+		const pastThreshold = swipe.offsetX <= SWIPE_THRESHOLD;
+		const id = swipe.id;
+
+		// Snap back
+		swipe.animating = true;
+		swipe.offsetX = 0;
+
+		if (pastThreshold) {
+			requestAnimationFrame(() => {
+				swipe = null;
+				if (confirm('Delete this diff?')) {
+					deleteDiff(id);
+				}
+			});
+		} else {
+			setTimeout(() => swipe = null, 200);
+		}
+	}
+
 	function goToDiff(diffId: string) {
+		if (swipeOccurred) return;
 		goto(`/d/${diffId}`);
 	}
+
+	// Attach non-passive touchmove to allow preventDefault
+	onMount(() => {
+		timelineEl.addEventListener('touchmove', handleSwipeMove, { passive: false });
+		return () => timelineEl.removeEventListener('touchmove', handleSwipeMove);
+	});
 
 	function getTitle(diff: Diff): string {
 		return diff.title || 'Untitled diff';
@@ -75,7 +158,7 @@
 	}
 </script>
 
-<div class="timeline">
+<div class="timeline" bind:this={timelineEl}>
 	{#if history.length === 0}
 		<div class="timeline-empty">
 			<span class="timeline-empty-icon">&#9670;</span>
@@ -96,40 +179,53 @@
 				{@const isLastInGroup = di === group.diffs.length - 1}
 				{@const isLastOverall = gi === monthGroups.length - 1 && isLastInGroup}
 				{@const sameDay = di > 0 && isSameDay(group.diffs[di - 1].generated_at, diff.generated_at)}
-					<button class="timeline-item" class:timeline-item-latest={isLatest} onclick={() => goToDiff(diff.id)}>
-					<div class="timeline-date">
-						{#if !sameDay}
-							<span class="timeline-date-day">{date.day}</span>
-							<span class="timeline-date-time">{date.time}</span>
-						{:else}
-							<span class="timeline-date-time-only">{date.time}</span>
-						{/if}
+				{@const offset = swipe?.id === diff.id ? swipe.offsetX : 0}
+				{@const isAnimating = swipe?.id === diff.id && swipe.animating}
+				{@const isPastThreshold = swipe?.id === diff.id && swipe.offsetX <= SWIPE_THRESHOLD}
+				<div class="swipe-container">
+					<div class="swipe-delete-zone" class:swipe-delete-zone-active={isPastThreshold}>
+						<span class="swipe-delete-icon">&#128465;</span>
 					</div>
-					<div class="timeline-track">
-						<span class="timeline-dot" class:timeline-dot-latest={isLatest}>&#9670;</span>
-						{#if !isLastOverall}
-							<span class="timeline-line" class:timeline-line-dashed={isLastInGroup}></span>
-						{/if}
-					</div>
-					<div class="timeline-content">
-						{#if age}
-							<div class="timeline-age-row">
-								<span class="timeline-age" class:timeline-age-today={age === 'today'}>{age}</span>
-							</div>
-						{/if}
-						<div class="timeline-title">{getTitle(diff)}</div>
-						{#if categories.length > 0}
-							<div class="timeline-categories">
-								{#each categories.slice(0, 3) as cat}
-									<span class="timeline-cat">{cat}</span>
-								{/each}
-								{#if categories.length > 3}
-									<span class="timeline-cat timeline-cat-more">+{categories.length - 3}</span>
-								{/if}
-							</div>
-						{/if}
-					</div>
-				</button>
+					<button class="timeline-item" class:timeline-item-latest={isLatest}
+						style:transform="translateX({offset}px)"
+						style:transition={isAnimating ? 'transform 0.2s ease-out' : 'none'}
+						ontouchstart={(e) => handleSwipeStart(e, diff.id)}
+						ontouchend={handleSwipeEnd}
+						onclick={() => goToDiff(diff.id)}>
+						<div class="timeline-date">
+							{#if !sameDay}
+								<span class="timeline-date-day">{date.day}</span>
+								<span class="timeline-date-time">{date.time}</span>
+							{:else}
+								<span class="timeline-date-time-only">{date.time}</span>
+							{/if}
+						</div>
+						<div class="timeline-track">
+							<span class="timeline-dot" class:timeline-dot-latest={isLatest}>&#9670;</span>
+							{#if !isLastOverall}
+								<span class="timeline-line" class:timeline-line-dashed={isLastInGroup}></span>
+							{/if}
+						</div>
+						<div class="timeline-content">
+							{#if age}
+								<div class="timeline-age-row">
+									<span class="timeline-age" class:timeline-age-today={age === 'today'}>{age}</span>
+								</div>
+							{/if}
+							<div class="timeline-title">{getTitle(diff)}</div>
+							{#if categories.length > 0}
+								<div class="timeline-categories">
+									{#each categories.slice(0, 3) as cat}
+										<span class="timeline-cat">{cat}</span>
+									{/each}
+									{#if categories.length > 3}
+										<span class="timeline-cat timeline-cat-more">+{categories.length - 3}</span>
+									{/if}
+								</div>
+							{/if}
+						</div>
+					</button>
+				</div>
 			{/each}
 		{/each}
 	{/if}
@@ -193,13 +289,45 @@
 		font-weight: 500;
 	}
 
+	/* Swipe-to-delete */
+	.swipe-container {
+		position: relative;
+		overflow: hidden;
+	}
+
+	.swipe-delete-zone {
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: 56px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.swipe-delete-zone-active {
+	}
+
+	.swipe-delete-icon {
+		font-size: 1.75rem;
+		color: var(--text-hint);
+		transition: color 0.15s;
+	}
+
+	.swipe-delete-zone-active .swipe-delete-icon {
+		color: var(--danger);
+	}
+
 	/* Timeline item row */
 	.timeline-item {
+		position: relative;
+		z-index: 1;
 		display: flex;
 		align-items: stretch;
 		gap: 0;
 		width: 100%;
-		background: none;
+		background: var(--bg-base);
 		border: none;
 		padding: 0;
 		cursor: pointer;
