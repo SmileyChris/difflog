@@ -5,12 +5,14 @@
 	import { getProfile } from '$lib/stores/profiles.svelte';
 	import { getStars } from '$lib/stores/stars.svelte';
 	import { mobileDiff } from '$lib/stores/mobile.svelte';
+	import { generating } from '$lib/stores/ui.svelte';
 	import { daysSince } from '$lib/utils/time.svelte';
 
 	const profile = $derived(getProfile());
 	const history = $derived(getHistory());
 	const latestDiff = $derived(history[0] ?? null);
 	const stars = $derived(getStars());
+	const hasDiffs = $derived(history.length > 0);
 	const hasStars = $derived(stars?.length > 0);
 	const isSynced = $derived(!!profile?.syncedAt);
 
@@ -18,7 +20,7 @@
 	const diffAgeLabel = $derived.by(() => {
 		if (!latestDiff) return '';
 		const days = daysSince(latestDiff.generated_at);
-		if (days === 0) return 'Today';
+		if (days <= 0) return 'Today';
 		if (days === 1) return 'Yesterday';
 		return `${days}d ago`;
 	});
@@ -41,14 +43,15 @@
 		if (pathname === '/profiles') return 'account';
 		if (pathname === '/stars') return 'stars';
 		if (pathname === '/archive' || isViewingOlderDiff) return 'history';
-		if (isViewingLatestDiff || pathname === '/regenerate') return 'current';
+		if (isViewingLatestDiff || pathname === '/generate' || pathname === '/generate') return 'current';
 		return null;
 	});
 
 	function handleTab(tab: Tab) {
 		switch (tab) {
 			case 'current':
-				if (mobileDiff.navigateBack) { mobileDiff.navigateBack(); }
+				if (!hasDiffs) { goto('/generate'); }
+				else if (mobileDiff.navigateBack) { mobileDiff.navigateBack(); }
 				else { goto('/'); }
 				break;
 			case 'history': goto('/archive'); break;
@@ -66,11 +69,11 @@
 		onclick={() => handleTab('current')}
 		aria-label="Current diff"
 	>
-		<span class="mobile-tab-icon">&#9670;</span>
+		<span class="mobile-tab-icon" class:mobile-tab-diamond-spin={generating.value}>&#9670;</span>
 		{#if diffAgeLabel}
 			<span class="mobile-tab-label">{diffAgeLabel}</span>
 		{:else}
-			<span class="mobile-tab-label">Current</span>
+			<span class="mobile-tab-label">{hasDiffs ? 'Current' : 'Generate'}</span>
 		{/if}
 	</button>
 
@@ -102,7 +105,7 @@
 		onclick={() => handleTab('account')}
 		aria-label="Account"
 	>
-		<span class="mobile-tab-icon">{isSynced ? '☁' : '●'}</span>
+		<span class="mobile-tab-icon">{#if isSynced}<span class="mobile-tab-cloud">☁</span>{:else}<svg class="mobile-tab-person" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="11" r="4" /><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8" /></svg>{/if}</span>
 		<span class="mobile-tab-label">{profile?.name || 'Account'}</span>
 	</button>
 </nav>
@@ -136,6 +139,7 @@
 		cursor: pointer;
 		color: var(--text-disabled);
 		transition: color 0.15s;
+		overflow: hidden;
 	}
 
 	.mobile-tab-active {
@@ -145,6 +149,22 @@
 	.mobile-tab-icon {
 		font-size: 1rem;
 		line-height: 1;
+	}
+
+	.mobile-tab-diamond-spin {
+		animation: diamond-spin 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+	}
+
+	.mobile-tab-person {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.mobile-tab-cloud {
+		font-size: 1.25rem;
+		display: block;
+		line-height: 1rem;
+		margin-top: -0.2rem;
 	}
 
 	.mobile-tab-label {

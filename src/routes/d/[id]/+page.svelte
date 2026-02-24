@@ -62,7 +62,7 @@
 	}
 
 	function handleNewest() {
-		goto('/regenerate');
+		goto('/generate');
 	}
 </script>
 

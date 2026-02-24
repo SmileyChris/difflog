@@ -23,9 +23,9 @@
 	});
 
 	onMount(() => {
-		// On mobile, redirect to /regenerate if generating or stale
+		// On mobile, redirect to /generate if generating or stale
 		if (isMobile.value && generating.value) {
-			goto('/regenerate');
+			goto('/generate');
 		} else if (generating.value && !diff) {
 			goto('/generate');
 		}
@@ -91,7 +91,7 @@
 			bind:visibleCard={mobileDiff.visibleCard}
 
 			onFlatCards={(cards) => { mobileDiff.flatCards = cards; }}
-			onNewest={() => goto('/regenerate')}
+			onNewest={() => goto('/generate')}
 		/>
 	</div>
 {:else}

@@ -121,6 +121,7 @@
 	// --- Card state ---
 	let cardsContainerEl: HTMLElement | null = $state(null);
 	let showJumpMenu = $state(false);
+	let arrivedViaSlide = $state(false);
 
 	const POSITIONS_KEY = 'difflog-card-positions';
 
@@ -204,6 +205,7 @@
 	onMount(() => {
 		const pending = mobileDiff.pendingSlideIn;
 		if (pending) {
+			arrivedViaSlide = true;
 			mobileDiff.pendingSlideIn = null;
 			requestAnimationFrame(() => triggerSlideIn(pending));
 		}
@@ -295,31 +297,24 @@
 		}
 	}
 
-	// IntersectionObserver to track which card is visible
+	// Track which card is visible via scroll position (more reliable than
+	// IntersectionObserver with scroll-snap on mobile).
 	$effect(() => {
 		if (!cardsContainerEl) return;
 
-		const cards = cardsContainerEl.querySelectorAll('.focus-card');
-		if (!cards.length) return;
+		function updateVisibleCard() {
+			const el = cardsContainerEl!;
+			const cardHeight = el.clientHeight;
+			if (cardHeight <= 0) return;
+			const idx = Math.round(el.scrollTop / cardHeight);
+			if (idx !== visibleCard) {
+				visibleCard = idx;
+				savePosition(diff.id, idx);
+			}
+		}
 
-		const observer = new IntersectionObserver(
-			(entries) => {
-				for (const entry of entries) {
-					if (entry.isIntersecting) {
-						const idx = Number((entry.target as HTMLElement).dataset.cardIndex);
-						if (!isNaN(idx)) {
-							visibleCard = idx;
-							savePosition(diff.id, idx);
-						}
-					}
-				}
-			},
-			{ root: cardsContainerEl, threshold: 0.5 }
-		);
-
-		cards.forEach((card) => observer.observe(card));
-
-		return () => observer.disconnect();
+		cardsContainerEl.addEventListener('scroll', updateVisibleCard, { passive: true });
+		return () => cardsContainerEl?.removeEventListener('scroll', updateVisibleCard);
 	});
 
 	// Reset when diff changes — restore saved card position if available
@@ -385,6 +380,7 @@
 				<span class="focus-title-card-link" onclick={() => showJumpMenu = !showJumpMenu}>{articles.length} categories</span>
 			</span>
 			<span class="focus-title-card-generated">Generated {timeAgoFrom(diff.generated_at, Date.now())}</span>
+			<span class="focus-title-card-swipe">&uarr; {'ontouchstart' in globalThis ? 'swipe' : 'scroll'} to read</span>
 		</div>
 	</div>
 
@@ -420,17 +416,23 @@
 			<span class="focus-end-caught-up">All caught up</span>
 			<h2 class="focus-end-title">{diff.title}</h2>
 			<span class="focus-title-card-generated">Generated {timeAgoFrom(diff.generated_at, Date.now())}</span>
-			<nav class="focus-end-actions">
-				{#if nextDiff}
-					<button class="focus-end-btn" onclick={() => slideTo(nextDiff, 'left')}>Newer diff &rarr;</button>
+			{#if !arrivedViaSlide}
+				{#if 'ontouchstart' in globalThis}
+					<span class="focus-end-swipe-hint" class:focus-end-swipe-both={!!prevDiff} class:focus-end-swipe-right-only={!prevDiff}>{#if prevDiff}<span class="focus-end-swipe-arrow">&larr;</span>{/if} swipe <span class="focus-end-swipe-arrow">&rarr;</span></span>
+				{:else}
+					<nav class="focus-end-actions">
+						{#if nextDiff}
+							<button class="focus-end-btn" onclick={() => slideTo(nextDiff, 'left')}>Newer diff &rarr;</button>
+						{/if}
+						{#if prevDiff}
+							<button class="focus-end-btn" onclick={() => slideTo(prevDiff, 'right')}>&larr; Older diff</button>
+						{/if}
+						{#if !nextDiff && new Date(diff.generated_at).toDateString() !== new Date().toDateString()}
+							<a href="/generate" class="focus-end-btn focus-end-btn-accent">Generate new diff</a>
+						{/if}
+					</nav>
 				{/if}
-				{#if prevDiff}
-					<button class="focus-end-btn" onclick={() => slideTo(prevDiff, 'right')}>&larr; Older diff</button>
-				{/if}
-				{#if !nextDiff && new Date(diff.generated_at).toDateString() !== new Date().toDateString()}
-					<a href="/regenerate" class="focus-end-btn focus-end-btn-accent">Generate new diff</a>
-				{/if}
-			</nav>
+			{/if}
 		</div>
 	</div>
 </div>
@@ -440,12 +442,12 @@
 		<button class="focus-nav-arrow" class:focus-nav-disabled={!prevDiff} disabled={!prevDiff} onclick={() => prevDiff && slideTo(prevDiff, 'right')}>&#8249;</button>
 		{new Date(diff.generated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
 		{#if !nextDiff && onNewest}
-			<button class="focus-nav-arrow" onclick={() => slideOut('left', onNewest!)}>&#8250;<span class="focus-nav-diamond">&#9670;</span></button>
+			<button class="focus-nav-arrow" onclick={() => slideOut('left', onNewest!)}><span class="focus-nav-diamond">&#9670;</span> <span class="focus-nav-gen-label">Generate</span> &#8250;</button>
 		{:else}
 			<button class="focus-nav-arrow" class:focus-nav-disabled={!nextDiff} disabled={!nextDiff} onclick={() => nextDiff && slideTo(nextDiff, 'left')}>&#8250;</button>
 		{/if}
 	</span>
-	{#if visibleCard === 0}<span class="focus-swipe-hint">swipe &uarr;</span>{:else}<span></span>{/if}
+	<span></span>
 	{#if visibleCard > 0 && visibleCard <= flatCards.length}
 		<button class="focus-card-position" onclick={() => showJumpMenu = !showJumpMenu}>{visibleCard} / {flatCards.length} <span class="focus-card-hamburger">&#9776;</span></button>
 	{:else}

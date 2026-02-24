@@ -566,15 +566,8 @@
     margin-left: 0.15rem;
   }
 
-  .focus-swipe-hint {
-    font-size: 0.65rem;
-    color: var(--text-disabled);
-    animation: focus-swipe-hint 1.5s ease-in-out infinite;
-  }
-
-  @keyframes focus-swipe-hint {
-    0%, 100% { opacity: 0.4; transform: translateY(0); }
-    50% { opacity: 0.8; transform: translateY(-3px); }
+  .focus-nav-gen-label {
+    font-size: 0.7rem;
   }
 
   /* Title card */
@@ -631,6 +624,21 @@
     border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.1));
   }
 
+  .focus-title-card-swipe {
+    font-size: 0.9rem;
+    color: var(--text-disabled);
+    margin-top: 1.5rem;
+    letter-spacing: 0.05em;
+    animation: focus-swipe-hint 2.5s ease-in-out infinite;
+  }
+
+  @keyframes focus-swipe-hint {
+    0% { opacity: 0; transform: translateY(1rem); }
+    30% { opacity: 0.8; }
+    80% { opacity: 0; }
+    100% { opacity: 0; transform: translateY(-1rem); }
+  }
+
   /* End card */
   .focus-end-card {
     justify-content: center;
@@ -658,6 +666,46 @@
     font-size: 0.95rem;
     color: var(--accent);
     font-weight: 700;
+  }
+
+  .focus-end-swipe-hint {
+    font-size: 0.85rem;
+    color: var(--text-disabled);
+    letter-spacing: 0.1em;
+    margin-top: 0.5rem;
+  }
+
+  .focus-end-swipe-arrow {
+    font-size: 1.3rem;
+    vertical-align: 0.05em;
+  }
+
+  .focus-end-swipe-both {
+    animation: swipe-hint-both 5.5s ease-in-out infinite;
+  }
+
+  .focus-end-swipe-right-only {
+    animation: swipe-hint-right 3.5s ease-in-out infinite;
+  }
+
+  @keyframes swipe-hint-both {
+    0% { opacity: 0; transform: translateX(2rem); }
+    8% { opacity: 0.8; }
+    14% { opacity: 0.8; }
+    26% { opacity: 0; transform: translateX(-2rem); }
+    47% { opacity: 0; transform: translateX(-2rem); }
+    55% { opacity: 0.8; }
+    61% { opacity: 0.8; }
+    73% { opacity: 0; transform: translateX(2rem); }
+    100% { opacity: 0; transform: translateX(2rem); }
+  }
+
+  @keyframes swipe-hint-right {
+    0% { opacity: 0; transform: translateX(-1rem); }
+    12% { opacity: 0.8; }
+    24% { opacity: 0.8; }
+    44% { opacity: 0; transform: translateX(2rem); }
+    100% { opacity: 0; transform: translateX(-1rem); }
   }
 
   .focus-end-diamond {

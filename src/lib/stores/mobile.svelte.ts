@@ -22,7 +22,7 @@ let _currentDiff = $state<Diff | null>(null);
 let _visibleCard = $state(0);
 let _flatCards = $state<FlatCard[]>([]);
 
-// Optional animated-back callback — set by pages (e.g. /regenerate) that want
+// Optional animated-back callback — set by pages (e.g. /generate) that want
 // the tab bar's "current" tap to trigger a slide-out animation instead of a plain goto.
 let _navigateBack = $state<(() => void) | null>(null);
 
