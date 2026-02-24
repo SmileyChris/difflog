@@ -26,7 +26,7 @@
   background: var(--bg-base);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: clip;
   z-index: 50;
   padding-bottom: 3rem; /* space for tab bar */
 }

@@ -106,7 +106,8 @@
 		</div>
 	{/if}
 	{#if isMobile.value}
-		<p class="stars-hint" class:stars-hint-faded={!stars?.length}>Double-tap an article to star/unstar it</p>
+		<p class="stars-hint stars-hint-touch" class:stars-hint-faded={!stars?.length}>Double-tap an article to star/unstar it</p>
+		<p class="stars-hint stars-hint-pointer" class:stars-hint-faded={!stars?.length}>Click the small star to star/unstar an article</p>
 	{/if}
 </main>
 
@@ -311,6 +312,19 @@
 
 	.stars-hint-faded {
 		opacity: 0.5;
+	}
+
+	.stars-hint-pointer {
+		display: none;
+	}
+
+	@media (pointer: fine) {
+		.stars-hint-touch {
+			display: none;
+		}
+		.stars-hint-pointer {
+			display: block;
+		}
 	}
 
 	/* Entrance */

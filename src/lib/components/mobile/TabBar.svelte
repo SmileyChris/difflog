@@ -4,6 +4,7 @@
 	import { getHistory } from '$lib/stores/history.svelte';
 	import { getProfile } from '$lib/stores/profiles.svelte';
 	import { getStars } from '$lib/stores/stars.svelte';
+	import { mobileDiff } from '$lib/stores/mobile.svelte';
 	import { daysSince } from '$lib/utils/time.svelte';
 
 	const profile = $derived(getProfile());
@@ -40,13 +41,16 @@
 		if (pathname === '/profiles') return 'account';
 		if (pathname === '/stars') return 'stars';
 		if (pathname === '/archive' || isViewingOlderDiff) return 'history';
-		if (isViewingLatestDiff) return 'current';
+		if (isViewingLatestDiff || pathname === '/regenerate') return 'current';
 		return null;
 	});
 
 	function handleTab(tab: Tab) {
 		switch (tab) {
-			case 'current': goto('/'); break;
+			case 'current':
+				if (mobileDiff.navigateBack) { mobileDiff.navigateBack(); }
+				else { goto('/'); }
+				break;
 			case 'history': goto('/archive'); break;
 			case 'stars': goto('/stars'); break;
 			case 'account': goto('/profiles'); break;

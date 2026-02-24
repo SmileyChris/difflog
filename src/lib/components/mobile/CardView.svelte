@@ -7,6 +7,8 @@
 	import { addStar, removeStar } from '$lib/stores/operations.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { formatDiffDate, timeAgoFrom } from '$lib/utils/time';
+	import { onMount } from 'svelte';
+	import { mobileDiff } from '$lib/stores/mobile.svelte';
 	import type { FlatCard } from './types';
 	import '../../../styles/focus.css';
 
@@ -15,7 +17,6 @@
 		basePath?: string;
 		onExit: () => void;
 		visibleCard?: number;
-		tabBarHeight?: number;
 		onFlatCards?: (cards: FlatCard[]) => void;
 		onNewest?: () => void;
 	}
@@ -25,7 +26,6 @@
 		basePath = '/d',
 		onExit,
 		visibleCard = $bindable(0),
-		tabBarHeight = 0,
 		onFlatCards,
 		onNewest
 	}: Props = $props();
@@ -96,17 +96,19 @@
 
 	// Current card index is visibleCard - 1 in flatCards (0-based)
 	const prevStarIndex = $derived.by(() => {
+		if (!flatCards.length) return -1;
 		const current = visibleCard - 1; // flatCards index
 		for (let i = current - 1; i >= 0; i--) {
-			if (isStarred(diff.id, flatCards[i].pIndex)) return i + 1; // card index
+			if (flatCards[i] && isStarred(diff.id, flatCards[i].pIndex)) return i + 1; // card index
 		}
 		return -1;
 	});
 
 	const nextStarIndex = $derived.by(() => {
+		if (!flatCards.length) return -1;
 		const current = visibleCard - 1;
 		for (let i = current + 1; i < flatCards.length; i++) {
-			if (isStarred(diff.id, flatCards[i].pIndex)) return i + 1;
+			if (flatCards[i] && isStarred(diff.id, flatCards[i].pIndex)) return i + 1;
 		}
 		return -1;
 	});
@@ -190,8 +192,22 @@
 	let touchStartX = 0;
 	let touchStartY = 0;
 	let slideDirection: 'left' | 'right' | null = $state(null);
-	let slideIn: 'left' | 'right' | null = $state(null);
 	let swiping = false;
+	let slideInDirection: 'left' | 'right' | null = $state(null);
+
+	function triggerSlideIn(dir: 'left' | 'right') {
+		slideInDirection = dir;
+		setTimeout(() => { slideInDirection = null; }, 300);
+	}
+
+	// Pick up pending slide-in from cross-route navigation
+	onMount(() => {
+		const pending = mobileDiff.pendingSlideIn;
+		if (pending) {
+			mobileDiff.pendingSlideIn = null;
+			requestAnimationFrame(() => triggerSlideIn(pending));
+		}
+	});
 
 	function handleTouchStart(e: TouchEvent) {
 		touchStartX = e.touches[0].clientX;
@@ -203,15 +219,15 @@
 		swiping = true;
 		savePosition(diff.id, visibleCard);
 		slideDirection = dir;
+		const inDir = dir === 'left' ? 'right' : 'left';
 
 		setTimeout(() => {
-			slideIn = dir === 'left' ? 'right' : 'left';
-			slideDirection = null;
 			goto(`${basePath}/${target.id}`).then(() => {
-				setTimeout(() => {
-					slideIn = null;
-					swiping = false;
-				}, 250);
+				requestAnimationFrame(() => {
+					slideDirection = null;
+					triggerSlideIn(inDir);
+					setTimeout(() => { swiping = false; }, 250);
+				});
 			});
 		}, 200);
 	}
@@ -221,11 +237,11 @@
 		swiping = true;
 		savePosition(diff.id, visibleCard);
 		slideDirection = dir;
+		mobileDiff.pendingSlideIn = dir === 'left' ? 'right' : 'left';
 
 		setTimeout(() => {
-			slideDirection = null;
+			// Don't reset slideDirection — keeps cards hidden during navigation
 			then();
-			swiping = false;
 		}, 200);
 	}
 
@@ -313,37 +329,45 @@
 		const saved = getSavedPosition(id);
 		visibleCard = saved;
 		if (cardsContainerEl) {
+			// Set scroll position synchronously using card height so it's
+			// correct before the first paint (avoids fighting slide animation)
+			const cardHeight = cardsContainerEl.clientHeight;
+			if (cardHeight > 0 && saved > 0) {
+				cardsContainerEl.scrollTop = saved * cardHeight;
+			} else {
+				cardsContainerEl.scrollTop = 0;
+			}
+			// Fine-tune with scrollIntoView after new content renders
 			if (saved > 0) {
 				tick().then(() => {
 					const card = cardsContainerEl?.querySelector(`[data-card-index="${saved}"]`);
 					if (card) card.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
 				});
-			} else {
-				cardsContainerEl.scrollTop = 0;
 			}
 		}
 	});
 
-	const cardMinHeight = $derived(tabBarHeight > 0
-		? `calc(100vh - 6.5rem - ${tabBarHeight}px)`
-		: 'calc(100vh - 6.5rem)');
+
 </script>
 
 <svelte:window onkeydown={(e) => { if (e.key === 's') toggleCurrentStar(); }} />
 
+<div
+	class="focus-slide-wrapper"
+	class:focus-slide-out-left={slideDirection === 'left'}
+	class:focus-slide-out-right={slideDirection === 'right'}
+	class:focus-slide-in-left={slideInDirection === 'left'}
+	class:focus-slide-in-right={slideInDirection === 'right'}
+>
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="focus-cards"
-	class:focus-slide-out-left={slideDirection === 'left'}
-	class:focus-slide-out-right={slideDirection === 'right'}
-	class:focus-slide-in-left={slideIn === 'left'}
-	class:focus-slide-in-right={slideIn === 'right'}
 	bind:this={cardsContainerEl}
 	ontouchstart={handleTouchStart}
 	ontouchend={(e) => { handleDoubleTap(e); handleTouchEnd(e); }}
 >
 	<!-- Title card -->
-	<div class="focus-card focus-title-card" data-card-index="0" style:min-height={cardMinHeight}>
+	<div class="focus-card focus-title-card" data-card-index="0">
 		<div class="focus-title-card-content">
 			<span class="focus-logo-mark">&#9670;</span>
 			<h1 class="focus-title-card-heading">{diff.title}</h1>
@@ -365,7 +389,7 @@
 	</div>
 
 	{#each flatCards as card, i (card.globalIndex)}
-		<div class="focus-card focus-content-card" class:focus-card-starred={isStarred(diff.id, card.pIndex)} data-card-index={i + 1} style:min-height={cardMinHeight}>
+		<div class="focus-card focus-content-card" class:focus-card-starred={isStarred(diff.id, card.pIndex)} data-card-index={i + 1}>
 			<div class="focus-card-category-row">
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -390,7 +414,7 @@
 	{/each}
 
 	<!-- End card -->
-	<div class="focus-card focus-end-card" data-card-index={flatCards.length + 1} style:min-height={cardMinHeight}>
+	<div class="focus-card focus-end-card" data-card-index={flatCards.length + 1}>
 		<div class="focus-end-content">
 			<span class="focus-end-diamond"><span class="focus-end-check">&#10004;</span></span>
 			<span class="focus-end-caught-up">All caught up</span>
@@ -403,7 +427,7 @@
 				{#if prevDiff}
 					<button class="focus-end-btn" onclick={() => slideTo(prevDiff, 'right')}>&larr; Older diff</button>
 				{/if}
-				{#if new Date(diff.generated_at).toDateString() !== new Date().toDateString()}
+				{#if !nextDiff && new Date(diff.generated_at).toDateString() !== new Date().toDateString()}
 					<a href="/regenerate" class="focus-end-btn focus-end-btn-accent">Generate new diff</a>
 				{/if}
 			</nav>
@@ -411,18 +435,12 @@
 	</div>
 </div>
 
-<footer
-	class="focus-footer focus-footer-mobile"
-	class:focus-slide-out-left={slideDirection === 'left'}
-	class:focus-slide-out-right={slideDirection === 'right'}
-	class:focus-slide-in-left={slideIn === 'left'}
-	class:focus-slide-in-right={slideIn === 'right'}
->
+<footer class="focus-footer focus-footer-mobile">
 	<span class="focus-card-category-label">
 		<button class="focus-nav-arrow" class:focus-nav-disabled={!prevDiff} disabled={!prevDiff} onclick={() => prevDiff && slideTo(prevDiff, 'right')}>&#8249;</button>
 		{new Date(diff.generated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
 		{#if !nextDiff && onNewest}
-			<button class="focus-nav-arrow" onclick={() => onNewest?.()}>&#8250;<span class="focus-nav-diamond">&#9670;</span></button>
+			<button class="focus-nav-arrow" onclick={() => slideOut('left', onNewest!)}>&#8250;<span class="focus-nav-diamond">&#9670;</span></button>
 		{:else}
 			<button class="focus-nav-arrow" class:focus-nav-disabled={!nextDiff} disabled={!nextDiff} onclick={() => nextDiff && slideTo(nextDiff, 'left')}>&#8250;</button>
 		{/if}
@@ -434,6 +452,7 @@
 		<button class="focus-card-position" onclick={() => showJumpMenu = !showJumpMenu}><span class="focus-card-hamburger">&#9776;</span></button>
 	{/if}
 </footer>
+</div><!-- .focus-slide-wrapper -->
 
 {#if showJumpMenu}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->

@@ -89,7 +89,7 @@
 			basePath="/d"
 			onExit={handleExit}
 			bind:visibleCard={mobileDiff.visibleCard}
-			tabBarHeight={48}
+
 			onFlatCards={(cards) => { mobileDiff.flatCards = cards; }}
 			onNewest={() => goto('/regenerate')}
 		/>

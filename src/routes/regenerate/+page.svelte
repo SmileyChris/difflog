@@ -4,7 +4,7 @@
 	import { browser } from "$app/environment";
 	import { getProfile, isDemoProfile } from "$lib/stores/profiles.svelte";
 	import { getHistory, getStreak } from "$lib/stores/history.svelte";
-	import { isMobile } from "$lib/stores/mobile.svelte";
+	import { isMobile, mobileDiff } from "$lib/stores/mobile.svelte";
 	import {
 		generating,
 		generationError,
@@ -128,7 +128,22 @@
 
 	function handleRetry() { handleGenerate(); }
 	function handleStartFresh() { clearStageCache(); handleGenerate(); }
-	function goBack() { clearGenerationState(); goto("/"); }
+
+	// Slide animation state
+	let slideOut = $state(false);
+	let slideInDir: 'left' | 'right' | null = $state(null);
+	let swiping = false;
+
+	function goBack() {
+		if (swiping) return;
+		swiping = true;
+		slideOut = true;
+		mobileDiff.pendingSlideIn = 'left';
+		setTimeout(() => {
+			clearGenerationState();
+			goto("/");
+		}, 200);
+	}
 
 	// Swipe right to go back to latest diff
 	let touchStartX = 0;
@@ -152,6 +167,13 @@
 
 	onMount(() => {
 		if (generating.value) startScanAnimation();
+		mobileDiff.navigateBack = goBack;
+		const pending = mobileDiff.pendingSlideIn;
+		if (pending) {
+			slideInDir = pending;
+			mobileDiff.pendingSlideIn = null;
+			setTimeout(() => { slideInDir = null; }, 250);
+		}
 		if (browser) {
 			window.onbeforeunload = (e) => {
 				if (generating.value) {
@@ -165,6 +187,7 @@
 
 	onDestroy(() => {
 		stopScanAnimation();
+		mobileDiff.navigateBack = null;
 		if (browser) window.onbeforeunload = null;
 	});
 </script>
@@ -178,6 +201,11 @@
 	<div class="regen-page"
 		ontouchstart={handleTouchStart}
 		ontouchend={handleTouchEnd}
+	>
+	<div class="regen-inner"
+		class:regen-slide-in={slideInDir === 'right'}
+		class:regen-slide-in-left={slideInDir === 'left'}
+		class:regen-slide-out={slideOut}
 	>
 		<MobileHeader />
 
@@ -261,7 +289,8 @@
 				<span class="focus-card-category-label">{streak.streak} day streak</span>
 			{/if}
 		</footer>
-	</div>
+	</div><!-- .regen-inner -->
+	</div><!-- .regen-page -->
 {:else}
 	<PageHeader>
 		<HeaderNav />
@@ -341,6 +370,34 @@
 {/if}
 
 <style>
+	/* Slide animations */
+	.regen-slide-in {
+		animation: regen-slide-in 0.25s ease-out forwards;
+	}
+
+	.regen-slide-in-left {
+		animation: regen-slide-in-left 0.25s ease-out forwards;
+	}
+
+	.regen-slide-out {
+		animation: regen-slide-out 0.2s ease-in forwards;
+	}
+
+	@keyframes regen-slide-in {
+		from { transform: translateX(30%); opacity: 0; }
+		to { transform: translateX(0); opacity: 1; }
+	}
+
+	@keyframes regen-slide-in-left {
+		from { transform: translateX(-30%); opacity: 0; }
+		to { transform: translateX(0); opacity: 1; }
+	}
+
+	@keyframes regen-slide-out {
+		from { transform: translateX(0); opacity: 1; }
+		to { transform: translateX(30%); opacity: 0; }
+	}
+
 	/* Mobile: full-viewport card */
 	.regen-page {
 		position: fixed;
@@ -349,6 +406,11 @@
 		right: 0;
 		bottom: 3rem;
 		background: var(--bg-base);
+	}
+
+	.regen-inner {
+		width: 100%;
+		height: 100%;
 		display: flex;
 		flex-direction: column;
 		z-index: 50;
