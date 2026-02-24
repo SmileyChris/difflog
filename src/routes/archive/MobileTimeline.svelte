@@ -4,6 +4,7 @@
 	import { type Diff, getHistory } from '$lib/stores/history.svelte';
 	import { daysSince } from '$lib/utils/time.svelte';
 	import { deleteDiff } from '$lib/stores/operations.svelte';
+	import { createSwipeState } from '$lib/actions/swipeToReveal.svelte';
 
 	const history = $derived(getHistory());
 
@@ -36,90 +37,27 @@
 		return groups;
 	});
 
-	// Swipe-to-delete state
-	const SWIPE_DEAD_ZONE = 10;
-	const SWIPE_THRESHOLD = -56;
-	const SWIPE_MAX = -56;
-
-	let swipe = $state<{
-		id: string;
-		startX: number;
-		startY: number;
-		offsetX: number;
-		direction: 'horizontal' | 'vertical' | null;
-		animating: boolean;
-	} | null>(null);
-
-	let swipeOccurred = false;
+	const swipe = createSwipeState();
 	let timelineEl: HTMLDivElement;
 
-	function handleSwipeStart(e: TouchEvent, diffId: string) {
-		if (swipe?.animating) return;
-		const touch = e.touches[0];
-		swipe = {
-			id: diffId,
-			startX: touch.clientX,
-			startY: touch.clientY,
-			offsetX: 0,
-			direction: null,
-			animating: false,
-		};
-	}
-
-	function handleSwipeMove(e: TouchEvent) {
-		if (!swipe || swipe.animating) return;
-		const touch = e.touches[0];
-		const dx = touch.clientX - swipe.startX;
-		const dy = touch.clientY - swipe.startY;
-
-		if (swipe.direction === null) {
-			const dist = Math.sqrt(dx * dx + dy * dy);
-			if (dist < SWIPE_DEAD_ZONE) return;
-			swipe.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
-		}
-
-		if (swipe.direction === 'vertical') return;
-
-		e.preventDefault();
-		swipe.offsetX = Math.max(SWIPE_MAX, Math.min(0, dx));
-	}
-
 	function handleSwipeEnd() {
-		if (!swipe || swipe.animating) return;
-
-		if (swipe.direction === 'horizontal') {
-			swipeOccurred = true;
-			setTimeout(() => swipeOccurred = false, 0);
-		}
-
-		const pastThreshold = swipe.offsetX <= SWIPE_THRESHOLD;
-		const id = swipe.id;
-
-		// Snap back
-		swipe.animating = true;
-		swipe.offsetX = 0;
-
-		if (pastThreshold) {
-			requestAnimationFrame(() => {
-				swipe = null;
-				if (confirm('Delete this diff?')) {
-					deleteDiff(id);
-				}
-			});
-		} else {
-			setTimeout(() => swipe = null, 200);
-		}
+		swipe.end((id) => {
+			if (confirm('Delete this diff?')) {
+				deleteDiff(id);
+			}
+		});
 	}
 
 	function goToDiff(diffId: string) {
-		if (swipeOccurred) return;
+		if (swipe.didSwipe) return;
 		goto(`/d/${diffId}`);
 	}
 
 	// Attach non-passive touchmove to allow preventDefault
 	onMount(() => {
-		timelineEl.addEventListener('touchmove', handleSwipeMove, { passive: false });
-		return () => timelineEl.removeEventListener('touchmove', handleSwipeMove);
+		const handler = (e: TouchEvent) => swipe.move(e);
+		timelineEl.addEventListener('touchmove', handler, { passive: false });
+		return () => timelineEl.removeEventListener('touchmove', handler);
 	});
 
 	function getTitle(diff: Diff): string {
@@ -179,17 +117,14 @@
 				{@const isLastInGroup = di === group.diffs.length - 1}
 				{@const isLastOverall = gi === monthGroups.length - 1 && isLastInGroup}
 				{@const sameDay = di > 0 && isSameDay(group.diffs[di - 1].generated_at, diff.generated_at)}
-				{@const offset = swipe?.id === diff.id ? swipe.offsetX : 0}
-				{@const isAnimating = swipe?.id === diff.id && swipe.animating}
-				{@const isPastThreshold = swipe?.id === diff.id && swipe.offsetX <= SWIPE_THRESHOLD}
 				<div class="swipe-container">
-					<div class="swipe-delete-zone" class:swipe-delete-zone-active={isPastThreshold}>
+					<div class="swipe-delete-zone" class:swipe-delete-zone-active={swipe.isPastThreshold(diff.id)}>
 						<span class="swipe-delete-icon">&#128465;</span>
 					</div>
 					<button class="timeline-item" class:timeline-item-latest={isLatest}
-						style:transform="translateX({offset}px)"
-						style:transition={isAnimating ? 'transform 0.2s ease-out' : 'none'}
-						ontouchstart={(e) => handleSwipeStart(e, diff.id)}
+						style:transform="translateX({swipe.offset(diff.id)}px)"
+						style:transition={swipe.isAnimating(diff.id) ? 'transform 0.2s ease-out' : 'none'}
+						ontouchstart={(e) => swipe.start(e, diff.id)}
 						ontouchend={handleSwipeEnd}
 						onclick={() => goToDiff(diff.id)}>
 						<div class="timeline-date">
@@ -287,36 +222,6 @@
 		text-decoration: none;
 		font-size: 0.8rem;
 		font-weight: 500;
-	}
-
-	/* Swipe-to-delete */
-	.swipe-container {
-		position: relative;
-		overflow: hidden;
-	}
-
-	.swipe-delete-zone {
-		position: absolute;
-		top: 0;
-		right: 0;
-		bottom: 0;
-		width: 56px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.swipe-delete-zone-active {
-	}
-
-	.swipe-delete-icon {
-		font-size: 1.75rem;
-		color: var(--text-hint);
-		transition: color 0.15s;
-	}
-
-	.swipe-delete-zone-active .swipe-delete-icon {
-		color: var(--danger);
 	}
 
 	/* Timeline item row */

@@ -187,6 +187,33 @@
   gap: 0.5rem;
 }
 
+/* Swipe-to-reveal (shared by archive, stars) */
+.swipe-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.swipe-delete-zone {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.swipe-delete-icon {
+  font-size: 1.75rem;
+  color: var(--text-hint);
+  transition: color 0.15s;
+}
+
+.swipe-delete-zone-active .swipe-delete-icon {
+  color: var(--danger);
+}
+
 .mobile-account-sync-info {
   font-size: 0.8rem;
   color: var(--text-subtle);

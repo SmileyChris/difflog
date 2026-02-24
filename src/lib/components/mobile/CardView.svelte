@@ -6,7 +6,7 @@
 	import { isStarred, getStars } from '$lib/stores/stars.svelte';
 	import { addStar, removeStar } from '$lib/stores/operations.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
-	import { formatDiffDate, timeAgoFrom } from '$lib/utils/time';
+	import { buildDiffContent, timeAgoFrom } from '$lib/utils/time';
 	import { onMount } from 'svelte';
 	import { mobileDiff } from '$lib/stores/mobile.svelte';
 	import type { FlatCard } from './types';
@@ -30,18 +30,7 @@
 		onNewest
 	}: Props = $props();
 
-	function formatDateLine(d: Diff): string {
-		if (!d.window_days) return '';
-		return `**${formatDiffDate(d.generated_at, d.window_days)}**\n\n---`;
-	}
-
-	const fullContent = $derived.by(() => {
-		if (!diff) return '';
-		const dateLine = formatDateLine(diff);
-		return dateLine && diff.content
-			? `${dateLine}\n\n${diff.content}`
-			: (diff.content ?? '');
-	});
+	const fullContent = $derived(diff ? buildDiffContent(diff) : '');
 
 	const html = $derived(fullContent ? renderMarkdown(fullContent) : '');
 

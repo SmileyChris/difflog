@@ -70,3 +70,14 @@ export function formatDiffDate(generatedAt: string, windowDays?: number): string
   const windowStr = windowDays === 1 ? 'Past 24 hours' : `Past ${windowDays} days`;
   return `${dateStr} · ${windowStr}`;
 }
+
+/**
+ * Build the full renderable content for a diff, prepending the date line if applicable.
+ * Used by CardView, DiffContent, and star content lookup to ensure consistent data-p indices.
+ */
+export function buildDiffContent(diff: { content?: string | null; generated_at: string; window_days?: number }): string {
+  const content = diff.content ?? '';
+  if (!diff.window_days) return content;
+  const dateLine = `**${formatDiffDate(diff.generated_at, diff.window_days)}**\n\n---`;
+  return content ? `${dateLine}\n\n${content}` : content;
+}

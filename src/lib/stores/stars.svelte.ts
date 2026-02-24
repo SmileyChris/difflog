@@ -2,6 +2,7 @@ import { persist } from './persist.svelte';
 import { activeProfileId } from './profiles.svelte';
 import { getHistory } from './history.svelte';
 import { renderMarkdown } from '$lib/utils/markdown';
+import { buildDiffContent } from '$lib/utils/time';
 import { starId, type Star, type Diff } from '$lib/utils/sync';
 
 // Persisted state
@@ -58,7 +59,7 @@ export function getStarContent(star: Star): { html: string; content: string; dif
 	const diff = history.find((d: Diff) => d.id === star.diff_id);
 	if (!diff) return null;
 
-	const html = renderMarkdown(diff.content);
+	const html = renderMarkdown(buildDiffContent(diff));
 	const container = document.createElement('div');
 	container.innerHTML = html;
 	const element = container.querySelector(`[data-p="${star.p_index}"]`);

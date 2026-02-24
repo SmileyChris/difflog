@@ -25,7 +25,23 @@
 		estimatedTime,
 		randomWaitTip,
 	} from "$lib/actions/startGeneration";
+	import StreakCalendar from '../StreakCalendar.svelte';
 	import '../../styles/focus.css';
+
+	let showStreakCalendar = $state(false);
+
+	function goToDiffOnDate(isoDate: string) {
+		const history = getHistory();
+		const match = history.find((d) => {
+			const dd = new Date(d.generated_at);
+			const iso = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`;
+			return iso === isoDate;
+		});
+		if (match) {
+			showStreakCalendar = false;
+			goto(`/d/${match.id}`);
+		}
+	}
 
 	let scanIndex = $state(0);
 	let scanMessages = $state([...SCAN_MESSAGES].sort(() => Math.random() - 0.5));
@@ -341,10 +357,22 @@
 				<span>{historyCount} {historyCount === 1 ? 'diff' : 'diffs'}</span>
 			</span>
 			<span></span>
-			{#if streak.streak > 0}
-				<span class="focus-card-category-label">{streak.streak} day streak</span>
+			{#if streak.streak > 1}
+				<button class="gen-streak-btn" onclick={() => showStreakCalendar = !showStreakCalendar}>
+					<span>&#128293;</span> {streak.streak} day streak
+				</button>
 			{/if}
 		</footer>
+
+		{#if showStreakCalendar}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="gen-streak-overlay" onclick={() => showStreakCalendar = false}>
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="gen-streak-panel" onclick={(e) => e.stopPropagation()}>
+					<StreakCalendar onDayClick={goToDiffOnDate} />
+				</div>
+			</div>
+		{/if}
 	</div>
 	</div>
 {:else}
@@ -678,5 +706,74 @@
 		max-width: 480px;
 		padding: 0.875rem 1.25rem;
 		font-size: 0.9rem;
+	}
+
+	/* Streak button in footer */
+	.gen-streak-btn {
+		background: none;
+		border: none;
+		padding: 0;
+		font-family: var(--font-mono);
+		font-size: 0.65rem;
+		color: var(--text-hint);
+		cursor: pointer;
+		transition: color 0.15s;
+	}
+
+	.gen-streak-btn:hover {
+		color: var(--accent);
+	}
+
+	/* Streak calendar overlay */
+	.gen-streak-overlay {
+		position: absolute;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.6);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 20;
+		animation: gen-fade-in 0.15s ease;
+	}
+
+	.gen-streak-panel {
+		background: var(--bg-base);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		padding: 1rem;
+		min-width: 80vw;
+	}
+
+	/* Override StreakCalendar's hidden dropdown to show inline */
+	.gen-streak-panel :global(.streak-badge) {
+		display: none;
+	}
+
+	.gen-streak-panel :global(.streak-wrapper) {
+		display: block;
+	}
+
+	.gen-streak-panel :global(.streak-dropdown) {
+		position: static;
+		opacity: 1;
+		visibility: visible;
+		transform: none;
+		pointer-events: auto;
+		transition: none;
+		background: transparent;
+		border: none;
+		box-shadow: none;
+		padding: 0;
+		min-width: auto;
+		width: 100%;
+	}
+
+	.gen-streak-panel :global(.streak-dropdown::before) {
+		display: none;
+	}
+
+	@keyframes gen-fade-in {
+		from { opacity: 0; }
+		to { opacity: 1; }
 	}
 </style>

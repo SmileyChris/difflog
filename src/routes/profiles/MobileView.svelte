@@ -17,6 +17,24 @@
 	import { daysSince } from '$lib/utils/time.svelte';
 	import { STREAK_TOLERANCE_DAYS } from '$lib/utils/streak';
 	import { DEPTHS } from '$lib/utils/constants';
+	import { goto } from '$app/navigation';
+	import StreakCalendar from '../StreakCalendar.svelte';
+
+	let showStreakCalendar = $state(false);
+
+	const hasActiveStreak = $derived(streak.streak > 1);
+
+	function goToDiffOnDate(isoDate: string) {
+		const match = history.find((d) => {
+			const dd = new Date(d.generated_at);
+			const iso = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`;
+			return iso === isoDate;
+		});
+		if (match) {
+			showStreakCalendar = false;
+			goto(`/d/${match.id}`);
+		}
+	}
 
 	interface Props {
 		onshare: () => void;
@@ -240,11 +258,25 @@
 		<footer class="account-stats">
 			<a href="/archive" class="account-stat-line"><span class="account-stat-icon">&#9670;</span> <span class="account-stat-text">{diffsText}</span></a>
 			<a href="/stars" class="account-stat-line"><span class="account-stat-icon">&#9733;</span> <span class="account-stat-text">{starsText}</span></a>
-			<span class="account-stat-line"><span class="account-stat-icon">&#128293;</span> {streakText}</span>
+			{#if hasActiveStreak}
+				<button class="account-stat-line account-stat-btn" onclick={() => showStreakCalendar = true}><span class="account-stat-icon">&#128293;</span> <span class="account-stat-text">{streakText}</span></button>
+			{:else}
+				<span class="account-stat-line"><span class="account-stat-icon">&#128293;</span> {streakText}</span>
+			{/if}
 		</footer>
 
 	</div>
 </div>
+
+{#if showStreakCalendar}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="streak-overlay" onclick={() => showStreakCalendar = false}>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="streak-panel" onclick={(e) => e.stopPropagation()}>
+			<StreakCalendar onDayClick={goToDiffOnDate} />
+		</div>
+	</div>
+{/if}
 
 <style>
 	.account-sync-card {
@@ -410,14 +442,75 @@
 		letter-spacing: 0.02em;
 	}
 
-	a.account-stat-line .account-stat-text {
+	a.account-stat-line .account-stat-text,
+	.account-stat-btn .account-stat-text {
 		text-decoration: underline;
 		text-decoration-style: dotted;
 		text-underline-offset: 0.2em;
 		text-decoration-color: var(--text-disabled);
 	}
 
-	a.account-stat-line:hover {
+	a.account-stat-line:hover,
+	.account-stat-btn:hover {
 		color: var(--text-subtle);
+	}
+
+	.account-stat-btn {
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+	}
+
+	/* Streak calendar overlay */
+	.streak-overlay {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.6);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 60;
+		animation: streak-fade-in 0.15s ease;
+	}
+
+	.streak-panel {
+		background: var(--bg-base);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		padding: 1rem;
+		min-width: 80vw;
+	}
+
+	.streak-panel :global(.streak-badge) {
+		display: none;
+	}
+
+	.streak-panel :global(.streak-wrapper) {
+		display: block;
+	}
+
+	.streak-panel :global(.streak-dropdown) {
+		position: static;
+		opacity: 1;
+		visibility: visible;
+		transform: none;
+		pointer-events: auto;
+		transition: none;
+		background: transparent;
+		border: none;
+		box-shadow: none;
+		padding: 0;
+		min-width: auto;
+		width: 100%;
+	}
+
+	.streak-panel :global(.streak-dropdown::before) {
+		display: none;
+	}
+
+	@keyframes streak-fade-in {
+		from { opacity: 0; }
+		to { opacity: 1; }
 	}
 </style>

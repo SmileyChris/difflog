@@ -3,7 +3,7 @@
 	import { addStar, removeStar, isDiffPublic, getPublicDiffUrl } from '$lib/stores/operations.svelte';
 	import { type Diff } from '$lib/stores/history.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
-	import { formatDiffDate } from '$lib/utils/time';
+	import { buildDiffContent } from '$lib/utils/time';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -15,18 +15,7 @@
 
 	let { diff, hideBookmarks = false, copyLinkUrl, titleRow }: Props = $props();
 
-	function formatDateLine(diff: Diff): string {
-		if (!diff.window_days) return '';
-		const dateText = formatDiffDate(diff.generated_at, diff.window_days);
-		return `**${dateText}**\n\n---`;
-	}
-
-	const dateLine = $derived(diff ? formatDateLine(diff) : '');
-	const fullContent = $derived(
-		dateLine && diff?.content
-			? `${dateLine}\n\n${diff.content}`
-			: (diff?.content ?? '')
-	);
+	const fullContent = $derived(diff ? buildDiffContent(diff) : '');
 	const html = $derived(fullContent ? renderMarkdown(fullContent) : '');
 	const stars = $derived(getStars());
 	const hasSections = $derived(html.includes('class="md-section"'));
