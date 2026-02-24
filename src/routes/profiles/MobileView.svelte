@@ -174,7 +174,7 @@
 							{#if profile.languages?.length}
 								<div class="account-chips">
 									{#each profile.languages as item}
-										<span class="account-tag">{item}</span>
+										<span class="account-tag account-tag-interest">{item}</span>
 									{/each}
 								</div>
 							{:else}
@@ -190,7 +190,7 @@
 							{#if profile.frameworks?.length}
 								<div class="account-chips">
 									{#each profile.frameworks as item}
-										<span class="account-tag">{item}</span>
+										<span class="account-tag account-tag-interest">{item}</span>
 									{/each}
 								</div>
 							{:else}
@@ -206,7 +206,7 @@
 							{#if profile.tools?.length}
 								<div class="account-chips">
 									{#each profile.tools as item}
-										<span class="account-tag">{item}</span>
+										<span class="account-tag account-tag-interest">{item}</span>
 									{/each}
 								</div>
 							{:else}
@@ -222,7 +222,7 @@
 							{#if profile.topics?.length}
 								<div class="account-chips">
 									{#each profile.topics as item}
-										<span class="account-tag">{item}</span>
+										<span class="account-tag account-tag-interest">{item}</span>
 									{/each}
 								</div>
 							{:else}
@@ -399,6 +399,10 @@
 		padding: 0.2rem 0.45rem;
 		border-radius: var(--radius-sm);
 		letter-spacing: 0.02em;
+	}
+
+	.account-tag-interest {
+		border: 1px solid var(--accent-border);
 	}
 
 	.account-tag-active {
