@@ -1,6 +1,18 @@
 {
   "versions": [
     {
+      "version": "3.4",
+      "date": "2026-02-27",
+      "summary": "Archive search with direct article navigation",
+      "description": "Search across all saved diffs by article heading, body, or category. Click a matching article to jump directly to it in the diff, highlighted and scrolled into view. Results ranked by match quality — full word, start-of-word, then substring.",
+      "changes": [
+        { "type": "feature", "text": "Full-text search across archived diffs with highlighted results", "in": "3.4.0" },
+        { "type": "feature", "text": "Click a search match to navigate directly to that article in the diff", "in": "3.4.0" },
+        { "type": "feature", "text": "Search results ranked by match quality with multi-term scoring", "in": "3.4.0" },
+        { "type": "fix", "text": "Article scroll targets now align correctly with rendered diff positions", "in": "3.4.0" }
+      ]
+    },
+    {
       "version": "3.3",
       "date": "2026-02-17",
       "summary": "Quick share codes for profile import",

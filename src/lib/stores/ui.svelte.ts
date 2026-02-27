@@ -13,6 +13,7 @@ let _generationResult = $state<Diff | null>(null);
 let _syncDropdownPassword = $state('');
 let _syncDropdownRemember = $state(false);
 let _syncResult = $state<{ uploaded: number; downloaded: number } | null>(null);
+let _archiveSearch = $state('');
 let _syncResultTimeout: ReturnType<typeof setTimeout> | null = null;
 let _syncButtonEl: HTMLElement | null = null;
 
@@ -89,6 +90,11 @@ export const syncDropdownRemember = {
 export const syncResult = {
 	get value() { return _syncResult; },
 	set value(val: { uploaded: number; downloaded: number } | null) { _syncResult = val; }
+};
+
+export const archiveSearch = {
+	get value() { return _archiveSearch; },
+	set value(val: string) { _archiveSearch = val; }
 };
 
 // Actions

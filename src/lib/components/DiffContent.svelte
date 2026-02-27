@@ -15,19 +15,8 @@
 
 	let { diff, hideBookmarks = false, copyLinkUrl, titleRow }: Props = $props();
 
-	function formatDateLine(diff: Diff): string {
-		if (!diff.window_days) return '';
-		const dateText = formatDiffDate(diff.generated_at, diff.window_days);
-		return `**${dateText}**\n\n---`;
-	}
-
-	const dateLine = $derived(diff ? formatDateLine(diff) : '');
-	const fullContent = $derived(
-		dateLine && diff?.content
-			? `${dateLine}\n\n${diff.content}`
-			: (diff?.content ?? '')
-	);
-	const html = $derived(fullContent ? renderMarkdown(fullContent) : '');
+	const dateText = $derived(diff?.window_days ? formatDiffDate(diff.generated_at, diff.window_days) : '');
+	const html = $derived(diff?.content ? renderMarkdown(diff.content) : '');
 	const stars = $derived(getStars());
 	const hasSections = $derived(html.includes('class="md-section"'));
 	let contentElement: HTMLElement | null = $state(null);
@@ -221,6 +210,10 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="diff-content" bind:this={contentElement} onclick={handleSummaryClick}>
+		{#if dateText}
+			<p class="md-p"><strong class="md-bold">{dateText}</strong></p>
+			<hr class="md-hr" />
+		{/if}
 		{@html html}
 	</div>
 </div>
