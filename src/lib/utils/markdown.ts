@@ -96,7 +96,7 @@ function preprocessContent(text: string): string {
     .join('\n');
 }
 
-function parseBlocks(text: string): Block[] {
+export function parseBlocks(text: string): Block[] {
   const cleaned = preprocessContent(text);
   const lines = cleaned.split('\n');
   const blocks: Block[] = [];
