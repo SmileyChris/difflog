@@ -17,12 +17,14 @@
 	const isSynced = $derived(!!profile?.syncedAt);
 
 	// Diff age label for current tab
+	const diffAgeDays = $derived(latestDiff ? daysSince(latestDiff.generated_at) : Infinity);
+	const isTodayDiff = $derived(diffAgeDays <= 0);
+
 	const diffAgeLabel = $derived.by(() => {
 		if (!latestDiff) return '';
-		const days = daysSince(latestDiff.generated_at);
-		if (days <= 0) return 'Today';
-		if (days === 1) return 'Yesterday';
-		return `${days}d ago`;
+		if (isTodayDiff) return 'Today';
+		if (diffAgeDays === 1) return 'Yesterday';
+		return `${diffAgeDays}d ago`;
 	});
 
 	// Which tab is active based on current route
@@ -50,7 +52,7 @@
 	function handleTab(tab: Tab) {
 		switch (tab) {
 			case 'current':
-				if (!hasDiffs) { goto('/generate'); }
+				if (!hasDiffs || !isTodayDiff) { goto('/generate'); }
 				else if (mobileDiff.navigateBack) { mobileDiff.navigateBack(); }
 				else { goto('/'); }
 				break;
