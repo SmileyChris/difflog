@@ -115,8 +115,8 @@
 					<span>{diff.title}</span>
 				</h1>
 				<div class="diff-title-actions">
-					<a href="/focus/{diff.id}" class="focus-link" title="Focus mode (f)"><span class="focus-link-key">f</span>ocus</a>
 					<ShareDropdown {diff} />
+					<a href="/focus/{diff.id}" class="focus-link" title="Focus mode (f)"><span class="focus-link-key">f</span>ocus</a>
 				</div>
 			</div>
 		{/if}
@@ -227,8 +227,9 @@
 
 	.diff-title-actions {
 		display: flex;
-		align-items: center;
-		gap: 0.25rem;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 0.15rem;
 		flex-shrink: 0;
 	}
 
