@@ -4,8 +4,8 @@
 	import { browser } from '$app/environment';
 	import { type Diff, getHistory } from '$lib/stores/history.svelte';
 	import { isStarred } from '$lib/stores/stars.svelte';
-	import { addStar, removeStar } from '$lib/stores/operations.svelte';
-	import { renderMarkdown } from '$lib/utils/markdown';
+	import { toggleStar } from '$lib/stores/operations.svelte';
+	import { renderMarkdown, extractSections } from '$lib/utils/markdown';
 	import { buildDiffContent } from '$lib/utils/time';
 	import CardView from '$lib/components/mobile/CardView.svelte';
 	import '../../../styles/focus.css';
@@ -18,26 +18,7 @@
 
 	const html = $derived(fullContent ? renderMarkdown(fullContent) : '');
 
-	// Extract articles from rendered HTML by splitting on <details class="md-section">
-	const articles = $derived.by(() => {
-		if (!html) return [];
-
-		const parts: { title: string; html: string }[] = [];
-		const sectionRegex = /<details class="md-section" open>\s*<summary class="md-h2">(.*?)<\/summary>\s*<div class="md-section-content">([\s\S]*?)<\/div>\s*<\/details>/g;
-
-		let match: RegExpExecArray | null;
-		while ((match = sectionRegex.exec(html)) !== null) {
-			const title = match[1].replace(/<[^>]+>/g, '').trim();
-			if (/^sources$/i.test(title)) continue;
-
-			parts.push({
-				title: match[1],
-				html: match[2]
-			});
-		}
-
-		return parts;
-	});
+	const articles = $derived(html ? extractSections(html) : []);
 
 	// --- Mobile detection ---
 	let isMobile = $state(false);
@@ -58,6 +39,7 @@
 	let focusedItem = $state(0);
 	let articleEl: HTMLElement | null = $state(null);
 	let bodyEl: HTMLElement | null = $state(null);
+	let focusedPIndex = $state(-1);
 	let topOffset = $state(0);
 
 	// Reset when diff changes
@@ -106,10 +88,10 @@
 		topOffset = offset;
 	});
 
-	// Get focusable items from the DOM after render
+	// Get focusable items from the DOM after render (only paragraphs with links)
 	function getItems(): Element[] {
 		if (!articleEl) return [];
-		return Array.from(articleEl.querySelectorAll('[data-p]'));
+		return Array.from(articleEl.querySelectorAll('[data-p]')).filter(el => el.querySelector('a'));
 	}
 
 	// Track focus origin to avoid fighting with Tab navigation
@@ -126,6 +108,7 @@
 
 		const active = items[focusedItem];
 		if (active) {
+			focusedPIndex = parseInt(active.getAttribute('data-p') ?? '-1', 10);
 			active.scrollIntoView({ behavior: 'smooth', block: 'center' });
 			if (!focusFromTab) {
 				settingFocus = true;
@@ -134,6 +117,19 @@
 				settingFocus = false;
 			}
 			focusFromTab = false;
+		} else {
+			focusedPIndex = -1;
+		}
+	});
+
+	// Apply starred indicator on the focused item
+	$effect(() => {
+		if (!articleEl) return;
+		const items = getItems();
+		items.forEach((el) => el.classList.remove('focus-starred'));
+		const active = items[focusedItem];
+		if (active && focusedPIndex >= 0 && isStarred(diff.id, focusedPIndex)) {
+			active.classList.add('focus-starred');
 		}
 	});
 
@@ -220,11 +216,7 @@
 		if (!el) return;
 		const pIndex = parseInt(el.getAttribute('data-p') ?? '-1', 10);
 		if (pIndex < 0) return;
-		if (isStarred(diff.id, pIndex)) {
-			removeStar(diff.id, pIndex);
-		} else {
-			addStar({ diff_id: diff.id, p_index: pIndex, added_at: new Date().toISOString() });
-		}
+		toggleStar(diff.id, pIndex);
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -253,6 +245,7 @@
 				break;
 			case 'Escape':
 			case 'q':
+			case 'f':
 				exit();
 				break;
 		}
@@ -328,7 +321,7 @@
 		</div>
 
 		<footer class="focus-footer">
-			<span class="focus-hints"><span class="focus-key">esc</span> to exit <span class="focus-dot">·</span> <span class="focus-key">← →</span> categories <span class="focus-dot">·</span> <span class="focus-key">↑ ↓</span> articles <span class="focus-dot">·</span> <span class="focus-key">s</span> star{#if itemCount > 0} <span class="focus-item-position">{Math.max(0, focusedItem) + 1}/{itemCount}</span>{/if}</span>
+			<span class="focus-hints"><span class="focus-key">esc</span> to exit <span class="focus-dot">·</span> <span class="focus-key">← →</span> categories <span class="focus-dot">·</span> <span class="focus-key">↑ ↓</span> articles{#if itemCount > 0} <span class="focus-item-position">{Math.max(0, focusedItem) + 1}/{itemCount}</span>{/if} <span class="focus-dot">·</span> {#if focusedPIndex >= 0 && isStarred(diff.id, focusedPIndex)}un<span class="focus-key">s</span>tar{:else}<span class="focus-key">s</span>tar{/if}</span>
 		</footer>
 	{/if}
 </div>
