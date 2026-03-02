@@ -25,6 +25,7 @@ import {
 import {
 	bookmarks,
 	getStars,
+	isStarred,
 	addStarBase,
 	removeStarBase,
 	removeStarsForDiff,
@@ -97,6 +98,14 @@ export function addStar(entry: Star): void {
 export function removeStar(diffId: string, pIndex: number): void {
 	removeStarBase(diffId, pIndex);
 	trackDeletedStar(starId(diffId, pIndex));
+}
+
+export function toggleStar(diffId: string, pIndex: number): void {
+	if (isStarred(diffId, pIndex)) {
+		removeStar(diffId, pIndex);
+	} else {
+		addStar({ diff_id: diffId, p_index: pIndex, added_at: new Date().toISOString() });
+	}
 }
 
 // Public diff sharing

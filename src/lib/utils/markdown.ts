@@ -293,3 +293,22 @@ export function renderMarkdown(text: string, citations?: Citation[]): string {
 
   return html;
 }
+
+/** Extract sections from rendered markdown HTML, excluding Sources. */
+export function extractSections(html: string): { title: string; html: string }[] {
+  const parts: { title: string; html: string }[] = [];
+  const sectionRegex = /<details class="md-section" open>\s*<summary class="md-h2">(.*?)<\/summary>\s*<div class="md-section-content">([\s\S]*?)<\/div>\s*<\/details>/g;
+
+  let match: RegExpExecArray | null;
+  while ((match = sectionRegex.exec(html)) !== null) {
+    const title = match[1].replace(/<[^>]+>/g, '').trim();
+    if (/^sources$/i.test(title)) continue;
+
+    parts.push({
+      title: match[1],
+      html: match[2]
+    });
+  }
+
+  return parts;
+}

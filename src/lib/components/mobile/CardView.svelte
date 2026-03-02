@@ -4,8 +4,8 @@
 	import { browser } from '$app/environment';
 	import { type Diff, getHistory } from '$lib/stores/history.svelte';
 	import { isStarred, getStars } from '$lib/stores/stars.svelte';
-	import { addStar, removeStar } from '$lib/stores/operations.svelte';
-	import { renderMarkdown } from '$lib/utils/markdown';
+	import { toggleStar } from '$lib/stores/operations.svelte';
+	import { renderMarkdown, extractSections } from '$lib/utils/markdown';
 	import { buildDiffContent, timeAgoFrom } from '$lib/utils/time';
 	import { onMount } from 'svelte';
 	import { mobileDiff } from '$lib/stores/mobile.svelte';
@@ -34,26 +34,7 @@
 
 	const html = $derived(fullContent ? renderMarkdown(fullContent) : '');
 
-	// Extract articles from rendered HTML by splitting on <details class="md-section">
-	const articles = $derived.by(() => {
-		if (!html) return [];
-
-		const parts: { title: string; html: string }[] = [];
-		const sectionRegex = /<details class="md-section" open>\s*<summary class="md-h2">(.*?)<\/summary>\s*<div class="md-section-content">([\s\S]*?)<\/div>\s*<\/details>/g;
-
-		let match: RegExpExecArray | null;
-		while ((match = sectionRegex.exec(html)) !== null) {
-			const title = match[1].replace(/<[^>]+>/g, '').trim();
-			if (/^sources$/i.test(title)) continue;
-
-			parts.push({
-				title: match[1],
-				html: match[2]
-			});
-		}
-
-		return parts;
-	});
+	const articles = $derived(html ? extractSections(html) : []);
 
 	// --- Flat cards: one entry per [data-p] element ---
 	const flatCards = $derived.by((): FlatCard[] => {
@@ -254,16 +235,7 @@
 		if (visibleCard < 1 || visibleCard > flatCards.length) return;
 		const card = flatCards[visibleCard - 1];
 		if (card.pIndex < 0) return;
-
-		if (isStarred(diff.id, card.pIndex)) {
-			removeStar(diff.id, card.pIndex);
-		} else {
-			addStar({
-				diff_id: diff.id,
-				p_index: card.pIndex,
-				added_at: new Date().toISOString()
-			});
-		}
+		toggleStar(diff.id, card.pIndex);
 	}
 
 	function handleTouchEnd(e: TouchEvent) {
@@ -383,11 +355,7 @@
 					<button class="focus-star-nav-btn" disabled={prevStarIndex < 0} onclick={() => jumpToCard(prevStarIndex)}>&#8249;</button>
 					<button class="focus-star-nav-icon" class:focus-star-nav-icon-active={isStarred(diff.id, card.pIndex)} title={isStarred(diff.id, card.pIndex) ? 'Unstar (s)' : 'Star (s)'} onclick={() => {
 						if (card.pIndex < 0) return;
-						if (isStarred(diff.id, card.pIndex)) {
-							removeStar(diff.id, card.pIndex);
-						} else {
-							addStar({ diff_id: diff.id, p_index: card.pIndex, added_at: new Date().toISOString() });
-						}
+						toggleStar(diff.id, card.pIndex);
 					}}>★</button>
 					<button class="focus-star-nav-btn" disabled={nextStarIndex < 0} onclick={() => jumpToCard(nextStarIndex)}>&#8250;</button>
 				</span>

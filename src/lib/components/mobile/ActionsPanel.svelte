@@ -2,9 +2,8 @@
 	import type { Snippet } from 'svelte';
 	import { getProfile } from '$lib/stores/profiles.svelte';
 	import { isStarred, starId } from '$lib/stores/stars.svelte';
-	import { addStar, removeStar } from '$lib/stores/operations.svelte';
+	import { toggleStar as toggleStarOp, shareDiff, unshareDiff, getPublicDiffUrl } from '$lib/stores/operations.svelte';
 	import { getCachedPassword, autoSync } from '$lib/stores/sync.svelte';
-	import { shareDiff, unshareDiff, getPublicDiffUrl } from '$lib/stores/operations.svelte';
 	import { type Diff } from '$lib/stores/history.svelte';
 	import type { FlatCard } from './types';
 	import '../../../styles/mobile.css';
@@ -32,15 +31,7 @@
 
 	function toggleStar() {
 		if (!onContentCard || currentPIndex < 0) return;
-		if (starred) {
-			removeStar(diff.id, currentPIndex);
-		} else {
-			addStar({
-				diff_id: diff.id,
-				p_index: currentPIndex,
-				added_at: new Date().toISOString()
-			});
-		}
+		toggleStarOp(diff.id, currentPIndex);
 	}
 
 	async function toggleShare() {

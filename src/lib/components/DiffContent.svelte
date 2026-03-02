@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getStars, isStarred } from '$lib/stores/stars.svelte';
-	import { addStar, removeStar, isDiffPublic, getPublicDiffUrl } from '$lib/stores/operations.svelte';
+	import { toggleStar, isDiffPublic, getPublicDiffUrl } from '$lib/stores/operations.svelte';
 	import { type Diff } from '$lib/stores/history.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { buildDiffContent } from '$lib/utils/time';
@@ -70,17 +70,9 @@
 	// Track which pIndex to refocus after effect recreates buttons
 	let pendingFocusPIndex: number | null = null;
 
-	function toggleStar(pIndex: number) {
+	function onToggleStar(pIndex: number) {
 		pendingFocusPIndex = pIndex;
-		if (isStarred(diff.id, pIndex)) {
-			removeStar(diff.id, pIndex);
-		} else {
-			addStar({
-				diff_id: diff.id,
-				p_index: pIndex,
-				added_at: new Date().toISOString()
-			});
-		}
+		toggleStar(diff.id, pIndex);
 	}
 
 	function showCopyToast(e: MouseEvent) {
@@ -147,7 +139,7 @@
 			btn.addEventListener('click', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
-				toggleStar(pIndex);
+				onToggleStar(pIndex);
 			});
 
 			el.appendChild(btn);
