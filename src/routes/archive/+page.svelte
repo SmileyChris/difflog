@@ -15,6 +15,7 @@
 	import MobileTimeline from './MobileTimeline.svelte';
 	import { matchArticles, highlightTerms, getSnippet, stripEmojiPrefix } from '$lib/utils/archive-search';
 	import { archiveSearch } from '$lib/stores/ui.svelte';
+	import { buildDiffContent } from '$lib/utils/time';
 
 	function goToDiff(diffId: string) {
 		goto(`/d/${diffId}`);
@@ -78,7 +79,8 @@
 
 	const history = $derived(getHistory());
 	const stars = $derived(getStars());
-	const searchResults = $derived(searchQuery ? matchArticles(history, searchQuery) : null);
+	const searchableHistory = $derived(history.map(d => ({ ...d, content: buildDiffContent(d) })));
+	const searchResults = $derived(searchQuery ? matchArticles(searchableHistory, searchQuery) : null);
 	const totalMatches = $derived(searchResults?.reduce((sum, r) => sum + r.matches.length, 0) ?? 0);
 </script>
 

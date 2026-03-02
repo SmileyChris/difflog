@@ -5,8 +5,40 @@
 	import { daysSince } from '$lib/utils/time.svelte';
 	import { deleteDiff } from '$lib/stores/operations.svelte';
 	import { createSwipeState } from '$lib/actions/swipeToReveal.svelte';
+	import { matchArticles, highlightTerms, getSnippet } from '$lib/utils/archive-search';
+	import { archiveSearch } from '$lib/stores/ui.svelte';
+	import { buildDiffContent } from '$lib/utils/time';
 
 	const history = $derived(getHistory());
+
+	// Search state — debounced from archiveSearch store
+	let searchQuery = $state(archiveSearch.value);
+
+	$effect(() => {
+		const value = archiveSearch.value;
+		const timeout = setTimeout(() => { searchQuery = value; }, 250);
+		return () => clearTimeout(timeout);
+	});
+
+	// Use buildDiffContent so extractArticles sees the same content (including
+	// any prepended date line) that renderMarkdown receives — keeps pIndex in sync
+	// with the rendered data-p attributes.
+	const searchableHistory = $derived(history.map(d => ({ ...d, content: buildDiffContent(d) })));
+	const searchResults = $derived(searchQuery ? matchArticles(searchableHistory, searchQuery) : null);
+	const totalMatches = $derived(searchResults?.reduce((sum, r) => sum + r.matches.length, 0) ?? 0);
+
+	function relativeDate(dateStr: string): string {
+		const diff = Date.now() - new Date(dateStr).getTime();
+		const days = Math.floor(diff / 86400000);
+		if (days === 0) return 'today';
+		if (days === 1) return '1d ago';
+		if (days < 7) return `${days}d ago`;
+		const weeks = Math.floor(days / 7);
+		if (weeks < 5) return `${weeks}w ago`;
+		const months = Math.floor(days / 30);
+		if (months < 12) return `${months}mo ago`;
+		return `${Math.floor(days / 365)}y ago`;
+	}
 
 	// Group diffs by month
 	interface MonthGroup {
@@ -104,6 +136,65 @@
 			<a href="/" class="timeline-empty-action">Generate your first diff</a>
 		</div>
 	{:else}
+		<div class="search-bar">
+			<input
+				bind:value={archiveSearch.value}
+				class="text-input search-input"
+				type="search"
+				placeholder="Search diffs..."
+			/>
+			{#if searchResults}
+				<div class="search-summary">
+					{totalMatches} match{totalMatches === 1 ? '' : 'es'} in {searchResults.length} diff{searchResults.length === 1 ? '' : 's'}
+				</div>
+			{/if}
+		</div>
+
+		{#if searchResults}
+			{#if searchResults.length === 0}
+				<div class="search-empty">No matches for "{searchQuery}"</div>
+			{:else}
+				<div class="search-results">
+					{#each searchResults as { item: diff, matches } (diff.id)}
+						{@const titleMatchesQuery = searchQuery.toLowerCase().split(/\s+/).filter(Boolean).every(t => getTitle(diff).toLowerCase().includes(t))}
+						<div class="search-result-card">
+							<div class="search-result-header">
+								{#if titleMatchesQuery}
+									<button class="search-result-title search-result-title-link" onclick={() => goToDiff(diff.id)}>{@html highlightTerms(getTitle(diff), searchQuery)}</button>
+								{:else}
+									<span class="search-result-title">{@html highlightTerms(getTitle(diff), searchQuery)}</span>
+								{/if}
+								<span class="search-result-date">{relativeDate(diff.generated_at)}</span>
+							</div>
+							{#if matches.length > 0}
+								<div class="search-result-matches">
+									{#each matches as article}
+										{@const snippet = getSnippet(article.body, searchQuery)}
+										{#if article.pIndex != null}
+											<button class="search-match search-match-tappable" onclick={() => goto(`/d/${diff.id}`, { state: { scrollToPIndex: article.pIndex } })}>
+												{#if article.category}<span class="search-match-cat">{article.category} /</span>{/if}
+												<span class="search-match-heading">{@html highlightTerms(article.heading, searchQuery)}</span>
+												{#if snippet}
+													<span class="search-match-snippet">{@html highlightTerms(snippet, searchQuery)}</span>
+												{/if}
+											</button>
+										{:else}
+											<div class="search-match">
+												{#if article.category}<span class="search-match-cat">{article.category} /</span>{/if}
+												<span class="search-match-heading">{@html highlightTerms(article.heading, searchQuery)}</span>
+												{#if snippet}
+													<span class="search-match-snippet">{@html highlightTerms(snippet, searchQuery)}</span>
+												{/if}
+											</div>
+										{/if}
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{/if}
+		{:else}
 		{#each monthGroups as group, gi}
 			<div class="timeline-month-header" class:timeline-month-header-sticky={true}>
 				<span class="timeline-month-label">{group.label}</span>
@@ -163,12 +254,142 @@
 				</div>
 			{/each}
 		{/each}
+		{/if}
 	{/if}
 </div>
 
 <style>
 	.timeline {
 		padding: 0.5rem 1.25rem 2rem;
+	}
+
+	/* Search bar */
+	.search-bar {
+		position: sticky;
+		top: 0;
+		z-index: 11;
+		background: var(--bg-base);
+		padding-bottom: 0.5rem;
+	}
+
+	.search-input {
+		width: 100%;
+		font-size: 0.85rem;
+	}
+
+	.search-summary {
+		font-family: var(--font-mono);
+		font-size: 0.65rem;
+		color: var(--text-hint);
+		margin-top: 0.25rem;
+	}
+
+	.search-empty {
+		text-align: center;
+		color: var(--text-subtle);
+		padding: 3rem 1rem;
+		font-size: 0.85rem;
+	}
+
+	/* Search results */
+	.search-results {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.search-result-card {
+		background: var(--bg-secondary, var(--bg-card));
+		border-radius: var(--radius);
+		padding: 0.75rem;
+	}
+
+	.search-result-header {
+		display: flex;
+		align-items: baseline;
+		gap: 0.5rem;
+	}
+
+	.search-result-title {
+		font-size: 0.85rem;
+		font-weight: 500;
+		color: var(--text-primary);
+		line-height: 1.35;
+		flex: 1;
+		min-width: 0;
+	}
+
+	button.search-result-title-link {
+		border: none;
+		background: none;
+		font: inherit;
+		color: inherit;
+		padding: 0;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.search-result-title :global(mark),
+	.search-match :global(mark) {
+		background: color-mix(in srgb, var(--accent) 25%, transparent);
+		color: inherit;
+		border-radius: 0.125rem;
+		padding: 0 0.0625rem;
+	}
+
+	.search-result-date {
+		font-family: var(--font-mono);
+		font-size: 0.6rem;
+		color: var(--text-hint);
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+
+	.search-result-matches {
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+		margin-top: 0.5rem;
+	}
+
+	.search-match {
+		font-size: 0.75rem;
+		color: var(--text-subtle);
+		background: var(--bg-chip, rgba(255, 255, 255, 0.04));
+		padding: 0.375rem 0.5rem;
+		border-radius: var(--radius-sm);
+		line-height: 1.4;
+	}
+
+	button.search-match-tappable {
+		border: none;
+		font-family: inherit;
+		cursor: pointer;
+		text-align: left;
+		width: 100%;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	button.search-match-tappable:active {
+		opacity: 0.7;
+	}
+
+	.search-match-cat {
+		opacity: 0.5;
+		font-size: 0.65rem;
+		margin-right: 0.25rem;
+	}
+
+	.search-match-heading {
+		font-weight: 500;
+	}
+
+	.search-match-snippet {
+		display: block;
+		font-size: 0.65rem;
+		color: var(--text-hint);
+		margin-top: 0.2rem;
+		line-height: 1.35;
 	}
 
 	/* Month header — sticky */
