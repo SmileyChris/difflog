@@ -192,7 +192,7 @@
   font-size: 1.05rem;
   line-height: 1.75;
   opacity: 0.6;
-  color: #fff;
+  color: var(--text-heading);
   transition: opacity 0.25s ease, color 0.25s ease;
 }
 
@@ -276,7 +276,7 @@
 }
 
 .focus-article .focus-starred {
-  border-left-color: gold;
+  border-left-color: var(--star-color);
 }
 
 .focus-article [data-p]::before {
@@ -286,13 +286,13 @@
   right: -3rem;
   transform: translateY(-50%) translateX(8rem) rotate(15deg);
   font-size: 12rem;
-  color: gold;
+  color: var(--star-color);
   opacity: 0;
   pointer-events: none;
   z-index: -1;
   line-height: 1;
   transition: opacity 0.3s ease, transform 0.4s ease-in;
-  background: radial-gradient(circle at center, gold, transparent 90%);
+  background: radial-gradient(circle at center, var(--star-color), transparent 90%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -493,7 +493,7 @@
   }
 
   .focus-star-nav-icon {
-    color: gold;
+    color: var(--star-color);
     font-size: 1rem;
     opacity: 0.2;
     line-height: 0;
@@ -520,7 +520,7 @@
   .focus-star-nav-btn {
     background: none;
     border: none;
-    color: gold;
+    color: var(--star-color);
     font-size: 1.4rem;
     padding: 0;
     cursor: pointer;

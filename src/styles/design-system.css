@@ -50,6 +50,8 @@
   --info-glow: #00b4d866;
   --success: #10b981;
   --streak: #ff8c00;
+  --star-color: gold;
+  --star-color-dark: #d4a017;
 
   /* Colors - Markdown */
   --md-border: #303040;

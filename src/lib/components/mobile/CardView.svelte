@@ -5,11 +5,17 @@
 	import { type Diff, getHistory } from '$lib/stores/history.svelte';
 	import { isStarred, getStars } from '$lib/stores/stars.svelte';
 	import { toggleStar } from '$lib/stores/operations.svelte';
-	import { renderMarkdown, extractSections } from '$lib/utils/markdown';
+	import { renderMarkdown, extractParagraphs } from '$lib/utils/markdown';
 	import { buildDiffContent, timeAgoFrom } from '$lib/utils/time';
 	import { onMount } from 'svelte';
 	import { mobileDiff } from '$lib/stores/mobile.svelte';
+	import {
+		SWIPE_MIN_DISTANCE, SWIPE_DIAGONAL_RATIO,
+		SLIDE_OUT_DURATION, SLIDE_IN_DURATION, SLIDE_IN_DELAY,
+		DOUBLE_TAP_THRESHOLD
+	} from '$lib/constants/mobile';
 	import type { FlatCard } from './types';
+	import JumpMenu from './JumpMenu.svelte';
 	import '../../../styles/focus.css';
 
 	interface Props {
@@ -34,54 +40,47 @@
 
 	const html = $derived(fullContent ? renderMarkdown(fullContent) : '');
 
-	const articles = $derived(html ? extractSections(html) : []);
-
 	// --- Flat cards: one entry per [data-p] element ---
 	const flatCards = $derived.by((): FlatCard[] => {
-		if (!browser || !articles.length) return [];
+		if (!html) return [];
+		return extractParagraphs(html).map((p, i) => ({
+			categoryTitle: p.sectionTitle,
+			html: p.html,
+			globalIndex: i,
+			pIndex: p.pIndex
+		}));
+	});
 
-		const cards: FlatCard[] = [];
-		const tmp = document.createElement('div');
-
-		for (const art of articles) {
-			tmp.innerHTML = art.title;
-			const catTitle = tmp.textContent?.trim() ?? '';
-			tmp.innerHTML = art.html;
-			const items = tmp.querySelectorAll('[data-p]');
-			items.forEach((el) => {
-				const pIndex = parseInt(el.getAttribute('data-p') ?? '-1', 10);
-				cards.push({
-					categoryTitle: catTitle,
-					html: el.outerHTML,
-					globalIndex: cards.length,
-					pIndex
-				});
-			});
-		}
-
-		return cards;
+	// Unique category list for jump menu and title card
+	const articles = $derived.by(() => {
+		const seen = new Set<string>();
+		return flatCards.filter(c => {
+			if (seen.has(c.categoryTitle)) return false;
+			seen.add(c.categoryTitle);
+			return true;
+		}).map(c => c.categoryTitle);
 	});
 
 	const starredCount = $derived(getStars().filter((s) => s.diff_id === diff.id).length);
 
-	// Current card index is visibleCard - 1 in flatCards (0-based)
-	const prevStarIndex = $derived.by(() => {
-		if (!flatCards.length) return -1;
-		const current = visibleCard - 1; // flatCards index
-		for (let i = current - 1; i >= 0; i--) {
-			if (flatCards[i] && isStarred(diff.id, flatCards[i].pIndex)) return i + 1; // card index
-		}
-		return -1;
-	});
-
-	const nextStarIndex = $derived.by(() => {
+	// Find nearest starred card in a given direction, returning card index (1-based) or -1
+	function findStarIndex(direction: 'prev' | 'next'): number {
 		if (!flatCards.length) return -1;
 		const current = visibleCard - 1;
-		for (let i = current + 1; i < flatCards.length; i++) {
-			if (flatCards[i] && isStarred(diff.id, flatCards[i].pIndex)) return i + 1;
+		if (direction === 'prev') {
+			for (let i = current - 1; i >= 0; i--) {
+				if (flatCards[i] && isStarred(diff.id, flatCards[i].pIndex)) return i + 1;
+			}
+		} else {
+			for (let i = current + 1; i < flatCards.length; i++) {
+				if (flatCards[i] && isStarred(diff.id, flatCards[i].pIndex)) return i + 1;
+			}
 		}
 		return -1;
-	});
+	}
+
+	const prevStarIndex = $derived(findStarIndex('prev'));
+	const nextStarIndex = $derived(findStarIndex('next'));
 
 	// Notify parent when flatCards change
 	$effect(() => {
@@ -168,7 +167,7 @@
 
 	function triggerSlideIn(dir: 'left' | 'right') {
 		slideInDirection = dir;
-		setTimeout(() => { slideInDirection = null; }, 300);
+		setTimeout(() => { slideInDirection = null; }, SLIDE_IN_DELAY);
 	}
 
 	// Pick up pending slide-in from cross-route navigation
@@ -198,10 +197,10 @@
 				requestAnimationFrame(() => {
 					slideDirection = null;
 					triggerSlideIn(inDir);
-					setTimeout(() => { swiping = false; }, 250);
+					setTimeout(() => { swiping = false; }, SLIDE_IN_DURATION);
 				});
 			});
-		}, 200);
+		}, SLIDE_OUT_DURATION);
 	}
 
 	function slideOut(dir: 'left' | 'right', then: () => void) {
@@ -214,7 +213,7 @@
 		setTimeout(() => {
 			// Don't reset slideDirection — keeps cards hidden during navigation
 			then();
-		}, 200);
+		}, SLIDE_OUT_DURATION);
 	}
 
 	// Double-tap to star/unstar
@@ -222,7 +221,7 @@
 
 	function handleDoubleTap(e: TouchEvent) {
 		const now = Date.now();
-		if (now - lastTapTime < 300) {
+		if (now - lastTapTime < DOUBLE_TAP_THRESHOLD) {
 			e.preventDefault();
 			toggleCurrentStar();
 			lastTapTime = 0;
@@ -243,7 +242,7 @@
 		const dx = e.changedTouches[0].clientX - touchStartX;
 		const dy = e.changedTouches[0].clientY - touchStartY;
 
-		if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+		if (Math.abs(dx) < SWIPE_MIN_DISTANCE || Math.abs(dx) < Math.abs(dy) * SWIPE_DIAGONAL_RATIO) return;
 
 		if (dx > 0) {
 			// Swipe right → older diff
@@ -414,26 +413,14 @@
 </div><!-- .focus-slide-wrapper -->
 
 {#if showJumpMenu}
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<div class="focus-jump-backdrop" onclick={() => showJumpMenu = false}></div>
-	<nav class="focus-jump-menu">
-		<button class="focus-jump-item" class:focus-jump-active={visibleCard === 0} onclick={() => jumpToCard(0)}>
-			<span class="focus-jump-icon">&#9670;</span>
-			<span class="focus-jump-label">Cover</span>
-		</button>
-		{#each categoryJumps as cat, i}
-			<button class="focus-jump-item" class:focus-jump-active={i === activeCategoryJump} onclick={() => jumpToCard(cat.cardIndex)}>
-				<span class="focus-jump-icon">{cat.label.match(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u)?.[0] ?? ''}</span>
-				<span class="focus-jump-label">{cat.label.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]\s*/u, '')}</span>
-				<span class="focus-jump-count">{cat.count}</span>
-			</button>
-		{/each}
-		<button class="focus-jump-item" class:focus-jump-active={visibleCard > flatCards.length} onclick={() => jumpToCard(flatCards.length + 1)}>
-			<span class="focus-jump-icon">&#10003;</span>
-			<span class="focus-jump-label">Complete</span>
-		</button>
-	</nav>
+	<JumpMenu
+		{categoryJumps}
+		{activeCategoryJump}
+		{visibleCard}
+		totalCards={flatCards.length}
+		onJump={jumpToCard}
+		onClose={() => showJumpMenu = false}
+	/>
 {/if}
 
 <style>
@@ -443,7 +430,7 @@
 		top: 0;
 		right: -20vw;
 		font-size: 120vw;
-		color: gold;
+		color: var(--star-color);
 		opacity: 0;
 		pointer-events: none;
 		line-height: 1;
@@ -454,7 +441,7 @@
 	.focus-card-starred::before {
 		opacity: 0.18;
 		transform: rotate(15deg) translateX(0);
-		background: radial-gradient(circle at center, gold, transparent 90%);
+		background: radial-gradient(circle at center, var(--star-color), transparent 90%);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;

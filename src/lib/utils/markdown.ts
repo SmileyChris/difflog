@@ -294,6 +294,33 @@ export function renderMarkdown(text: string, citations?: Citation[]): string {
   return html;
 }
 
+export interface Paragraph {
+  pIndex: number;
+  html: string;
+  text: string;
+  sectionTitle: string;
+}
+
+/** Extract individual [data-p] paragraphs from rendered markdown HTML. */
+export function extractParagraphs(html: string): Paragraph[] {
+  const sections = extractSections(html);
+  const paragraphs: Paragraph[] = [];
+  const pRegex = /<(?:p|li)\s[^>]*data-p="(\d+)"[^>]*>([\s\S]*?)<\/(?:p|li)>/g;
+
+  for (const section of sections) {
+    const titleText = section.title.replace(/<[^>]+>/g, '').trim();
+    let match: RegExpExecArray | null;
+    while ((match = pRegex.exec(section.html)) !== null) {
+      const pIndex = parseInt(match[1], 10);
+      const innerHtml = match[0];
+      const text = match[2].replace(/<[^>]+>/g, '').trim();
+      paragraphs.push({ pIndex, html: innerHtml, text, sectionTitle: titleText });
+    }
+  }
+
+  return paragraphs;
+}
+
 /** Extract sections from rendered markdown HTML, excluding Sources. */
 export function extractSections(html: string): { title: string; html: string }[] {
   const parts: { title: string; html: string }[] = [];

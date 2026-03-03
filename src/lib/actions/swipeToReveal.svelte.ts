@@ -4,9 +4,11 @@
  * revealing a background action zone (e.g. delete/unstar).
  */
 
-const DEAD_ZONE = 10;
-const THRESHOLD = -56;
-const MAX_OFFSET = -56;
+import { SWIPE_DEAD_ZONE, SWIPE_REVEAL_THRESHOLD, SWIPE_REVEAL_MAX_OFFSET } from '$lib/constants/mobile';
+
+const DEAD_ZONE = SWIPE_DEAD_ZONE;
+const THRESHOLD = SWIPE_REVEAL_THRESHOLD;
+const MAX_OFFSET = SWIPE_REVEAL_MAX_OFFSET;
 
 export type SwipeState = {
 	id: string;

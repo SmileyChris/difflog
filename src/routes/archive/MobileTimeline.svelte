@@ -8,6 +8,8 @@
 	import { matchArticles, highlightTerms, getSnippet } from '$lib/utils/archive-search';
 	import { archiveSearch } from '$lib/stores/ui.svelte';
 	import { buildDiffContent } from '$lib/utils/time';
+	import { extractSections, renderMarkdown } from '$lib/utils/markdown';
+	import { SEARCH_DEBOUNCE_MS } from '$lib/constants/mobile';
 
 	const history = $derived(getHistory());
 
@@ -16,7 +18,7 @@
 
 	$effect(() => {
 		const value = archiveSearch.value;
-		const timeout = setTimeout(() => { searchQuery = value; }, 250);
+		const timeout = setTimeout(() => { searchQuery = value; }, SEARCH_DEBOUNCE_MS);
 		return () => clearTimeout(timeout);
 	});
 
@@ -97,12 +99,9 @@
 	}
 
 	function getCategories(diff: Diff): string[] {
-		const matches = diff.content.match(/^## (.+)$/gm);
-		if (!matches) return [];
-		return matches.map(m => m
-			.replace(/^## /, '')
-			.replace(/^[\p{Emoji}\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, '')
-			.trim()
+		const html = renderMarkdown(buildDiffContent(diff));
+		return extractSections(html).map(s =>
+			s.title.replace(/<[^>]+>/g, '').replace(/^[\p{Emoji}\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, '').trim()
 		);
 	}
 

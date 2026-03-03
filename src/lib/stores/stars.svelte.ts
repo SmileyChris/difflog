@@ -1,7 +1,7 @@
 import { persist } from './persist.svelte';
 import { activeProfileId } from './profiles.svelte';
 import { getHistory } from './history.svelte';
-import { renderMarkdown } from '$lib/utils/markdown';
+import { renderMarkdown, extractParagraphs } from '$lib/utils/markdown';
 import { buildDiffContent } from '$lib/utils/time';
 import { starId, type Star, type Diff } from '$lib/utils/sync';
 
@@ -60,14 +60,12 @@ export function getStarContent(star: Star): { html: string; content: string; dif
 	if (!diff) return null;
 
 	const html = renderMarkdown(buildDiffContent(diff));
-	const container = document.createElement('div');
-	container.innerHTML = html;
-	const element = container.querySelector(`[data-p="${star.p_index}"]`);
-	if (!element) return null;
+	const paragraph = extractParagraphs(html).find(p => p.pIndex === star.p_index);
+	if (!paragraph) return null;
 
 	return {
-		html: element.outerHTML,
-		content: element.textContent || '',
+		html: paragraph.html,
+		content: paragraph.text,
 		diff_title: diff.title || 'Untitled Diff',
 		diff_date: diff.generated_at
 	};

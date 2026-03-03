@@ -43,10 +43,14 @@
 		}
 	}
 
-	function copyLink() {
-		navigator.clipboard.writeText(publicUrl);
-		copied = true;
-		setTimeout(() => { copied = false; }, 2000);
+	async function copyLink() {
+		try {
+			await navigator.clipboard.writeText(publicUrl);
+			copied = true;
+			setTimeout(() => { copied = false; }, 2000);
+		} catch {
+			// Clipboard API unavailable (insecure context, denied permission)
+		}
 	}
 </script>
 

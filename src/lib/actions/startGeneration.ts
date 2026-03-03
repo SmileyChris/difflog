@@ -16,6 +16,7 @@ import {
 import { addDiff, deleteDiff } from '$lib/stores/operations.svelte';
 import type { GenerationDepth } from '$lib/utils/constants';
 import { WAIT_TIPS } from '$lib/utils/constants';
+import { DEMO_DELAY_MS } from '$lib/constants/mobile';
 import type { ResolvedMapping } from '$lib/utils/sync';
 
 export interface StartGenerationCallbacks {
@@ -26,6 +27,15 @@ export interface StartGenerationCallbacks {
 	onSuccess: () => void;
 }
 
+function replaceTodaysDiff(forceNew: boolean): void {
+	if (forceNew) return;
+	const today = new Date().toDateString();
+	const history = getHistory();
+	if (history.length > 0 && new Date(history[0].generated_at).toDateString() === today) {
+		deleteDiff(history[0].id);
+	}
+}
+
 export async function startGeneration(callbacks: StartGenerationCallbacks): Promise<void> {
 	const { forceNew = false, depthOverride = null, onScanStart, onScanStop, onSuccess } = callbacks;
 
@@ -33,17 +43,9 @@ export async function startGeneration(callbacks: StartGenerationCallbacks): Prom
 		generating.value = true;
 		onScanStart();
 		const { createDemoDiff } = await import('$lib/utils/demo');
-		await new Promise((r) => setTimeout(r, 2500));
+		await new Promise((r) => setTimeout(r, DEMO_DELAY_MS));
 
-		const today = new Date().toDateString();
-		const history = getHistory();
-		if (
-			!forceNew &&
-			history.length > 0 &&
-			new Date(history[0].generated_at).toDateString() === today
-		) {
-			deleteDiff(history[0].id);
-		}
+		replaceTodaysDiff(forceNew);
 		addDiff(createDemoDiff(getHistory()[0]?.title));
 		generating.value = false;
 		onScanStop();
@@ -84,15 +86,7 @@ export async function startGeneration(callbacks: StartGenerationCallbacks): Prom
 				}),
 		});
 
-		const today = new Date().toDateString();
-		const history = getHistory();
-		if (
-			!forceNew &&
-			history.length > 0 &&
-			new Date(history[0].generated_at).toDateString() === today
-		) {
-			deleteDiff(history[0].id);
-		}
+		replaceTodaysDiff(forceNew);
 		addDiff(result.diff);
 		autoSync();
 

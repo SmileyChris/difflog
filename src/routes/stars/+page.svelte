@@ -388,7 +388,7 @@
 	}
 
 	.passage-starred-icon {
-		color: #d4a017;
+		color: var(--star-color-dark);
 	}
 
 	.passage-content-orphan {
