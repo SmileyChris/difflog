@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "4.0",
+      "date": "2026-03-03",
+      "summary": "Focus mode and mobile redesign",
+      "description": "Read diffs as swipeable cards in a new distraction-free focus mode. The entire mobile experience has been rebuilt with native-feeling navigation, gestures, and transitions.",
+      "changes": [
+        { "type": "feature", "text": "Focus mode — swipe through articles as cards with category jumping and inline bookmarking", "in": "4.0.0" },
+        { "type": "feature", "text": "Rebuilt mobile UI with tab navigation, swipe gestures, slide transitions, and dedicated views for archive, stars, and profiles", "in": "4.0.0" },
+        { "type": "fix", "text": "Batched Dev.to API requests to avoid rate limits", "in": "4.0.0" }
+      ]
+    },
+    {
       "version": "3.4",
       "date": "2026-02-27",
       "summary": "Archive search with direct article navigation",
