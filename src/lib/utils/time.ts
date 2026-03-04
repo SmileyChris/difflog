@@ -71,13 +71,24 @@ export function formatDiffDate(generatedAt: string, windowDays?: number): string
   return `${dateStr} · ${windowStr}`;
 }
 
+/** Compact relative date string (e.g. "1d ago", "2w ago"). */
+export function relativeDate(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return 'today';
+  if (days === 1) return '1d ago';
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks}w ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(days / 365)}y ago`;
+}
+
 /**
- * Build the full renderable content for a diff, prepending the date line if applicable.
+ * Build the full renderable content for a diff.
  * Used by CardView, DiffContent, and star content lookup to ensure consistent data-p indices.
  */
-export function buildDiffContent(diff: { content?: string | null; generated_at: string; window_days?: number }): string {
-  const content = diff.content ?? '';
-  if (!diff.window_days) return content;
-  const dateLine = `**${formatDiffDate(diff.generated_at, diff.window_days)}**\n\n---`;
-  return content ? `${dateLine}\n\n${content}` : content;
+export function buildDiffContent(diff: { content?: string | null }): string {
+  return diff.content ?? '';
 }

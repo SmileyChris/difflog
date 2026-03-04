@@ -15,7 +15,7 @@
 	import MobileTimeline from './MobileTimeline.svelte';
 	import { matchArticles, highlightTerms, getSnippet, stripEmojiPrefix } from '$lib/utils/archive-search';
 	import { archiveSearch } from '$lib/stores/ui.svelte';
-	import { buildDiffContent } from '$lib/utils/time';
+	import { buildDiffContent, relativeDate } from '$lib/utils/time';
 
 	function goToDiff(diffId: string) {
 		goto(`/d/${diffId}`);
@@ -29,19 +29,6 @@
 			hour: '2-digit',
 			minute: '2-digit'
 		});
-	}
-
-	function relativeDate(dateStr: string): string {
-		const diff = Date.now() - new Date(dateStr).getTime();
-		const days = Math.floor(diff / 86400000);
-		if (days === 0) return 'today';
-		if (days === 1) return '1d ago';
-		if (days < 7) return `${days}d ago`;
-		const weeks = Math.floor(days / 7);
-		if (weeks < 5) return `${weeks}w ago`;
-		const months = Math.floor(days / 30);
-		if (months < 12) return `${months}mo ago`;
-		return `${Math.floor(days / 365)}y ago`;
 	}
 
 	function getTitle(diff: Diff): string {

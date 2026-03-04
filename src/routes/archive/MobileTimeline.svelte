@@ -7,7 +7,7 @@
 	import { createSwipeState } from '$lib/actions/swipeToReveal.svelte';
 	import { matchArticles, highlightTerms, getSnippet } from '$lib/utils/archive-search';
 	import { archiveSearch } from '$lib/stores/ui.svelte';
-	import { buildDiffContent } from '$lib/utils/time';
+	import { buildDiffContent, relativeDate } from '$lib/utils/time';
 	import { extractSections, renderMarkdown } from '$lib/utils/markdown';
 	import { SEARCH_DEBOUNCE_MS } from '$lib/constants/mobile';
 
@@ -22,25 +22,9 @@
 		return () => clearTimeout(timeout);
 	});
 
-	// Use buildDiffContent so extractArticles sees the same content (including
-	// any prepended date line) that renderMarkdown receives — keeps pIndex in sync
-	// with the rendered data-p attributes.
 	const searchableHistory = $derived(history.map(d => ({ ...d, content: buildDiffContent(d) })));
 	const searchResults = $derived(searchQuery ? matchArticles(searchableHistory, searchQuery) : null);
 	const totalMatches = $derived(searchResults?.reduce((sum, r) => sum + r.matches.length, 0) ?? 0);
-
-	function relativeDate(dateStr: string): string {
-		const diff = Date.now() - new Date(dateStr).getTime();
-		const days = Math.floor(diff / 86400000);
-		if (days === 0) return 'today';
-		if (days === 1) return '1d ago';
-		if (days < 7) return `${days}d ago`;
-		const weeks = Math.floor(days / 7);
-		if (weeks < 5) return `${weeks}w ago`;
-		const months = Math.floor(days / 30);
-		if (months < 12) return `${months}mo ago`;
-		return `${Math.floor(days / 365)}y ago`;
-	}
 
 	// Group diffs by month
 	interface MonthGroup {

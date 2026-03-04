@@ -3,7 +3,7 @@
 	import { toggleStar, isDiffPublic, getPublicDiffUrl } from '$lib/stores/operations.svelte';
 	import { type Diff } from '$lib/stores/history.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
-	import { buildDiffContent } from '$lib/utils/time';
+	import { buildDiffContent, formatDiffDate } from '$lib/utils/time';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -199,6 +199,9 @@
 	{#if titleRow}
 		{@render titleRow()}
 	{/if}
+	{#if diff.window_days}
+		<div class="diff-date-banner">{formatDiffDate(diff.generated_at, diff.window_days)}</div>
+	{/if}
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="diff-content" bind:this={contentElement} onclick={handleSummaryClick}>
@@ -225,6 +228,16 @@
 		font-weight: 700;
 		color: var(--text);
 		letter-spacing: -0.02em;
+	}
+
+	:global(.diff-date-banner) {
+		padding: 1rem 2rem 0;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--text-subtle);
+		letter-spacing: -0.01em;
+		border-bottom: 1px solid var(--border-subtle);
+		padding-bottom: 1rem;
 	}
 
 	:global(.diff-content) {
