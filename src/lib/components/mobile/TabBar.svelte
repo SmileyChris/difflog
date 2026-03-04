@@ -45,7 +45,7 @@
 		if (pathname === '/profiles') return 'account';
 		if (pathname === '/stars') return 'stars';
 		if (pathname === '/archive' || isViewingOlderDiff) return 'history';
-		if (isViewingLatestDiff || pathname === '/generate' || pathname === '/generate') return 'current';
+		if (isViewingLatestDiff || pathname === '/generate') return 'current';
 		return null;
 	});
 

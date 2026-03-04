@@ -98,7 +98,7 @@
 				{#snippet infoExtra()}
 					{#if generating.value}
 						<a href="/generate" class="btn-ghost btn-branded" aria-busy="true">Generating…</a>
-					{:else}
+					{:else if !isLatest}
 						<a href="/" class="btn-ghost">Latest diff &rarr;</a>
 					{/if}
 				{/snippet}
