@@ -12,6 +12,7 @@
 
 	let { data } = $props();
 
+	const error = $derived(data.error as string | undefined);
 	const diff = $derived(data.diff as Diff);
 
 	const fullContent = $derived(diff ? buildDiffContent(diff) : '');
@@ -265,7 +266,12 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <div class="focus-page" class:focus-page-mobile={isMobile}>
-	{#if isMobile}
+	{#if error}
+		<div class="focus-error">
+			<p>{error}</p>
+			<a href="/">Back to home</a>
+		</div>
+	{:else if isMobile}
 		<!-- Mobile: swipeable card layout via CardView component -->
 		<header class="focus-header focus-header-mobile">
 			<span class="focus-header-group">
