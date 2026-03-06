@@ -4,7 +4,7 @@
 
 import { renderMarkdown } from './render';
 import { parseDiff, flattenTopics, type Topic } from './parser';
-import { isTopicRead, markTopicRead, toggleTopicRead, isStarred, toggleStar, getDiffs, saveDiffs, trackDiffModified } from './config';
+import { isTopicRead, markTopicRead, toggleTopicRead, isStarred, toggleStar, getStars, getDiffs, saveDiffs, trackDiffModified } from './config';
 import { syncUpload } from './sync';
 import { RESET, DIM, BOLD, CYAN, UNDERLINE, GREEN, BRIGHT_YELLOW, clearScreen, hideCursor, showCursor, openUrl, copyToClipboard } from './ui';
 
@@ -66,6 +66,30 @@ function displayShareMenu(diffId: string, menuSelection: number, currentlyPublic
 }
 
 /**
+ * Render the date info line with public/private and star count
+ */
+function renderDateInfo(
+	dateInfo: string,
+	syncEnabled: boolean,
+	isPublic: boolean,
+	starCount: number,
+	starred: boolean
+): string {
+	let line = `${DIM}${dateInfo}${RESET}`;
+	if (syncEnabled) {
+		const status = isPublic
+			? `${CYAN}p${RESET}${DIM}ublic${RESET}`
+			: `${DIM}${CYAN}p${RESET}${DIM}rivate${RESET}`;
+		line += `${DIM} · ${RESET}${status}`;
+	}
+	if (starCount > 0) {
+		const starColor = starred ? BRIGHT_YELLOW : DIM;
+		line += `${DIM} · ${RESET}${starColor}★ ${starCount}${RESET}`;
+	}
+	return line;
+}
+
+/**
  * Display a topic in interactive mode
  */
 function displayTopic(
@@ -88,7 +112,8 @@ function displayTopic(
 	currentUnreadPos: number = 0,
 	isPublic: boolean = false,
 	syncEnabled: boolean = false,
-	starred: boolean = false
+	starred: boolean = false,
+	starCount: number = 0
 ): void {
 	clearScreen();
 
@@ -124,14 +149,7 @@ function displayTopic(
 
 	// Date info
 	if (dateInfo) {
-		let line = `${DIM}${dateInfo}${RESET}`;
-		if (syncEnabled) {
-			const status = isPublic
-				? `${CYAN}p${RESET}${DIM}ublic${RESET}`
-				: `${DIM}${CYAN}p${RESET}${DIM}rivate${RESET}`;
-			line += `${DIM} · ${RESET}${status}`;
-		}
-		process.stdout.write(line + '\n');
+		process.stdout.write(renderDateInfo(dateInfo, syncEnabled, isPublic, starCount, starred) + '\n');
 	}
 	process.stdout.write('\n');
 
@@ -426,14 +444,8 @@ export function startInteractive(
 
 		// Date info line
 		if (dateInfo) {
-			let line = `${DIM}${dateInfo}${RESET}`;
-			if (syncEnabled) {
-				const status = currentIsPublic
-					? `${CYAN}p${RESET}${DIM}ublic${RESET}`
-					: `${DIM}${CYAN}p${RESET}${DIM}rivate${RESET}`;
-				line += `${DIM} · ${RESET}${status}`;
-			}
-			process.stdout.write(line + '\n');
+			const sc = getStars().filter(s => s.diff_id === diffId).length;
+			process.stdout.write(renderDateInfo(dateInfo, syncEnabled, currentIsPublic, sc, false) + '\n');
 		}
 		process.stdout.write('\n');
 
@@ -541,7 +553,8 @@ export function startInteractive(
 			currentUnreadPos,
 			currentIsPublic,
 			syncEnabled,
-			isStarred(diffId, pIdx)
+			isStarred(diffId, pIdx),
+			getStars().filter(s => s.diff_id === diffId).length
 		);
 	}
 
