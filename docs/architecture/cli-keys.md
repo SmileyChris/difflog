@@ -152,6 +152,7 @@ For reference, these are the CLI's on-disk files — **none contain API keys**:
 | `~/.config/difflog/profile.json` | Name, languages, frameworks, topics, depth, provider selections |
 | `~/.config/difflog/diffs.json` | Cached diff history |
 | `~/.config/difflog/read-state.json` | Article read/unread tracking |
+| `~/.config/difflog/stars.json` | Starred (bookmarked) articles |
 
 ## Supported Providers
 

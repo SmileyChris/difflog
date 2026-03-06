@@ -140,9 +140,46 @@ if (!command) {
 				await profileCommand(subArgs);
 				break;
 
-			case 'archive':
-				await archiveCommand();
+			case 'archive': {
+				let archAction: string = 'archive';
+				let archShowArg = '1';
+				let archTopicIndex: number | undefined;
+				archLoop: while (true) {
+					switch (archAction) {
+						case 'archive': {
+							const result = await archiveCommand();
+							if (result.action === 'back' || result.action === 'quit') break archLoop;
+							if (result.action === 'open-diff') {
+								archShowArg = String(result.diffIndex);
+								archTopicIndex = result.topicIndex;
+								archAction = 'show';
+								continue;
+							}
+							if (result.action === 'generate') { archAction = 'generate'; continue; }
+							break archLoop;
+						}
+						case 'show': {
+							const result = await showCommand([archShowArg], archTopicIndex);
+							archShowArg = '1';
+							archTopicIndex = undefined;
+							if (result === 'archive') { archAction = 'archive'; continue; }
+							if (result === 'generate') { archAction = 'generate'; continue; }
+							if (result === 'quit') break archLoop;
+							// prev-diff/next-diff handled inside showCommand
+							break archLoop;
+						}
+						case 'generate': {
+							const result = await generateCommand([]);
+							if (result === 'quit') break archLoop;
+							archAction = 'archive';
+							continue;
+						}
+						default:
+							break archLoop;
+					}
+				}
 				break;
+			}
 
 			case 'ls':
 				lsCommand(subArgs);

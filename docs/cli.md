@@ -156,6 +156,29 @@ difflog login --no-browser
 difflog login --profile abc123... --password mypassword
 ```
 
+### `difflog archive`
+
+Interactive browser for all your diffs and stars.
+
+```bash
+difflog archive
+```
+
+**Navigation:**
+
+- `↑/↓` or `k/j` — Navigate items
+- `Enter` — Open selected diff (or star's source diff)
+- `s` — Toggle stars view (shows only diffs with starred articles)
+- `d` — Toggle back to diffs view
+- `g` — Generate new diff
+- `Esc` or `a` — Back to viewer
+- `q` — Quit
+
+In stars mode, starred articles appear indented below their source diff. Only diffs with stars are shown.
+
+!!! tip "Quick access"
+    Press `a` from the interactive diff viewer to jump to the archive.
+
 ### `difflog ls`
 
 List your diff history.
@@ -326,6 +349,7 @@ The CLI stores data in standard OS locations:
 - `profile.json` - Profile metadata (name, languages, frameworks, topics, depth, provider selections, resolved mappings)
 - `diffs.json` - Cached diff history
 - `read-state.json` - Article read/unread tracking for interactive viewer
+- `stars.json` - Starred (bookmarked) articles
 
 **API Keys:**
 
