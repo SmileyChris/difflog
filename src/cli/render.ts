@@ -3,7 +3,7 @@
  * Handles headers, rules, list items, bold, inline code, and links.
  */
 
-import { RESET, BOLD, DIM, ITALIC, UNDERLINE, CYAN, YELLOW, GREEN, MAGENTA, BRIGHT_BLUE } from './ui';
+import { RESET, BOLD, DIM, ITALIC, UNDERLINE, CYAN, YELLOW, GREEN, MAGENTA, BRIGHT_BLUE, BRIGHT_YELLOW } from './ui';
 
 /** Apply inline formatting: bold, code, links */
 function formatInline(text: string, highlightLinkIndex?: number): string {
@@ -40,7 +40,8 @@ function formatInline(text: string, highlightLinkIndex?: number): string {
 export function renderMarkdown(
 	markdown: string,
 	highlightLinkIndex?: number,
-	interactive: boolean = false
+	interactive: boolean = false,
+	starred: boolean = false
 ): string {
 	const lines = markdown.split('\n');
 	const output: string[] = [];
@@ -90,10 +91,15 @@ export function renderMarkdown(
 
 		// List items
 		if (line.match(/^\s*[-*]\s/)) {
-			const content = line.replace(/^\s*[-*]\s/, '');
+			const content = line.replace(/^\s*[-*]\s+/, '');
 			if (interactive) {
-				// In interactive mode, just show the content without bullets
-				output.push(formatInline(content, highlightLinkIndex));
+				// In interactive mode: 2-char gutter, star replaces bullet
+				const isFirst = output.length === 0;
+				const bullet = starred && isFirst
+					? `${BRIGHT_YELLOW}★${RESET} `
+					: '  ';
+				if (starred && isFirst) starred = false;
+				output.push(`${bullet}${formatInline(content, highlightLinkIndex)}`);
 			} else {
 				const indent = line.match(/^(\s*)/)?.[1] || '';
 				output.push(`${indent}  ${DIM}•${RESET} ${formatInline(content, highlightLinkIndex)}`);

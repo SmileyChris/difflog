@@ -4,7 +4,7 @@
 
 import { renderMarkdown } from './render';
 import { parseDiff, flattenTopics, type Topic } from './parser';
-import { isTopicRead, markTopicRead, toggleTopicRead, getDiffs, saveDiffs, trackDiffModified } from './config';
+import { isTopicRead, markTopicRead, toggleTopicRead, isStarred, toggleStar, getDiffs, saveDiffs, trackDiffModified } from './config';
 import { syncUpload } from './sync';
 import { RESET, DIM, BOLD, CYAN, UNDERLINE, GREEN, BRIGHT_YELLOW, clearScreen, hideCursor, showCursor, openUrl, copyToClipboard } from './ui';
 
@@ -23,13 +23,14 @@ function displayHelp(): void {
 	process.stdout.write(`  ${CYAN}PgDn${RESET}       Next diff (newer)\n\n`);
 	process.stdout.write(`${DIM}Reading${RESET}\n`);
 	process.stdout.write(`  ${CYAN}Space${RESET}      Mark as read & jump to next\n`);
-	process.stdout.write(`  ${CYAN}a${RESET}          Toggle show/hide read articles\n\n`);
+	process.stdout.write(`  ${CYAN}r${RESET}          Toggle show/hide read articles\n\n`);
 	process.stdout.write(`${DIM}Links${RESET}\n`);
 	process.stdout.write(`  ${CYAN}Tab${RESET}        Cycle through links\n`);
 	process.stdout.write(`  ${CYAN}Enter${RESET}      Open link in browser\n\n`);
 	process.stdout.write(`${DIM}Actions${RESET}\n`);
+	process.stdout.write(`  ${CYAN}s${RESET}          Star/unstar article\n`);
 	process.stdout.write(`  ${CYAN}g${RESET}          Generate new diff\n`);
-	process.stdout.write(`  ${CYAN}s${RESET}          Share/unshare diff\n`);
+	process.stdout.write(`  ${CYAN}p${RESET}          Public/private sharing\n`);
 	process.stdout.write(`  ${CYAN}f${RESET}          Show full diff\n`);
 	process.stdout.write(`  ${CYAN}q  Esc${RESET}     Quit\n\n`);
 	process.stdout.write(`${DIM}Press any key to return${RESET}\n`);
@@ -85,7 +86,8 @@ function displayTopic(
 	showRead: boolean = false,
 	currentUnreadPos: number = 0,
 	isPublic: boolean = false,
-	syncEnabled: boolean = false
+	syncEnabled: boolean = false,
+	starred: boolean = false
 ): void {
 	clearScreen();
 
@@ -94,12 +96,12 @@ function displayTopic(
 		if (isRead) {
 			// On a read article: just show total unread count
 			process.stdout.write(
-				`${BOLD}${diffTitle}${RESET} ${DIM}[${unreadCount} unread]${RESET}\n`
+				`${BOLD}${diffTitle}${RESET} ${DIM}[${unreadCount} un${RESET}${CYAN}r${RESET}${DIM}ead]${RESET}\n`
 			);
 		} else {
 			// On an unread article: show position in unread articles
 			process.stdout.write(
-				`${BOLD}${diffTitle}${RESET} ${DIM}[${currentUnreadPos}/${unreadCount} unread]${RESET}\n`
+				`${BOLD}${diffTitle}${RESET} ${DIM}[${currentUnreadPos}/${unreadCount} un${RESET}${CYAN}r${RESET}${DIM}ead]${RESET}\n`
 			);
 		}
 	} else if (showRead) {
@@ -108,11 +110,11 @@ function displayTopic(
 		if (unreadCount === 0) {
 			// Highlight 0 unread in yellow
 			process.stdout.write(
-				`${BOLD}${diffTitle}${RESET} ${DIM}[${readCount} read, ${RESET}${BRIGHT_YELLOW}0 unread${RESET}${DIM}]${RESET}\n`
+				`${BOLD}${diffTitle}${RESET} ${DIM}[${readCount} ${RESET}${CYAN}r${RESET}${DIM}ead, ${RESET}${BRIGHT_YELLOW}0 un${RESET}${CYAN}r${RESET}${BRIGHT_YELLOW}ead${RESET}${DIM}]${RESET}\n`
 			);
 		} else {
 			process.stdout.write(
-				`${BOLD}${diffTitle}${RESET} ${DIM}[${readCount} read, ${unreadCount} unread]${RESET}\n`
+				`${BOLD}${diffTitle}${RESET} ${DIM}[${readCount} ${RESET}${CYAN}r${RESET}${DIM}ead, ${unreadCount} un${RESET}${CYAN}r${RESET}${DIM}ead]${RESET}\n`
 			);
 		}
 	} else {
@@ -124,8 +126,8 @@ function displayTopic(
 		let line = `${DIM}${dateInfo}${RESET}`;
 		if (syncEnabled) {
 			const status = isPublic
-				? `${CYAN}public${RESET}`
-				: `${DIM}private${RESET}`;
+				? `${CYAN}p${RESET}${DIM}ublic${RESET}`
+				: `${DIM}${CYAN}p${RESET}${DIM}rivate${RESET}`;
 			line += `${DIM} · ${RESET}${status}`;
 		}
 		process.stdout.write(line + '\n');
@@ -157,7 +159,7 @@ function displayTopic(
 		if (diffPosition) {
 			const isLatest = diffPosition.current === 1;
 			if (unreadCount > 0) {
-				const unreadText = `${unreadCount}/${globalTotal} unread`;
+				const unreadText = `${unreadCount}/${globalTotal} un${RESET}${CYAN}r${RESET}${DIM}ead`;
 				if (isLatest) {
 					if (isTodayDiff) {
 						statusLine = `${DIM}Latest diff (${diffPosition.current}/${diffPosition.total}) • ${unreadText}  •  ? for keys${RESET}`;
@@ -199,7 +201,7 @@ function displayTopic(
 	// Render topic content with highlighted link
 	const topicMarkdown = topic.lines.join('\n').trim();
 	const highlightIndex = topic.links.length > 0 ? linkIndex : undefined;
-	const rendered = renderMarkdown(topicMarkdown, highlightIndex, true);
+	const rendered = renderMarkdown(topicMarkdown, highlightIndex, true, starred);
 	process.stdout.write(rendered + '\n\n');
 
 	// Show URL for selected link or read indicator
@@ -361,6 +363,11 @@ export function startInteractive(
 	const parsed = parseDiff(markdown);
 	const allItems = flattenTopics(parsed);
 
+	// Build p_index mapping (allItems index = p_index for list-item-only diffs)
+	// This matches the web app's data-p sequential indexing of list items
+	const pIndexMap = new Map<Topic, number>();
+	allItems.forEach((item, i) => pIndexMap.set(item.topic, i));
+
 	// Filter to only show topics with links
 	const items = allItems.filter((item) => item.topic.links.length > 0);
 
@@ -412,7 +419,7 @@ export function startInteractive(
 		// Title with read/unread breakdown (same as show-all mode)
 		const readCount = items.length;
 		process.stdout.write(
-			`${BOLD}${diffTitle}${RESET} ${DIM}[${readCount} read, ${RESET}${BRIGHT_YELLOW}0 unread${RESET}${DIM}]${RESET}\n`
+			`${BOLD}${diffTitle}${RESET} ${DIM}[${readCount} ${RESET}${CYAN}r${RESET}${DIM}ead, ${RESET}${BRIGHT_YELLOW}0 un${RESET}${CYAN}r${RESET}${BRIGHT_YELLOW}ead${RESET}${DIM}]${RESET}\n`
 		);
 
 		// Date info line
@@ -420,8 +427,8 @@ export function startInteractive(
 			let line = `${DIM}${dateInfo}${RESET}`;
 			if (syncEnabled) {
 				const status = currentIsPublic
-					? `${CYAN}public${RESET}`
-					: `${DIM}private${RESET}`;
+					? `${CYAN}p${RESET}${DIM}ublic${RESET}`
+					: `${DIM}${CYAN}p${RESET}${DIM}rivate${RESET}`;
 				line += `${DIM} · ${RESET}${status}`;
 			}
 			process.stdout.write(line + '\n');
@@ -511,6 +518,7 @@ export function startInteractive(
 		const categoryPos = getCategoryTopicIndex(items, currentIndex);
 		const categoryNav = getCategoryNavigation(items, currentIndex);
 		const currentUnreadPos = getCurrentUnreadPosition();
+		const pIdx = pIndexMap.get(item.topic) ?? currentIndex;
 		displayTopic(
 			diffTitle,
 			dateInfo,
@@ -530,7 +538,8 @@ export function startInteractive(
 			showRead,
 			currentUnreadPos,
 			currentIsPublic,
-			syncEnabled
+			syncEnabled,
+			isStarred(diffId, pIdx)
 		);
 	}
 
@@ -646,8 +655,18 @@ export function startInteractive(
 			return;
 		}
 
-		// Share menu (s) — only when sync is available
-		if (key === 's' && syncEnabled) {
+		// Star toggle (s)
+		if (key === 's') {
+			if (onAllReadScreen) return;
+			const pIdx = pIndexMap.get(items[currentIndex].topic) ?? currentIndex;
+			toggleStar(diffId, pIdx);
+			syncUpload(); // fire-and-forget
+			displayCurrentView();
+			return;
+		}
+
+		// Public/private menu (p) — only when sync is available
+		if (key === 'p' && syncEnabled) {
 			showingShareMenu = true;
 			menuSelection = currentIsPublic ? 1 : 0;
 			displayShareMenu(diffId, menuSelection, currentIsPublic);
@@ -723,10 +742,10 @@ export function startInteractive(
 			return;
 		}
 
-		// Toggle show/hide read articles with 'a' key
-		if (key === 'a') {
+		// Toggle show/hide read articles with 'r' key
+		if (key === 'r') {
 			if (onAllReadScreen) {
-				// From all-read screen: 'a' enters browse-all mode
+				// From all-read screen: 'r' enters browse-all mode
 				onAllReadScreen = false;
 				showRead = true;
 				currentIndex = 0;
