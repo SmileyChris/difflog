@@ -5,6 +5,7 @@ import { loginCommand } from './commands/login';
 import { logoutCommand } from './commands/logout';
 import { lsCommand } from './commands/ls';
 import { showCommand } from './commands/show';
+import { archiveCommand } from './commands/archive';
 import { generateCommand } from './commands/generate';
 import { configCommand } from './commands/config/index';
 import { profileCommand } from './commands/profile';
@@ -23,6 +24,7 @@ Usage:
   ${BIN} login              Log in via browser (opens difflog.dev)
   ${BIN} logout             Remove profile, diffs, and API keys
   ${BIN} profile            Show profile info and sync status
+  ${BIN} archive            Browse all diffs and stars
   ${BIN} ls                 List cached diffs
   ${BIN} show <n|id>        Show a diff by index or UUID prefix
 
@@ -69,15 +71,46 @@ if (!command) {
 			process.exit(1);
 		}
 
-		// Show the first diff; loop back after generation
-		let action = await showCommand(['1']);
-		while (action === 'generate') {
-			const result = await generateCommand([]);
-			if (result === 'quit') break;
-			// cancel or done: return to interactive viewer
-			diffs = getDiffs();
-			if (diffs.length === 0) break;
-			action = await showCommand(['1']);
+		// Main navigation loop: show ↔ archive ↔ generate
+		let action: string = 'show';
+		let showArg = '1';
+		let lastShowArg = '1';
+		let showTopicIndex: number | undefined;
+
+		loop: while (true) {
+			switch (action) {
+				case 'show': {
+					lastShowArg = showArg;
+					const result = await showCommand([showArg], showTopicIndex);
+					showArg = lastShowArg; // preserve for back navigation
+					showTopicIndex = undefined;
+					if (result === 'generate') { action = 'generate'; continue; }
+					if (result === 'archive') { action = 'archive'; continue; }
+					break loop;
+				}
+				case 'archive': {
+					const result = await archiveCommand();
+					if (result.action === 'back') { action = 'show'; continue; }
+					if (result.action === 'open-diff') {
+						showArg = String(result.diffIndex);
+						showTopicIndex = result.topicIndex;
+						action = 'show';
+						continue;
+					}
+					if (result.action === 'generate') { action = 'generate'; continue; }
+					break loop;
+				}
+				case 'generate': {
+					const result = await generateCommand([]);
+					if (result === 'quit') break loop;
+					diffs = getDiffs();
+					if (diffs.length === 0) break loop;
+					action = 'show';
+					continue;
+				}
+				default:
+					break loop;
+			}
 		}
 		process.exit(0);
 	}
@@ -105,6 +138,10 @@ if (!command) {
 
 			case 'profile':
 				await profileCommand(subArgs);
+				break;
+
+			case 'archive':
+				await archiveCommand();
 				break;
 
 			case 'ls':

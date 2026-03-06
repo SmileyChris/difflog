@@ -29,6 +29,7 @@ function displayHelp(): void {
 	process.stdout.write(`  ${CYAN}Enter${RESET}      Open link in browser\n\n`);
 	process.stdout.write(`${DIM}Actions${RESET}\n`);
 	process.stdout.write(`  ${CYAN}s${RESET}          Star/unstar article\n`);
+	process.stdout.write(`  ${CYAN}a${RESET}          Archive (all diffs & stars)\n`);
 	process.stdout.write(`  ${CYAN}g${RESET}          Generate new diff\n`);
 	process.stdout.write(`  ${CYAN}p${RESET}          Public/private sharing\n`);
 	process.stdout.write(`  ${CYAN}f${RESET}          Show full diff\n`);
@@ -345,7 +346,7 @@ function getCategoryNavigation(
 	return { prev: prevCategories, next: nextCategories };
 }
 
-export type InteractiveAction = 'quit' | 'generate' | 'prev-diff' | 'next-diff';
+export type InteractiveAction = 'quit' | 'generate' | 'prev-diff' | 'next-diff' | 'archive';
 
 /**
  * Start interactive viewer. Resolves with the exit action.
@@ -358,7 +359,8 @@ export function startInteractive(
 	diffPosition?: { current: number; total: number },
 	isTodayDiff: boolean = false,
 	isPublic: boolean = false,
-	syncEnabled: boolean = false
+	syncEnabled: boolean = false,
+	initialTopicIndex?: number
 ): Promise<InteractiveAction> {
 	const parsed = parseDiff(markdown);
 	const allItems = flattenTopics(parsed);
@@ -543,18 +545,30 @@ export function startInteractive(
 		);
 	}
 
-	// Check if all articles are read
-	const unreadCount = getUnreadCount();
-	const allRead = unreadCount === 0;
+	// If opening from a star, jump to that topic
+	if (initialTopicIndex !== undefined) {
+		const targetItem = allItems[initialTopicIndex];
+		if (targetItem) {
+			const idx = items.indexOf(targetItem);
+			if (idx >= 0) {
+				currentIndex = idx;
+				showRead = true; // show all so the target is visible even if read
+			}
+		}
+	} else {
+		// Check if all articles are read
+		const unreadCount = getUnreadCount();
+		const allRead = unreadCount === 0;
 
-	if (allRead) {
-		// All read: open on the completion screen
-		onAllReadScreen = true;
-		showRead = true;
-	} else if (!showRead) {
-		// Jump to first unread
-		while (currentIndex < items.length && isTopicRead(diffId, currentIndex)) {
-			currentIndex++;
+		if (allRead) {
+			// All read: open on the completion screen
+			onAllReadScreen = true;
+			showRead = true;
+		} else if (!showRead) {
+			// Jump to first unread
+			while (currentIndex < items.length && isTopicRead(diffId, currentIndex)) {
+				currentIndex++;
+			}
 		}
 	}
 
@@ -645,6 +659,13 @@ export function startInteractive(
 		if (key === 'q' || key === '\u0003' || key === '\u001b') {
 			cleanup();
 			resolve('quit');
+			return;
+		}
+
+		// Archive (a)
+		if (key === 'a') {
+			cleanup();
+			resolve('archive');
 			return;
 		}
 

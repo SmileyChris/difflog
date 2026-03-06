@@ -5,7 +5,7 @@ import { formatDiffDate } from '../time';
 import { BIN, showHelp } from '../ui';
 import { canSync } from '../sync';
 
-export async function showCommand(args: string[]): Promise<InteractiveAction> {
+export async function showCommand(args: string[], initialTopicIndex?: number): Promise<InteractiveAction> {
 	showHelp(args, `Show a diff by index or UUID prefix
 
 Usage: ${BIN} show <number|id> [flags]
@@ -94,7 +94,8 @@ Flags:
 				? new Date(currentDiff.generated_at).toDateString() === new Date().toDateString()
 				: false;
 
-			const action = await startInteractive(currentDiff.id, currentDiff.content, title, dateInfo, diffPosition, isTodayDiff, currentDiff.isPublic ?? false, canSync());
+			const action = await startInteractive(currentDiff.id, currentDiff.content, title, dateInfo, diffPosition, isTodayDiff, currentDiff.isPublic ?? false, canSync(), initialTopicIndex);
+			initialTopicIndex = undefined; // only use on first view
 
 			if (action === 'prev-diff') {
 				currentDiffIndex++;
