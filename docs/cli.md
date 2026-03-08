@@ -327,9 +327,10 @@ Keys are never stored in plaintext configuration files.
 
 The CLI uses the same encryption and sync system as the web app:
 
-1. **Local-first storage**: Profile and diffs stored in `~/.config/difflog/` (or OS equivalent)
+1. **Local-first storage**: Profile, diffs, and stars stored in `~/.config/difflog/` (or OS equivalent)
 2. **Client-side encryption**: All synced data is encrypted with your password
-3. **Shared codebase**: Uses the same TypeScript code as the web app, compiled to a standalone binary
+3. **Full sync**: Diffs, stars, API keys, and profile metadata all sync between web and CLI
+4. **Shared codebase**: Uses the same TypeScript code as the web app, compiled to a standalone binary
 
 For details on the web login flow, see [CLI Login Architecture](architecture/cli-login.md). For API key storage, see [CLI Key Storage](architecture/cli-keys.md).
 

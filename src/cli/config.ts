@@ -290,6 +290,7 @@ export function trackKeysModified(): void {
 
 export interface SyncMeta {
 	diffsHash?: string;
+	starsHash?: string;
 	keysHash?: string;
 	lastSyncedAt?: string;
 }

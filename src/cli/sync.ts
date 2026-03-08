@@ -1,11 +1,14 @@
-import { getSession, getProfile, getDiffs, saveDiffs, saveProfile, getPendingChanges, clearPendingChanges, getSyncMeta, saveSyncMeta, getApiKeys } from './config';
+import { getSession, getProfile, getDiffs, saveDiffs, saveProfile, getStars, saveStars, getPendingChanges, clearPendingChanges, getSyncMeta, saveSyncMeta, getApiKeys } from './config';
 import type { Session, Profile, Diff, PendingChanges, SyncMeta } from './config';
 import { cliFetchJson, BASE } from './api';
 import { encryptData, hashPasswordForTransport, computeContentHash } from '../lib/utils/crypto';
 import type { ProviderSelections, ApiKeys, EncryptedKeysBlob } from '../lib/types/sync';
 import {
 	encryptDiffs,
+	encryptStars,
+	computeStarsHash,
 	decryptAndMergeDiffs,
+	decryptAndMergeStars,
 	decryptKeysBlob,
 	buildProfileMetadata,
 	buildSyncPayload,
@@ -37,18 +40,25 @@ export async function upload(session: Session): Promise<number> {
 
 	const pending = getPendingChanges();
 	const hasPending = pending.profileModified || pending.keysModified ||
-		pending.modifiedDiffs.length > 0 || pending.deletedDiffs.length > 0;
+		pending.modifiedDiffs.length > 0 || pending.deletedDiffs.length > 0 ||
+		pending.modifiedStars.length > 0 || pending.deletedStars.length > 0;
 	if (!hasPending) return 0;
 
 	const passwordHash = await hashPasswordForTransport(session.password, session.passwordSalt);
 	const diffs = getDiffs();
+	const stars = getStars();
 
 	// Encrypt modified diffs using shared helper
-	const modifiedSet = new Set(pending.modifiedDiffs);
-	const diffsToUpload = await encryptDiffs(diffs, modifiedSet, session.password, session.salt);
+	const modifiedDiffSet = new Set(pending.modifiedDiffs);
+	const diffsToUpload = await encryptDiffs(diffs, modifiedDiffSet, session.password, session.salt);
 
-	// Compute diffs hash over all local diffs
+	// Encrypt modified stars using shared helper
+	const modifiedStarSet = new Set(pending.modifiedStars);
+	const starsToUpload = await encryptStars(stars, modifiedStarSet, session.password, session.salt);
+
+	// Compute hashes over all local content
 	const diffsHash = await computeContentHash(diffs);
+	const starsHash = await computeStarsHash(stars);
 
 	// Build keys blob if keys changed
 	let encryptedApiKey: string | undefined;
@@ -74,7 +84,9 @@ export async function upload(session: Session): Promise<number> {
 			diffs: diffsToUpload,
 			deletedDiffIds: pending.deletedDiffs,
 			diffsHash,
-			starsHash: '',
+			starsHash,
+			stars: starsToUpload,
+			deletedStarIds: pending.deletedStars,
 			encryptedApiKey,
 			keysHash,
 			profile: profileData
@@ -84,6 +96,7 @@ export async function upload(session: Session): Promise<number> {
 	// Update sync meta
 	const syncMeta = getSyncMeta();
 	syncMeta.diffsHash = diffsHash;
+	syncMeta.starsHash = starsHash;
 	if (keysHash) syncMeta.keysHash = keysHash;
 	syncMeta.lastSyncedAt = new Date().toISOString();
 	saveSyncMeta(syncMeta);
@@ -91,6 +104,7 @@ export async function upload(session: Session): Promise<number> {
 	clearPendingChanges();
 
 	return pending.modifiedDiffs.length + pending.deletedDiffs.length +
+		pending.modifiedStars.length + pending.deletedStars.length +
 		(pending.profileModified ? 1 : 0) + (pending.keysModified ? 1 : 0);
 }
 
@@ -100,6 +114,7 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 	if (!profile) return { downloaded: 0, profileUpdated: false };
 
 	const localDiffs = getDiffs();
+	const localStars = getStars();
 	const pending = getPendingChanges();
 	const syncMeta = getSyncMeta();
 
@@ -112,6 +127,7 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 		diffs: { id: string; encrypted_data: string }[];
 		stars: { id: string; encrypted_data: string }[];
 		diffs_skipped?: boolean;
+		stars_skipped?: boolean;
 		keys_skipped?: boolean;
 		encrypted_api_key?: string;
 		salt: string;
@@ -130,6 +146,7 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 		body: JSON.stringify({
 			password_hash: passwordHash,
 			diffs_hash: syncMeta.diffsHash,
+			stars_hash: syncMeta.starsHash,
 			keys_hash: localKeysHash
 		})
 	});
@@ -144,6 +161,14 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 		const result = await decryptAndMergeDiffs(data.diffs, localDiffs, pending, session.password, salt);
 		mergedDiffs = result.merged;
 		downloaded = result.downloaded;
+	}
+
+	// Merge stars using shared helper (unless server indicated no changes)
+	let mergedStars = [...localStars];
+	if (!data.stars_skipped) {
+		const result = await decryptAndMergeStars(data.stars, localStars, pending, session.password, salt);
+		mergedStars = result.merged;
+		downloaded += result.downloaded;
 	}
 
 	// Apply keys blob if server returned one and no local key changes pending
@@ -191,12 +216,15 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 	sortDiffsNewestFirst(mergedDiffs);
 
 	saveDiffs(mergedDiffs);
+	saveStars(mergedStars);
 	if (profileUpdated) saveProfile(profile);
 
 	// Update sync meta
 	const newDiffsHash = await computeContentHash(mergedDiffs);
+	const newStarsHash = await computeStarsHash(mergedStars);
 	const updatedMeta = getSyncMeta();
 	updatedMeta.diffsHash = newDiffsHash;
+	updatedMeta.starsHash = newStarsHash;
 	updatedMeta.lastSyncedAt = new Date().toISOString();
 
 	// Recompute keys hash from current profile state

@@ -2,7 +2,7 @@
  * Pure data-transform functions shared by both web (lib/utils/sync.ts) and CLI (cli/sync.ts).
  * No I/O — no fetch, no storage, no DOM.
  */
-import { encryptData, decryptData, decryptApiKeys, uint8ToBase64 } from './crypto';
+import { encryptData, decryptData, decryptApiKeys, uint8ToBase64, computeContentHash } from './crypto';
 import type {
   Diff,
   PendingChanges,
@@ -90,6 +90,29 @@ export async function decryptAndMergeDiffs(
   );
 
   return { merged, downloaded, errors };
+}
+
+/** Encrypt stars that are in the pending-modified set (or all stars if modifiedIds is null). */
+export async function encryptStars(
+  stars: Star[],
+  modifiedIds: Set<string> | null,
+  password: string,
+  salt: string
+): Promise<{ id: string; encrypted_data: string }[]> {
+  const result: { id: string; encrypted_data: string }[] = [];
+  for (const star of stars) {
+    const id = starId(star);
+    if (modifiedIds && !modifiedIds.has(id)) continue;
+    const encrypted = await encryptData(star, password, salt);
+    result.push({ id, encrypted_data: encrypted });
+  }
+  return result;
+}
+
+/** Compute a deterministic hash over stars (with IDs added for consistency). */
+export async function computeStarsHash(stars: Star[]): Promise<string> {
+  const starsWithIds = stars.map(s => ({ ...s, id: starId(s) }));
+  return computeContentHash(starsWithIds);
 }
 
 /** Decrypt server stars, merge with local respecting pending changes. */
