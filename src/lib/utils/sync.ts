@@ -12,6 +12,8 @@ import {
   starId,
   computeKeysHash,
   encryptDiffs,
+  encryptStars,
+  computeStarsHash,
   decryptAndMergeDiffs,
   decryptAndMergeStars,
   decryptKeysBlob,
@@ -208,9 +210,7 @@ export async function checkStatus(
       try {
         // Hash plaintext content for deterministic comparison
         localDiffsHash = await computeContentHash(history);
-        // Map stars to temporary objects with ID for hashing
-        const starsWithIds = stars.map(s => ({ ...s, id: starId(s) }));
-        localStarsHash = await computeContentHash(starsWithIds);
+        localStarsHash = await computeStarsHash(stars);
         localKeysHash = await computeKeysHash(profile.apiKeys, profile.providerSelections);
 
         needsSync = localDiffsHash !== status.diffs_hash ||
@@ -378,24 +378,12 @@ export async function uploadContent(
   const diffsToUpload = await encryptDiffs(history, modifiedDiffIds, password, salt);
 
   // Upload stars: selective (only modified) or full (all)
-  const modifiedStarIds = new Set(pending.modifiedStars);
-  const starsToUpload: { id: string; encrypted_data: string }[] = [];
-  for (const star of stars) {
-    const id = starId(star);
-    // Skip unmodified stars if using selective upload
-    if (useSelectiveUpload && !modifiedStarIds.has(id)) {
-      continue;
-    }
-
-    const encrypted = await encryptData(star, password, salt);
-    starsToUpload.push({ id, encrypted_data: encrypted });
-  }
+  const modifiedStarIds = useSelectiveUpload ? new Set(pending.modifiedStars) : null;
+  const starsToUpload = await encryptStars(stars, modifiedStarIds, password, salt);
 
   // Compute hashes over plaintext content for deterministic comparison
   const diffsHash = await computeContentHash(history);
-  // Map stars to temporary objects with ID for hashing
-  const starsWithIds = stars.map(s => ({ ...s, id: starId(s) }));
-  const starsHash = await computeContentHash(starsWithIds);
+  const starsHash = await computeStarsHash(stars);
 
   // Include profile data if modified
   const profileData = pending.profileModified ? buildProfileMetadata(profile) : undefined;
@@ -568,9 +556,7 @@ export async function downloadContent(
 
   // Compute hashes over plaintext content for deterministic comparison
   const diffsHash = await computeContentHash(filteredHistory);
-  // Map stars to temporary objects with ID for hashing
-  const starsWithIds = filteredStars.map(s => ({ ...s, id: starId(s) }));
-  const starsHash = await computeContentHash(starsWithIds);
+  const starsHash = await computeStarsHash(filteredStars);
 
   // Compute keys hash from the final state (after potential merge from server)
   const finalApiKeys = profileUpdates?.apiKeys || profile.apiKeys;

@@ -156,6 +156,29 @@ difflog login --no-browser
 difflog login --profile abc123... --password mypassword
 ```
 
+### `difflog archive`
+
+Interactive browser for all your diffs and stars.
+
+```bash
+difflog archive
+```
+
+**Navigation:**
+
+- `↑/↓` or `k/j` — Navigate items
+- `Enter` — Open selected diff (or star's source diff)
+- `s` — Toggle stars view (shows only diffs with starred articles)
+- `d` — Toggle back to diffs view
+- `g` — Generate new diff
+- `Esc` or `a` — Back to viewer
+- `q` — Quit
+
+In stars mode, starred articles appear indented below their source diff. Only diffs with stars are shown.
+
+!!! tip "Quick access"
+    Press `a` from the interactive diff viewer to jump to the archive.
+
 ### `difflog ls`
 
 List your diff history.
@@ -304,9 +327,10 @@ Keys are never stored in plaintext configuration files.
 
 The CLI uses the same encryption and sync system as the web app:
 
-1. **Local-first storage**: Profile and diffs stored in `~/.config/difflog/` (or OS equivalent)
+1. **Local-first storage**: Profile, diffs, and stars stored in `~/.config/difflog/` (or OS equivalent)
 2. **Client-side encryption**: All synced data is encrypted with your password
-3. **Shared codebase**: Uses the same TypeScript code as the web app, compiled to a standalone binary
+3. **Full sync**: Diffs, stars, API keys, and profile metadata all sync between web and CLI
+4. **Shared codebase**: Uses the same TypeScript code as the web app, compiled to a standalone binary
 
 For details on the web login flow, see [CLI Login Architecture](architecture/cli-login.md). For API key storage, see [CLI Key Storage](architecture/cli-keys.md).
 
@@ -326,6 +350,7 @@ The CLI stores data in standard OS locations:
 - `profile.json` - Profile metadata (name, languages, frameworks, topics, depth, provider selections, resolved mappings)
 - `diffs.json` - Cached diff history
 - `read-state.json` - Article read/unread tracking for interactive viewer
+- `stars.json` - Starred (bookmarked) articles
 
 **API Keys:**
 

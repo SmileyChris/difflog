@@ -4,9 +4,9 @@ import { join } from 'node:path';
 import { getPassword } from 'cross-keychain';
 import { PROVIDER_IDS } from '../lib/utils/providers';
 import { SERVICE_NAME } from './ui';
-import type { Diff, ProfileCore, PendingChanges as SharedPendingChanges, ResolvedMapping } from '../lib/types/sync';
+import type { Diff, Star, ProfileCore, PendingChanges as SharedPendingChanges, ResolvedMapping } from '../lib/types/sync';
 
-export type { Diff } from '../lib/types/sync';
+export type { Diff, Star } from '../lib/types/sync';
 
 const CONFIG_DIR = join(homedir(), '.config', 'difflog');
 
@@ -93,6 +93,7 @@ export function clearAll(): void {
 	removeFile('profile.json');
 	removeFile('diffs.json');
 	removeFile('read-state.json');
+	removeFile('stars.json');
 	removeFile('pending.json');
 	removeFile('sync-meta.json');
 }
@@ -184,6 +185,36 @@ export function toggleTopicRead(diffId: string, topicIndex: number): boolean {
 	}
 }
 
+// Stars (bookmarks)
+
+export function getStars(): Star[] {
+	return readJson<Star[]>('stars.json') || [];
+}
+
+export function saveStars(stars: Star[]): void {
+	writeJson('stars.json', stars);
+}
+
+export function isStarred(diffId: string, pIndex: number): boolean {
+	return getStars().some(s => s.diff_id === diffId && s.p_index === pIndex);
+}
+
+export function toggleStar(diffId: string, pIndex: number): boolean {
+	const stars = getStars();
+	const idx = stars.findIndex(s => s.diff_id === diffId && s.p_index === pIndex);
+	if (idx >= 0) {
+		stars.splice(idx, 1);
+		saveStars(stars);
+		trackStarDeleted(`${diffId}:${pIndex}`);
+		return false; // unstarred
+	} else {
+		stars.unshift({ diff_id: diffId, p_index: pIndex, added_at: new Date().toISOString() });
+		saveStars(stars);
+		trackStarModified(`${diffId}:${pIndex}`);
+		return true; // starred
+	}
+}
+
 // Pending changes (sync tracking)
 
 export type PendingChanges = SharedPendingChanges;
@@ -216,6 +247,24 @@ export function trackDiffModified(diffId: string): void {
 	savePendingChanges(pending);
 }
 
+export function trackStarModified(starId: string): void {
+	const pending = getPendingChanges();
+	pending.deletedStars = pending.deletedStars.filter(id => id !== starId);
+	if (!pending.modifiedStars.includes(starId)) {
+		pending.modifiedStars.push(starId);
+	}
+	savePendingChanges(pending);
+}
+
+export function trackStarDeleted(starId: string): void {
+	const pending = getPendingChanges();
+	pending.modifiedStars = pending.modifiedStars.filter(id => id !== starId);
+	if (!pending.deletedStars.includes(starId)) {
+		pending.deletedStars.push(starId);
+	}
+	savePendingChanges(pending);
+}
+
 export function trackDiffDeleted(diffId: string): void {
 	const pending = getPendingChanges();
 	pending.modifiedDiffs = pending.modifiedDiffs.filter(id => id !== diffId);
@@ -241,6 +290,7 @@ export function trackKeysModified(): void {
 
 export interface SyncMeta {
 	diffsHash?: string;
+	starsHash?: string;
 	keysHash?: string;
 	lastSyncedAt?: string;
 }

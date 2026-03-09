@@ -2,7 +2,7 @@
   "name": "difflog",
   "private": true,
   "version": "4.0.0",
-  "cliVersion": "1.0.0",
+  "cliVersion": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "bun run dev:migrate && vite dev",
