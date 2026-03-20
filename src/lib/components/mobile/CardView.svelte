@@ -91,6 +91,7 @@
 	let cardsContainerEl: HTMLElement | null = $state(null);
 	let showJumpMenu = $state(false);
 	let arrivedViaSlide = $state(false);
+	let scrollLocked = false;
 
 	const POSITIONS_KEY = 'difflog-card-positions';
 
@@ -270,6 +271,10 @@
 			if (idx !== visibleCard) {
 				visibleCard = idx;
 				savePosition(diff.id, idx);
+				scrollLocked = false;
+				// Focus the current card so tab order follows the visible card
+				const card = el.querySelector(`[data-card-index="${idx}"]`) as HTMLElement | null;
+				card?.focus({ preventScroll: true });
 			}
 		}
 
@@ -321,6 +326,16 @@
 		tick().then(fitCardFonts);
 	});
 
+	// Auto-focus the visible card's first link (or the card itself) so keyboard works immediately
+	onMount(() => {
+		tick().then(() => {
+			const card = cardsContainerEl?.querySelector(`[data-card-index="${visibleCard}"]`) as HTMLElement | null;
+			if (!card) return;
+			const link = card.querySelector('a') as HTMLElement | null;
+			(link || card).focus({ preventScroll: true });
+		});
+	});
+
 	// Reset when diff changes — restore saved card position if available
 	$effect(() => {
 		const id = diff?.id;
@@ -349,7 +364,33 @@
 
 </script>
 
-<svelte:window onkeydown={(e) => { if (e.key === 's') toggleCurrentStar(); }} onresize={fitCardFonts} />
+<svelte:window onkeydown={(e) => {
+	if (e.key === 's') toggleCurrentStar();
+	if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'PageDown' || e.key === 'PageUp') {
+		e.preventDefault();
+		if (scrollLocked) return;
+		const dir = (e.key === 'ArrowDown' || e.key === 'PageDown') ? 1 : -1;
+		const target = visibleCard + dir;
+		const card = cardsContainerEl?.querySelector(`[data-card-index="${target}"]`) as HTMLElement | null;
+		if (!card) return;
+		scrollLocked = true;
+		card.scrollIntoView({ behavior: 'smooth' });
+		// Focus first link in the target card after scroll settles
+		const link = card.querySelector('a') as HTMLElement | null;
+		if (link) {
+			setTimeout(() => link.focus({ preventScroll: true }), 350);
+		}
+	}
+	if (e.key === 'ArrowRight') {
+		e.preventDefault();
+		if (nextDiff) slideTo(nextDiff, 'left');
+		else if (onNewest) slideOut('left', onNewest);
+	}
+	if (e.key === 'ArrowLeft') {
+		e.preventDefault();
+		if (prevDiff) slideTo(prevDiff, 'right');
+	}
+}} onresize={fitCardFonts} />
 
 <div
 	class="focus-slide-wrapper"
@@ -366,7 +407,7 @@
 	ontouchend={(e) => { handleDoubleTap(e); handleTouchEnd(e); }}
 >
 	<!-- Title card -->
-	<div class="focus-card focus-title-card" data-card-index="0">
+	<div class="focus-card focus-title-card" data-card-index="0" tabindex="-1">
 		<div class="focus-title-card-content">
 			<span class="focus-logo-mark">&#9670;</span>
 			<h1 class="focus-title-card-heading">{diff.title}</h1>
@@ -384,12 +425,12 @@
 				<span class="focus-title-card-link" onclick={() => showJumpMenu = !showJumpMenu}>{articles.length} categories</span>
 			</span>
 			<span class="focus-title-card-generated">Generated {timeAgoFrom(diff.generated_at, Date.now())}</span>
-			<span class="focus-title-card-swipe">&uarr; {'ontouchstart' in globalThis ? 'swipe' : 'scroll'} to read</span>
+			<span class="focus-title-card-swipe">{'ontouchstart' in globalThis ? '\u2191 swipe' : '\u2193 scroll'} to read</span>
 		</div>
 	</div>
 
 	{#each flatCards as card, i (card.globalIndex)}
-		<div class="focus-card focus-content-card" class:focus-card-starred={isStarred(diff.id, card.pIndex)} data-card-index={i + 1}>
+		<div class="focus-card focus-content-card" class:focus-card-starred={isStarred(diff.id, card.pIndex)} data-card-index={i + 1} tabindex="-1">
 			<div class="focus-card-category-row">
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -410,7 +451,7 @@
 	{/each}
 
 	<!-- End card -->
-	<div class="focus-card focus-end-card" data-card-index={flatCards.length + 1}>
+	<div class="focus-card focus-end-card" data-card-index={flatCards.length + 1} tabindex="-1">
 		<div class="focus-end-content">
 			<span class="focus-end-diamond"><span class="focus-end-check">&#10004;</span></span>
 			<span class="focus-end-caught-up">All caught up</span>

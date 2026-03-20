@@ -32,9 +32,11 @@
 <div class="focus-page">
 	<header class="focus-header focus-header-mobile">
 		<span class="focus-header-group">
-			<span class="focus-logo-mark focus-logo-faded">&#9670;</span>
-			<span class="focus-wordmark focus-wordmark-faded">diff<span class="focus-diamond">&#9670;</span>log</span>
-			<span class="focus-mode-label-mobile"><span class="focus-mode-f">f</span>ocus</span>
+			<span class="focus-header-faded">
+				<span class="focus-logo-mark">&#9670;</span>
+				<span class="focus-wordmark">diff<span class="focus-diamond">&#9670;</span>log</span>
+			</span>
+			<span class="focus-mode-label"><span class="focus-mode-f">f</span>ocus</span>
 		</span>
 		<button class="focus-close-btn" class:focus-close-bright={visibleCard > 0} onclick={onExit} aria-label="Close focus mode">&#10005;</button>
 	</header>
