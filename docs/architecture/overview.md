@@ -40,6 +40,7 @@ src/
 │   │   ├── profiles.svelte.ts # Profile CRUD
 │   │   ├── history.svelte.ts  # Diff history, streaks
 │   │   ├── stars.svelte.ts    # Bookmarks
+│   │   ├── tldrs.svelte.ts   # TLDR summaries (local-only)
 │   │   ├── sync.svelte.ts     # Cloud sync state
 │   │   ├── ui.svelte.ts       # Transient UI state
 │   │   ├── operations.svelte.ts # Cross-domain composite operations
@@ -54,6 +55,7 @@ src/
 │   │   ├── sync.ts            # Sync utilities, types
 │   │   ├── crypto.ts          # Client-side encryption
 │   │   ├── markdown.ts        # Markdown rendering
+│   │   ├── tldr.ts            # Article fetching and summarization
 │   │   └── ...                # api, constants, time, pricing, etc.
 │   └── actions/               # Svelte actions
 │       ├── clickOutside.ts    # Click-outside detection
@@ -75,7 +77,7 @@ addDiff(entry);
 updateProfile({ name: 'New Name' });
 ```
 
-localStorage keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-active-profile`, `difflog-pending-sync`.
+localStorage keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-tldrs`, `difflog-active-profile`, `difflog-pending-sync`.
 
 ## Server Architecture
 

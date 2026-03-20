@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { getStars, isStarred } from '$lib/stores/stars.svelte';
 	import { toggleStar, isDiffPublic, getPublicDiffUrl } from '$lib/stores/operations.svelte';
+	import { getTldr, setTldr, removeTldr } from '$lib/stores/tldrs.svelte';
+	import { getProfile } from '$lib/stores/profiles.svelte';
 	import { type Diff } from '$lib/stores/history.svelte';
-	import { renderMarkdown } from '$lib/utils/markdown';
+	import { renderMarkdown, parseInline } from '$lib/utils/markdown';
 	import { buildDiffContent, formatDiffDate } from '$lib/utils/time';
+	import { extractFirstUrl, fetchArticleText, summarizeArticle } from '$lib/utils/tldr';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -20,6 +23,9 @@
 	const stars = $derived(getStars());
 	const hasSections = $derived(html.includes('class="md-section"'));
 	let contentElement: HTMLElement | null = $state(null);
+
+	// TLDR state: tracks per-paragraph loading/expanded/error status
+	let tldrStates = $state(new Map<number, 'loading' | 'expanded' | string>());
 
 	const ANIM_MS = 200;
 
@@ -165,6 +171,148 @@
 			}
 			pendingFocusPIndex = null;
 		}
+	});
+
+	async function handleTldrClick(pIndex: number, el: Element) {
+		const state = tldrStates.get(pIndex);
+
+		// Toggle off if already expanded
+		if (state === 'expanded') {
+			tldrStates.delete(pIndex);
+			tldrStates = new Map(tldrStates);
+			el.querySelector('.tldr-summary')?.remove();
+			el.querySelector('.tldr-btn')?.classList.remove('tldr-btn-active');
+			return;
+		}
+
+		// Check cache first
+		const cached = getTldr(diff.id, pIndex);
+		if (cached) {
+			showTldrSummary(el, pIndex, cached.summary);
+			return;
+		}
+
+		// Fetch and summarize
+		tldrStates.set(pIndex, 'loading');
+		tldrStates = new Map(tldrStates);
+		const btn = el.querySelector('.tldr-btn') as HTMLElement | null;
+		if (btn) {
+			btn.classList.add('tldr-btn-loading');
+			btn.textContent = '\u2234 loading...';
+		}
+
+		try {
+			const url = extractFirstUrl(el.innerHTML);
+			if (!url) throw new Error('No URL found');
+
+			const profile = getProfile();
+			const keys = profile?.apiKeys ?? {};
+			const curationProvider = profile?.providerSelections?.curation ?? null;
+
+			const paragraphText = el.textContent?.replace(/tldr$/, '').trim() || '';
+			const text = await fetchArticleText(url);
+			const summary = await summarizeArticle(keys, text, paragraphText, curationProvider);
+			if (!summary) throw new Error('Summarization failed');
+
+			setTldr(diff.id, pIndex, { summary, url, created_at: new Date().toISOString() });
+			showTldrSummary(el, pIndex, summary);
+		} catch (e) {
+			console.warn('TLDR error:', e);
+			const msg = e instanceof Error && e.message === 'Article content not accessible'
+				? 'Could not access article — try clicking through directly'
+				: 'Failed to generate summary';
+			tldrStates.set(pIndex, `error:${msg}`);
+			tldrStates = new Map(tldrStates);
+		}
+	}
+
+	function buildTldrSummaryDom(el: Element, pIndex: number, summary: string) {
+		el.querySelector('.tldr-summary')?.remove();
+		const div = document.createElement('div');
+		div.className = 'tldr-summary';
+
+		const trashBtn = document.createElement('button');
+		trashBtn.className = 'tldr-trash';
+		trashBtn.textContent = '\uD83D\uDDD1\uFE0F';
+		trashBtn.title = 'Delete summary';
+		trashBtn.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			removeTldr(diff.id, pIndex);
+			tldrStates.delete(pIndex);
+			tldrStates = new Map(tldrStates);
+			div.remove();
+			const tldrBtn = el.querySelector('.tldr-btn');
+			tldrBtn?.classList.remove('tldr-btn-active', 'tldr-btn-cached');
+		});
+		div.appendChild(trashBtn);
+
+		for (const block of summary.split(/\n\n+/).filter(Boolean)) {
+			const p = document.createElement('p');
+			p.innerHTML = block.split('\n').map(line => parseInline(line)).join('<br>');
+			div.appendChild(p);
+		}
+		el.appendChild(div);
+	}
+
+	function showTldrSummary(el: Element, pIndex: number, summary: string) {
+		buildTldrSummaryDom(el, pIndex, summary);
+
+		tldrStates.set(pIndex, 'expanded');
+		tldrStates = new Map(tldrStates);
+
+		const btn = el.querySelector('.tldr-btn');
+		btn?.classList.remove('tldr-btn-loading');
+		btn?.classList.add('tldr-btn-active');
+	}
+
+	// Inject TLDR buttons into paragraphs containing links
+	$effect(() => {
+		if (!contentElement || hideBookmarks) return;
+		void html;
+
+		contentElement.querySelectorAll('.tldr-btn').forEach((btn) => btn.remove());
+		contentElement.querySelectorAll('.tldr-summary').forEach((s) => s.remove());
+
+		contentElement.querySelectorAll('[data-p]').forEach((el) => {
+			if (!el.querySelector('a')) return;
+
+			const pIndex = parseInt(el.getAttribute('data-p') || '0', 10);
+
+			const btn = document.createElement('button');
+			btn.className = 'tldr-btn';
+			btn.textContent = '\u2234 tldr';
+
+			const cached = getTldr(diff.id, pIndex);
+			if (cached) btn.classList.add('tldr-btn-cached');
+
+			const state = tldrStates.get(pIndex);
+			if (state === 'loading') btn.classList.add('tldr-btn-loading');
+			if (state === 'expanded') btn.classList.add('tldr-btn-active');
+
+			btn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				handleTldrClick(pIndex, el);
+			});
+
+			// Insert after the last link in the paragraph text
+			el.appendChild(btn);
+
+			// Re-show cached summary if expanded
+			if (state === 'expanded') {
+				const cached = getTldr(diff.id, pIndex);
+				if (cached) buildTldrSummaryDom(el, pIndex, cached.summary);
+			}
+
+			// Show error message
+			if (state?.startsWith('error:')) {
+				const div = document.createElement('div');
+				div.className = 'tldr-summary tldr-error';
+				div.textContent = state.slice(6);
+				el.appendChild(div);
+			}
+		});
 	});
 
 	// Inject copy-link buttons when copyLinkUrl is provided

@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "4.1",
+      "date": "2026-03-20",
+      "summary": "Inline TLDR summaries",
+      "description": "Get the full picture without leaving your diff. Click the TLDR button on any paragraph to fetch the linked article and get a punchy, context-aware summary powered by your curation provider.",
+      "changes": [
+        { "type": "feature", "text": "TLDR button on paragraphs — fetches the linked article, summarizes it via your curation provider, and caches locally for instant recall", "in": "4.1.0" },
+        { "type": "feature", "text": "Server-side article fetcher as fallback when Jina Reader can't access the content", "in": "4.1.0" },
+        { "type": "feature", "text": "Cached TLDRs show a persistent gold button so you know which articles you've already expanded", "in": "4.1.0" }
+      ]
+    },
+    {
       "version": "4.0",
       "date": "2026-03-03",
       "summary": "Focus mode and mobile redesign",

@@ -34,6 +34,10 @@ graph LR
         S2[Synthesis: Generate Diff]
     end
 
+    subgraph "On-Demand"
+        T[TLDR: Summarize Article]
+    end
+
     P <--> H1
     H1 --> F
     F --> H2
@@ -41,6 +45,7 @@ graph LR
     H2 --> S2
     S1 --> S2
     S2 --> D[Diff]
+    D -.->|user clicks| T
 ```
 
 ## Pipeline Steps
@@ -135,6 +140,25 @@ PREVIOUS DIFF (to avoid repetition)
 - `title` — Short creative title (3-8 words)
 - `content` — Full markdown starting with date line
 - `cost` — Estimated cost based on token usage
+
+### 5. TLDR Summaries (curation provider, on-demand)
+
+When a user clicks the TLDR button on a paragraph, the app fetches the linked article and generates a context-aware summary using the curation provider chain.
+
+**Article fetching** (`fetchArticleText()` in `src/lib/utils/tldr.ts`):
+
+1. Try [Jina Reader](https://r.jina.ai/) — free extraction service that returns clean text/markdown
+2. Fall back to `/api/fetch-article` — server-side fetch via Cloudflare worker that strips HTML
+3. Validate content is real (min 200 chars, no CAPTCHA/login markers)
+4. Truncate to ~4000 chars to keep LLM costs low
+
+**Summarization** (`summarizeArticle()` in `src/lib/utils/tldr.ts`):
+
+The prompt includes the paragraph's existing one-liner so the LLM adds depth rather than repeating it. The summary targets 4-6 short paragraphs with concrete details — version numbers, metrics, technical implications.
+
+**Caching**: Summaries are stored in `localStorage` (`difflog-tldrs`) keyed by `profileId → diffId:pIndex`. Cached TLDRs show a persistent gold button. Not synced to the server — local-only, cheap to regenerate.
+
+**Cost**: Same as curation tasks (uses `completeJson` with 768 max tokens). Roughly $0.0001-0.002 per TLDR depending on provider.
 
 ## Depth Levels
 

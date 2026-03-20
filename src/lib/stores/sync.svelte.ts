@@ -3,6 +3,7 @@ import { persist } from './persist.svelte';
 import { activeProfileId, profiles, getProfile, isDemoProfile, updateProfile as updateProfileBase } from './profiles.svelte';
 import { histories, getHistory, initHistoryForProfile, deleteHistoryForProfile } from './history.svelte';
 import { bookmarks, getStars, initStarsForProfile, deleteStarsForProfile, removeStarsForDiff, starId } from './stars.svelte';
+import { deleteTldrsForProfile } from './tldrs.svelte';
 import { isGenerating, clearGenerationState, clearStageCache } from './ui.svelte';
 import { timeAgo } from '$lib/utils/time.svelte';
 import { ApiError } from '$lib/utils/api';
@@ -659,6 +660,7 @@ export function deleteProfileWithSync(id: string): void {
 
 	deleteHistoryForProfile(id);
 	deleteStarsForProfile(id);
+	deleteTldrsForProfile(id);
 	clearRememberedPassword(id);
 
 	if (activeProfileId.value === id) {

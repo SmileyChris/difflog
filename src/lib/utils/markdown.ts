@@ -24,7 +24,7 @@ function isSafeUrl(url: string): boolean {
          (!trimmed.includes(':') && !trimmed.startsWith('//'));
 }
 
-function parseInline(text: string): string {
+export function parseInline(text: string): string {
   // Process bold, links, and inline code
   let result = '';
   // Link pattern allows one level of nested brackets (e.g., [Title [pdf]](url))

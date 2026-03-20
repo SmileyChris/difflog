@@ -39,6 +39,7 @@ Domain-driven store modules using Svelte 5 `$state()` runes:
 - `profiles.svelte.ts` — Profile state and CRUD operations
 - `history.svelte.ts` — Diff history and streak calculations
 - `stars.svelte.ts` — Bookmarks management
+- `tldrs.svelte.ts` — TLDR article summaries (local-only, not synced)
 - `sync.svelte.ts` — Cloud sync state and operations
 - `ui.svelte.ts` — Transient UI state (dropdowns, modals)
 - `operations.svelte.ts` — Cross-domain composite operations
@@ -57,7 +58,7 @@ updateProfile({ name: 'New Name' });
 
 ### Client-Side State
 
-localStorage keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-active-profile`, `difflog-pending-sync`.
+localStorage keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-tldrs`, `difflog-active-profile`, `difflog-pending-sync`.
 
 ### API Flow
 1. User clicks Generate → resolves custom sources (curation provider), fetches `/api/feeds` + web search in parallel
@@ -92,6 +93,7 @@ Local-first with optional password-protected cloud sync via Cloudflare D1. All d
 - `src/lib/utils/sync.ts` — Sync utilities (encryption, API calls)
 - `src/lib/utils/crypto.ts` — Client-side encryption (AES-GCM, PBKDF2)
 - `src/lib/utils/markdown.ts` — Markdown-to-HTML renderer with `data-p` indices for bookmarking
+- `src/lib/utils/tldr.ts` — Article fetching (via Jina Reader) and LLM summarization for TLDR feature
 - `svelte.config.js` — SvelteKit configuration (Cloudflare adapter)
 - `vite.config.ts` — Vite configuration
 

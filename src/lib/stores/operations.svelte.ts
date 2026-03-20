@@ -34,6 +34,8 @@ import {
 	type Star
 } from './stars.svelte';
 
+import { removeTldrsForDiff } from './tldrs.svelte';
+
 import {
 	syncError,
 	getCachedPassword,
@@ -85,6 +87,7 @@ export function deleteDiff(id: string): void {
 	for (const star of starsToRemove) {
 		trackDeletedStar(starId(star));
 	}
+	removeTldrsForDiff(id);
 	deleteDiffBase(id);
 	trackDeletedDiff(id);
 }

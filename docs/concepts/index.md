@@ -13,6 +13,7 @@ Terminology, conventions, and technology choices used throughout diff·log.
 | **Diff** | A generated intelligence report — what's changed since you last checked in |
 | **Profile** | A saved configuration (tech stack, interests, API keys) that personalizes your diffs |
 | **Star** | A reference to a bookmarked paragraph in a diff (not a copy) |
+| **TLDR** | An on-demand AI summary of a linked article, shown inline below the paragraph (see [AI Pipeline](../ai.md#5-tldr-summaries-curation-provider-on-demand)) |
 | **Depth** | Reading preference — how detailed your diffs should be (see [AI Pipeline](../ai.md#depth-levels)) |
 | **Streak** | Count of consecutive diffs generated with an 8-day tolerance between each |
 | **Sync** | Optional cross-device sharing via encrypted cloud storage |
@@ -45,6 +46,7 @@ All client data is stored locally with these keys:
 | `difflog-active-profile` | Currently selected profile ID |
 | `difflog-histories` | Generated diffs per profile |
 | `difflog-bookmarks` | Starred paragraphs per profile |
+| `difflog-tldrs` | Cached TLDR summaries per profile (local-only) |
 | `difflog-pending-sync` | Changes waiting to sync |
 
 ## Data Models
@@ -132,6 +134,20 @@ Content is reconstructed on display via `getStarContent(star)`, which:
 
 If the parent diff is deleted, the star becomes orphaned and displays a "Diff deleted" message with a remove button.
 
+### TLDR Entry
+
+Cached article summaries generated on-demand via the curation provider. Local-only — not synced.
+
+```typescript
+{
+  summary: string;     // AI-generated summary (markdown-formatted)
+  url: string;         // Source article URL
+  created_at: string;  // ISO timestamp
+}
+```
+
+Stored as `Record<profileId, Record<"diffId:pIndex", TldrEntry>>`. Cleaned up when diffs or profiles are deleted.
+
 ### Paragraph Indexing
 
 The markdown renderer assigns sequential `data-p` indices to bookmarkable elements:
@@ -199,5 +215,7 @@ The app uses HTML entities rather than an icon library:
 | ↗ | `&#8599;` | External link/upload |
 | ↓ | `&#8595;` | Import |
 | 🔥 | `&#128293;` | Streak/fire |
+| ∴ | `&#8756;` | TLDR button |
+| 🗑️ | `&#128465;` | Delete TLDR summary |
 
 This keeps the bundle small and works universally without icon fonts.
