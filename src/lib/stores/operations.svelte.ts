@@ -174,7 +174,7 @@ async function performSync(password: string): Promise<void> {
 			if (activeProfileId.value) {
 				forgetPassword();
 			}
-			syncError.value = 'Invalid password';
+			syncError.value = e.message;
 		} else if (e instanceof ApiError && e.status === 429) {
 			syncError.value = e.message;
 		} else {

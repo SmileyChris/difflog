@@ -191,7 +191,7 @@ export async function checkStatus(
   try {
     const res = await fetch(`/api/profile/${profileId}/status`);
     if (!res.ok) {
-      return { exists: false, error: 'Failed to check sync status' };
+      return { exists: true, error: 'Failed to check sync status' };
     }
 
     const status = (await res.json()) as {
@@ -231,7 +231,7 @@ export async function checkStatus(
     };
   } catch (e) {
     console.error('Sync status check error:', e);
-    return { exists: false, error: 'Network error' };
+    return { exists: true, error: 'Network error' };
   }
 }
 

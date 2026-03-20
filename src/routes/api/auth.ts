@@ -122,9 +122,15 @@ export async function verifyPasswordHash(
 /**
  * Check if profile is currently locked out due to too many failed attempts
  */
+/** Parse a datetime string as UTC (handles both SQLite's '2026-03-20 12:00:00' and ISO '2026-03-20T12:00:00Z') */
+function parseUtc(datetime: string): number {
+	if (datetime.endsWith('Z') || datetime.includes('+')) return new Date(datetime).getTime();
+	return new Date(datetime.replace(' ', 'T') + 'Z').getTime();
+}
+
 export function isLockedOut(profile: ProfileRow): { locked: boolean; remainingSeconds?: number } {
 	if (!profile.lockout_until) return { locked: false };
-	const lockoutTime = new Date(profile.lockout_until).getTime();
+	const lockoutTime = parseUtc(profile.lockout_until);
 	const now = Date.now();
 	if (now < lockoutTime) {
 		return { locked: true, remainingSeconds: Math.ceil((lockoutTime - now) / 1000) };
@@ -137,7 +143,7 @@ export function isLockedOut(profile: ProfileRow): { locked: boolean; remainingSe
  */
 export function shouldResetAttempts(profile: ProfileRow): boolean {
 	if (!profile.last_failed_at || profile.failed_attempts === 0) return false;
-	const lastFailed = new Date(profile.last_failed_at).getTime();
+	const lastFailed = parseUtc(profile.last_failed_at);
 	const windowMs = RATE_LIMIT.ATTEMPT_WINDOW_MINUTES * 60 * 1000;
 	return Date.now() > lastFailed + windowMs;
 }
@@ -158,7 +164,7 @@ export async function verifyPassword(
 		return {
 			error: new Response(
 				JSON.stringify({
-					error: 'Too many failed attempts. Try again later.',
+					error: 'Account locked. Try again later.',
 					locked: true,
 					retry_after_seconds: lockout.remainingSeconds
 				}),
@@ -197,12 +203,16 @@ export async function verifyPassword(
 			.run();
 
 		const remaining = RATE_LIMIT.MAX_ATTEMPTS - newAttempts;
+		const body: Record<string, unknown> = {
+			error: 'Invalid password',
+			attempts_remaining: Math.max(0, remaining)
+		};
+		if (remaining <= 0) {
+			body.retry_after_seconds = RATE_LIMIT.LOCKOUT_MINUTES * 60;
+		}
 		return {
 			error: new Response(
-				JSON.stringify({
-					error: 'Invalid password',
-					attempts_remaining: Math.max(0, remaining)
-				}),
+				JSON.stringify(body),
 				{
 					status: 401,
 					headers: { 'Content-Type': 'application/json' }

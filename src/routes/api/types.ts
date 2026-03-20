@@ -149,7 +149,7 @@ export interface ShareResponse {
 // Rate limiting constants
 export const RATE_LIMIT = {
 	MAX_ATTEMPTS: 5, // Lock after 5 failed attempts
-	LOCKOUT_MINUTES: 15, // Lock for 15 minutes
+	LOCKOUT_MINUTES: 10, // Lock for 10 minutes
 	ATTEMPT_WINDOW_MINUTES: 5 // Reset counter after 5 min of no attempts
 };
 

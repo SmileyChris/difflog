@@ -28,18 +28,23 @@ export async function fetchJson<T>(
     const data = (await res.json().catch(() => ({}))) as { retry_after_seconds?: number };
     const retryAfter = data.retry_after_seconds;
     throw new ApiError(
-      `Too many attempts. Try again in ${Math.ceil((retryAfter || 60) / 60)} minutes.`,
+      `Account locked. Try again in ${Math.ceil((retryAfter || 60) / 60)} minutes.`,
       429,
       retryAfter
     );
   }
 
   if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string; attempts_remaining?: number };
+    const data = (await res.json().catch(() => ({}))) as { error?: string; attempts_remaining?: number; retry_after_seconds?: number };
     let message = data.error || `Request failed: ${res.status}`;
     // Include remaining attempts for 401 errors
     if (res.status === 401 && typeof data.attempts_remaining === 'number') {
-      message = `Invalid password (${data.attempts_remaining} attempts remaining)`;
+      if (data.attempts_remaining > 0) {
+        message = `Invalid password (${data.attempts_remaining} attempt${data.attempts_remaining === 1 ? '' : 's'} remaining)`;
+      } else {
+        const mins = Math.ceil((data.retry_after_seconds || 900) / 60);
+        message = `Account locked. Try again in ${mins} minutes.`;
+      }
     }
     throw new ApiError(message, res.status);
   }

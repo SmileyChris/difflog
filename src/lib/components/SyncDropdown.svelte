@@ -97,11 +97,6 @@
             <div class="sync-dropdown-error">{syncError.value}</div>
           {/if}
         </div>
-      {:else if syncing.value}
-        <div class="sync-dropdown-syncing">
-          <span class="sync-dropdown-syncing-icon">&#8635;</span>
-          <span>Syncing...</span>
-        </div>
       {:else}
         <div class="sync-dropdown-status">
           <span class="sync-dropdown-info">
@@ -119,16 +114,18 @@
               Synced {lastSyncedAgo}
             {/if}
           </span>
-          {#if lastSyncedAgo !== "just now"}
-            <button
-              class="sync-dropdown-btn-icon"
-              onclick={() => doSyncFromDropdown()}
-              title="Sync now"
-            >
-              &#8635;
-            </button>
-          {/if}
+          <button
+            class="sync-dropdown-btn-icon"
+            onclick={() => doSyncFromDropdown()}
+            disabled={syncing.value}
+            title="Sync now"
+          >
+            <span class:spinning={syncing.value}>&#8635;</span>
+          </button>
         </div>
+        {#if syncError.value}
+          <div class="sync-dropdown-error">{syncError.value}</div>
+        {/if}
         <button class="sync-dropdown-forget" onclick={() => forgetPassword()}>
           {getHasRememberedPassword()
             ? "forget stored password"
