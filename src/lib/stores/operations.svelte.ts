@@ -53,7 +53,7 @@ import {
 import {
 	syncDropdownPassword,
 	syncDropdownRemember,
-	setSyncResultWithTimeout
+	setSyncResult
 } from './ui.svelte';
 
 // Profile creation with history/stars initialization
@@ -154,10 +154,7 @@ export async function doSyncFromDropdown(): Promise<void> {
 		return;
 	}
 
-	if (!syncDropdownPassword.value) {
-		syncError.value = 'Password required';
-		return;
-	}
+	if (!syncDropdownPassword.value) return;
 
 	const pwd = syncDropdownPassword.value;
 	const shouldRemember = syncDropdownRemember.value;
@@ -171,7 +168,7 @@ export async function doSyncFromDropdown(): Promise<void> {
 async function performSync(password: string): Promise<void> {
 	try {
 		const result = await syncContent(password);
-		setSyncResultWithTimeout(result);
+		setSyncResult(result);
 	} catch (e: unknown) {
 		if (e instanceof ApiError && e.status === 401) {
 			if (activeProfileId.value) {

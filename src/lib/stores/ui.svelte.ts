@@ -15,8 +15,7 @@ let _syncDropdownPassword = $state('');
 let _syncDropdownRemember = $state(false);
 let _syncResult = $state<{ uploaded: number; downloaded: number } | null>(null);
 let _archiveSearch = $state('');
-let _syncResultTimeout: ReturnType<typeof setTimeout> | null = null;
-let _syncButtonEl: HTMLElement | null = null;
+let _syncDropdownOpen = $state(false);
 
 // State accessors
 export const showImportModal = {
@@ -105,28 +104,18 @@ export const archiveSearch = {
 
 // Actions
 
-/** Register the sync button element so openSyncDropdown can focus it */
-export function registerSyncButton(el: HTMLElement | null): void {
-	_syncButtonEl = el;
-}
+export const syncDropdownOpen = {
+	get value() { return _syncDropdownOpen; },
+	set value(val: boolean) { _syncDropdownOpen = val; }
+};
 
-/** Open the sync dropdown by focusing its trigger button */
 export function openSyncDropdown(): void {
-	_syncResult = null;
 	_syncDropdownPassword = '';
 	_syncDropdownRemember = false;
-	_syncButtonEl?.focus();
+	_syncDropdownOpen = true;
 }
 
-export function setSyncResultWithTimeout(result: { uploaded: number; downloaded: number }): void {
+export function setSyncResult(result: { uploaded: number; downloaded: number }): void {
 	_syncResult = result;
 	_syncDropdownPassword = '';
-
-	if (_syncResultTimeout) {
-		clearTimeout(_syncResultTimeout);
-	}
-
-	_syncResultTimeout = setTimeout(() => {
-		_syncResult = null;
-	}, 2000);
 }

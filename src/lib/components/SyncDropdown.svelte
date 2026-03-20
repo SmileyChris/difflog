@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { getProfile } from "$lib/stores/profiles.svelte";
   import {
     syncing,
@@ -14,15 +13,17 @@
     syncDropdownPassword,
     syncDropdownRemember,
     syncResult,
-    registerSyncButton,
+    syncDropdownOpen,
   } from "$lib/stores/ui.svelte";
   import { doSyncFromDropdown } from "$lib/stores/operations.svelte";
+  import { clickOutside } from "$lib/actions/clickOutside";
 
-  let syncButton: HTMLButtonElement;
+  let passwordInput: HTMLInputElement;
 
-  onMount(() => {
-    registerSyncButton(syncButton);
-    return () => registerSyncButton(null);
+  $effect(() => {
+    if (syncError.value && passwordInput) {
+      passwordInput.focus();
+    }
   });
 
   function handleKeyPress(e: KeyboardEvent) {
@@ -38,12 +39,11 @@
 </script>
 
 {#if show}
-  <div class="sync-dropdown-wrapper">
+  <div class="sync-dropdown-wrapper" use:clickOutside={() => syncDropdownOpen.value = false}>
     <button
-      bind:this={syncButton}
       class="sync-status"
       title={state === "syncing" ? "Syncing..." : "Sync status"}
-      disabled={syncing.value}
+      onclick={() => syncDropdownOpen.value = !syncDropdownOpen.value}
     >
       <span class="sync-status-cloud">&#9729;</span>
       {#if state === "syncing"}
@@ -52,36 +52,13 @@
         <span class="sync-status-indicator sync-status-pending">&#9670;</span>
       {:else if state === "synced"}
         <span class="sync-status-indicator sync-status-ok">&#10003;</span>
-        <span class="sync-status-indicator sync-status-hover">&#8635;</span>
       {/if}
     </button>
 
+    {#if syncDropdownOpen.value}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="sync-dropdown" onclick={(e) => e.stopPropagation()}>
-      {#if syncing.value}
-        <div class="sync-dropdown-syncing">
-          <span class="sync-dropdown-syncing-icon">&#8635;</span>
-          <span>Syncing...</span>
-        </div>
-      {:else if syncResult.value}
-        <div class="sync-dropdown-result">
-          <span class="sync-dropdown-result-icon">&#10003;</span>
-          <span>
-            {#if syncResult.value.uploaded || syncResult.value.downloaded}
-              {syncResult.value.uploaded
-                ? "↑" + syncResult.value.uploaded
-                : ""}
-              {syncResult.value.downloaded
-                ? " ↓" + syncResult.value.downloaded
-                : ""}
-              synced
-            {:else}
-              In sync
-            {/if}
-          </span>
-        </div>
-      {:else if needsPassword}
+    <div class="sync-dropdown" onkeydown={(e) => { if (e.key === 'Escape') syncDropdownOpen.value = false; }}>
+      {#if needsPassword || (syncing.value && !getCachedPassword())}
         <div class="sync-dropdown-form">
           {#if lastSyncedAgo}
             <div class="sync-dropdown-info">
@@ -90,25 +67,29 @@
           {/if}
           <div class="sync-dropdown-input-row">
             <input
+              bind:this={passwordInput}
               type="password"
               class="sync-dropdown-input"
               placeholder="Password"
               bind:value={syncDropdownPassword.value}
+              oninput={() => { if (syncError.value) syncError.value = null; }}
               onkeydown={handleKeyPress}
+              disabled={syncing.value}
             />
             <button
               class="sync-dropdown-btn-icon"
               onclick={() => doSyncFromDropdown()}
-              disabled={!syncDropdownPassword.value}
+              disabled={!syncDropdownPassword.value || syncing.value}
               title="Sync now"
             >
-              &#8635;
+              <span class:spinning={syncing.value}>&#8635;</span>
             </button>
           </div>
           <label class="sync-dropdown-remember">
             <input
               type="checkbox"
               bind:checked={syncDropdownRemember.value}
+              disabled={syncing.value}
             />
             <span class="sync-dropdown-remember-text">Remember password</span>
           </label>
@@ -116,9 +97,28 @@
             <div class="sync-dropdown-error">{syncError.value}</div>
           {/if}
         </div>
+      {:else if syncing.value}
+        <div class="sync-dropdown-syncing">
+          <span class="sync-dropdown-syncing-icon">&#8635;</span>
+          <span>Syncing...</span>
+        </div>
       {:else}
         <div class="sync-dropdown-status">
-          <span class="sync-dropdown-info">Synced {lastSyncedAgo}</span>
+          <span class="sync-dropdown-info">
+            {#if syncResult.value}
+              {#if syncResult.value.uploaded || syncResult.value.downloaded}
+                <span class="sync-dropdown-counts">
+                  {syncResult.value.uploaded ? "↑" + syncResult.value.uploaded : ""}
+                  {syncResult.value.downloaded ? "↓" + syncResult.value.downloaded : ""}
+                </span>
+                · {lastSyncedAgo}
+              {:else}
+                In sync · {lastSyncedAgo}
+              {/if}
+            {:else}
+              Synced {lastSyncedAgo}
+            {/if}
+          </span>
           {#if lastSyncedAgo !== "just now"}
             <button
               class="sync-dropdown-btn-icon"
@@ -136,6 +136,7 @@
         </button>
       {/if}
     </div>
+    {/if}
   </div>
 {/if}
 
@@ -153,7 +154,7 @@
     background: none;
     border: none;
     padding: 0;
-    cursor: default;
+    cursor: pointer;
     text-decoration: none;
   }
 
@@ -196,21 +197,6 @@
     }
   }
 
-  .sync-status-hover {
-    display: none;
-    color: var(--accent);
-  }
-
-  .sync-dropdown-wrapper:hover .sync-status-hover,
-  .sync-dropdown-wrapper:focus-within .sync-status-hover {
-    display: block;
-  }
-
-  .sync-dropdown-wrapper:hover .sync-status-ok,
-  .sync-dropdown-wrapper:focus-within .sync-status-ok {
-    display: none;
-  }
-
   .sync-dropdown {
     position: absolute;
     top: calc(100% + 0.5rem);
@@ -223,32 +209,6 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     cursor: default;
     z-index: 1000;
-
-    /* Hidden state */
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-0.5rem) scale(0.98);
-    transition: opacity 0.2s, transform 0.2s, visibility 0s 0.2s;
-    pointer-events: none;
-  }
-
-  /* Spacer to bridge gap between button and dropdown */
-  .sync-dropdown::before {
-    content: "";
-    position: absolute;
-    top: -0.5rem;
-    left: 0;
-    right: 0;
-    height: 0.5rem;
-  }
-
-  .sync-dropdown-wrapper:hover .sync-dropdown,
-  .sync-dropdown-wrapper:focus-within .sync-dropdown {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0) scale(1);
-    transition: opacity 0.2s, transform 0.2s, visibility 0s;
-    pointer-events: auto;
   }
 
   .sync-dropdown-form {
@@ -292,18 +252,6 @@
     font-size: 0.8rem;
   }
 
-  .sync-dropdown-result {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--accent);
-    font-size: 0.85rem;
-  }
-
-  .sync-dropdown-result-icon {
-    font-size: 1rem;
-  }
-
   .sync-dropdown-syncing {
     display: flex;
     align-items: center;
@@ -328,6 +276,10 @@
   .sync-dropdown-info {
     color: var(--text-subtle);
     font-size: 0.8rem;
+  }
+
+  .sync-dropdown-counts {
+    color: var(--accent);
   }
 
   .sync-paused {
@@ -366,6 +318,11 @@
   .sync-dropdown-btn-icon:hover {
     border-color: var(--accent);
     color: var(--accent);
+  }
+
+  .spinning {
+    display: inline-block;
+    animation: spin 1s linear infinite;
   }
 
   .sync-dropdown-forget {
