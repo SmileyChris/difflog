@@ -8,7 +8,8 @@
       "changes": [
         { "type": "feature", "text": "TLDR button on paragraphs — fetches the linked article, summarizes it via your curation provider, and caches locally for instant recall", "in": "4.1.0" },
         { "type": "feature", "text": "Server-side article fetcher as fallback when Jina Reader can't access the content", "in": "4.1.0" },
-        { "type": "feature", "text": "Cached TLDRs show a persistent gold button so you know which articles you've already expanded", "in": "4.1.0" }
+        { "type": "feature", "text": "Cached TLDRs show a persistent gold button so you know which articles you've already expanded", "in": "4.1.0" },
+        { "type": "feature", "text": "Focus mode desktop improvements: centered layout, better key navigation", "in": "4.1.1" }
       ]
     },
     {
