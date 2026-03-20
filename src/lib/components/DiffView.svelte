@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { getProfile } from '$lib/stores/profiles.svelte';
 	import { getHistory, type Diff } from '$lib/stores/history.svelte';
 	import DiffContent from './DiffContent.svelte';
@@ -12,9 +11,10 @@
 		infoExtra?: Snippet;
 		banners?: Snippet;
 		footerAction?: Snippet;
+		onFocus?: () => void;
 	}
 
-	let { diff, infoExtra, banners, footerAction }: Props = $props();
+	let { diff, infoExtra, banners, footerAction, onFocus }: Props = $props();
 
 	const isArchive = $derived(getHistory().length > 0 && diff.id !== getHistory()[0].id);
 
@@ -73,7 +73,7 @@
 		if (e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey) {
 			const tag = (e.target as HTMLElement)?.tagName;
 			if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-			goto(`/focus/${diff.id}`);
+			onFocus?.();
 		}
 	}
 </script>
@@ -116,7 +116,7 @@
 				</h1>
 				<div class="diff-title-actions">
 					<ShareDropdown {diff} />
-					<a href="/focus/{diff.id}" class="focus-link" title="Focus mode (f)"><span class="focus-link-key">f</span>ocus</a>
+					{#if onFocus}<button class="focus-link" title="Focus mode (f)" onclick={onFocus}><span class="focus-link-key">f</span>ocus</button>{/if}
 				</div>
 			</div>
 		{/if}
@@ -240,6 +240,9 @@
 		padding: 0.35rem 0.5rem;
 		border-radius: var(--radius-sm);
 		transition: color 0.15s, background 0.15s;
+		background: none;
+		border: none;
+		cursor: pointer;
 	}
 
 	.focus-link-key {

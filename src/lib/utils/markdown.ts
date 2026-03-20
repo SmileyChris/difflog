@@ -6,6 +6,14 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+function unescapeHtml(text: string): string {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"');
+}
+
 function isSafeUrl(url: string): boolean {
   const trimmed = url.trim().toLowerCase();
   // Only allow http, https, and relative URLs
@@ -308,7 +316,7 @@ export function extractParagraphs(html: string): Paragraph[] {
   const pRegex = /<(?:p|li)\s[^>]*data-p="(\d+)"[^>]*>([\s\S]*?)<\/(?:p|li)>/g;
 
   for (const section of sections) {
-    const titleText = section.title.replace(/<[^>]+>/g, '').trim();
+    const titleText = unescapeHtml(section.title.replace(/<[^>]+>/g, '').trim());
     let match: RegExpExecArray | null;
     while ((match = pRegex.exec(section.html)) !== null) {
       const pIndex = parseInt(match[1], 10);

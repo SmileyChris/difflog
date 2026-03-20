@@ -10,6 +10,7 @@
 	import { isMobile, mobileDiff } from '$lib/stores/mobile.svelte';
 	import { HeaderNav, DiffView, SiteFooter, PageHeader } from '$lib/components';
 	import CardView from '$lib/components/mobile/CardView.svelte';
+	import FocusWrapper from '$lib/components/FocusWrapper.svelte';
 	import StreakCalendar from './StreakCalendar.svelte';
 	import { daysSince } from '$lib/utils/time.svelte';
 
@@ -71,8 +72,15 @@
 
 	const showMobile = $derived(isMobile.value && diff && !forceScroll);
 
+	let focusMode = $state(false);
+	let focusVisibleCard = $state(0);
+
 	function handleExit() {
 		// no-op — already on dashboard
+	}
+
+	function exitFocus() {
+		focusMode = false;
 	}
 </script>
 
@@ -94,6 +102,8 @@
 			onNewest={() => goto('/generate')}
 		/>
 	</div>
+{:else if focusMode && diff && !isMobile.value}
+	<FocusWrapper {diff} onExit={exitFocus} bind:visibleCard={focusVisibleCard} onNewest={() => goto('/generate')} />
 {:else}
 	<PageHeader>
 		<div class="header-profile-group">
@@ -121,7 +131,7 @@
 		{/if}
 
 		{#if diff}
-			<DiffView {diff}>
+			<DiffView {diff} onFocus={() => focusMode = true}>
 				{#snippet infoExtra()}
 					<StreakCalendar onDayClick={goToDiffOnDate} />
 					{#if generating.value}

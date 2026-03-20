@@ -8,6 +8,7 @@
 	import { isMobile, mobileDiff } from '$lib/stores/mobile.svelte';
 	import { HeaderNav, DiffView, DiffContent, SiteFooter, PageHeader } from '$lib/components';
 	import CardView from '$lib/components/mobile/CardView.svelte';
+	import FocusWrapper from '$lib/components/FocusWrapper.svelte';
 
 	let { data } = $props();
 
@@ -57,12 +58,19 @@
 		return history.length > 0 && history[0].id === diff.id;
 	});
 
+	let focusMode = $state(false);
+	let focusVisibleCard = $state(0);
+
 	function handleExit() {
 		// no-op in diff view — user is already on the diff page
 	}
 
 	function handleNewest() {
 		goto('/generate');
+	}
+
+	function exitFocus() {
+		focusMode = false;
 	}
 </script>
 
@@ -82,6 +90,8 @@
 			onNewest={isLatest ? handleNewest : undefined}
 		/>
 	</div>
+{:else if focusMode && diff && !isMobile.value}
+	<FocusWrapper {diff} onExit={exitFocus} bind:visibleCard={focusVisibleCard} />
 {:else if showLocalMode}
 	<PageHeader>
 		{#if getStars()?.length > 0}
@@ -94,7 +104,7 @@
 
 	<main id="content">
 		{#if diff}
-			<DiffView {diff}>
+			<DiffView {diff} onFocus={() => focusMode = true}>
 				{#snippet infoExtra()}
 					{#if generating.value}
 						<a href="/generate" class="btn-ghost btn-branded" aria-busy="true">Generating…</a>

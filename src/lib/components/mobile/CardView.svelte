@@ -277,6 +277,50 @@
 		return () => cardsContainerEl?.removeEventListener('scroll', updateVisibleCard);
 	});
 
+	// Shrink font on cards whose content overflows the viewport
+	const BASE_FONT_REM = 1.35;
+	const MIN_FONT_REM = 0.85;
+
+	function fitCardFonts() {
+		if (!cardsContainerEl) return;
+		const cards = cardsContainerEl.querySelectorAll('.focus-content-card');
+		cards.forEach((card) => {
+			const content = card.querySelector('.focus-card-content') as HTMLElement;
+			if (!content) return;
+			// Reset to measure natural height
+			content.style.fontSize = '';
+			content.style.lineHeight = '';
+
+			const cardEl = card as HTMLElement;
+			const style = getComputedStyle(cardEl);
+			const padY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+			const catRow = card.querySelector('.focus-card-category-row') as HTMLElement;
+			const catH = catRow ? catRow.offsetHeight + parseFloat(getComputedStyle(catRow).marginBottom || '0') : 0;
+
+			const available = cardEl.clientHeight - padY - catH;
+			const natural = content.scrollHeight;
+
+			if (natural > available && available > 0) {
+				const ratio = available / natural;
+				const scaled = BASE_FONT_REM * ratio;
+				const clamped = Math.max(MIN_FONT_REM, scaled);
+				content.style.fontSize = `${clamped}rem`;
+				// Tighten line-height proportionally when shrinking a lot
+				if (clamped < 1.05) {
+					content.style.lineHeight = '1.55';
+				} else if (clamped < 1.2) {
+					content.style.lineHeight = '1.65';
+				}
+			}
+		});
+	}
+
+	$effect(() => {
+		flatCards; // re-run when content changes
+		if (!cardsContainerEl) return;
+		tick().then(fitCardFonts);
+	});
+
 	// Reset when diff changes — restore saved card position if available
 	$effect(() => {
 		const id = diff?.id;
@@ -305,7 +349,7 @@
 
 </script>
 
-<svelte:window onkeydown={(e) => { if (e.key === 's') toggleCurrentStar(); }} />
+<svelte:window onkeydown={(e) => { if (e.key === 's') toggleCurrentStar(); }} onresize={fitCardFonts} />
 
 <div
 	class="focus-slide-wrapper"
