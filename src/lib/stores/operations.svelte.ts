@@ -14,7 +14,7 @@ import {
 	type Profile
 } from './profiles.svelte';
 
-import { user } from './account.svelte';
+import { getCredsAuth } from './account.svelte';
 
 import {
 	histories,
@@ -292,14 +292,14 @@ function migrateToReferenceStars(): void {
 
 // Pending diff recovery for creds mode
 export async function checkPendingDiffs(): Promise<void> {
-	const currentUser = user.value;
-	if (!currentUser) return;
+	const auth = getCredsAuth();
+	if (!auth) return;
 
 	try {
 		const res = await fetch('/api/creds/pending', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ email: currentUser.email, code: currentUser.code })
+			body: JSON.stringify({ email: auth.email, code: auth.code })
 		});
 
 		if (!res.ok) return;
@@ -326,7 +326,7 @@ export async function checkPendingDiffs(): Promise<void> {
 			await fetch('/api/creds/pending', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email: currentUser.email, code: currentUser.code, claim: claimIds })
+				body: JSON.stringify({ email: auth.email, code: auth.code, claim: claimIds })
 			});
 			console.log(`[Creds] Recovered ${claimIds.length} pending diff(s)`);
 		}
@@ -348,7 +348,7 @@ export function initApp(): void {
 	checkSyncStatus();
 
 	// Recover pending diffs for creds profiles
-	if (isCredsProfile() && user.value) {
+	if (isCredsProfile() && getCredsAuth()) {
 		checkPendingDiffs();
 	}
 

@@ -62,6 +62,9 @@ export function getAnthropicKey(profile: { apiKeys?: ApiKeys }): string | undefi
 export interface Profile extends ProfileCore {
   apiKeys?: ApiKeys;
   apiSource?: 'byok' | 'creds';
+  credsEmail?: string;
+  credsCode?: string;
+  credBalance?: number;
   hasUsedCreds?: boolean;
   salt?: string;
   passwordSalt?: string;

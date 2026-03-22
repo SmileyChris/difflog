@@ -1,22 +1,13 @@
-import { persist } from './persist.svelte';
-import type { User } from '$lib/types/sync';
+import { getProfile, isCredsProfile, updateProfile, profiles } from './profiles.svelte';
 
-// Persisted state
-const _user = persist<User | null>('difflog-user', null);
-
-// State accessor
-export const user = {
-	get value() { return _user.value; },
-	set value(val: User | null) { _user.value = val; }
-};
-
-// Derived
+// Derived from active profile — no separate persisted state
 export function isLoggedIn(): boolean {
-	return _user.value !== null;
+	const p = getProfile();
+	return isCredsProfile(p) && !!p?.credsEmail && !!p?.credsCode;
 }
 
 export function getCredBalance(): number {
-	return _user.value?.creds ?? 0;
+	return getProfile()?.credBalance as number ?? 0;
 }
 
 export function hasCredits(): boolean {
@@ -24,24 +15,35 @@ export function hasCredits(): boolean {
 }
 
 export function getUserEmail(): string | null {
-	return _user.value?.email ?? null;
+	return getProfile()?.credsEmail ?? null;
 }
 
-// Actions
+export function getCredsAuth(): { email: string; code: string } | null {
+	const p = getProfile();
+	if (!p?.credsEmail || !p?.credsCode) return null;
+	return { email: p.credsEmail, code: p.credsCode };
+}
+
+// Actions — mutate the active profile
 export function loginUser(email: string, code: string, creds: number): void {
-	_user.value = { email, code, creds };
-}
-
-export function addCredits(amount: number): void {
-	if (!_user.value) return;
-	_user.value = { ..._user.value, creds: _user.value.creds + amount };
+	updateProfile({ credsEmail: email, credsCode: code, credBalance: creds });
 }
 
 export function updateCredBalance(creds: number): void {
-	if (!_user.value) return;
-	_user.value = { ..._user.value, creds };
+	updateProfile({ credBalance: creds });
 }
 
 export function clearUser(): void {
-	_user.value = null;
+	updateProfile({ credsEmail: undefined, credsCode: undefined, credBalance: undefined });
+}
+
+// Find existing creds account from other profiles
+export function getExistingCredsAccount(): { email: string; code: string; profileName: string } | null {
+	const allProfiles = profiles.value;
+	for (const p of Object.values(allProfiles)) {
+		if (p.apiSource === 'creds' && p.credsEmail && p.credsCode) {
+			return { email: p.credsEmail, code: p.credsCode, profileName: p.name };
+		}
+	}
+	return null;
 }

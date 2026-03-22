@@ -5,7 +5,7 @@
 	import { ImportProfileModal, ShareProfileModal, ShareInfoModal } from "../profiles/modals";
 	import { createProfile } from "$lib/stores/operations.svelte";
 	import { profiles, activeProfileId, getProfile, isDemoProfile, isCredsProfile } from "$lib/stores/profiles.svelte";
-	import { loginUser } from "$lib/stores/account.svelte";
+	import { getExistingCredsAccount } from "$lib/stores/account.svelte";
 	import { getAnthropicKey } from "$lib/utils/sync";
 	import { SiteFooter, ChipSelector, InputField } from "$lib/components";
 	import {
@@ -102,14 +102,16 @@
 		isEditing && isCredsProfile() ? 'creds' : 'byok'
 	);
 
-	// Creds email verification state
-	let credsEmail = $state('');
-	let credsCode = $state('');
+	// Creds email verification state — pre-populate from profile if editing
+	const _editProfile = isEditing ? getProfile() : null;
+	const _editCreds = _editProfile?.apiSource === 'creds' && _editProfile.credsEmail;
+	let credsEmail = $state(_editCreds ? _editProfile.credsEmail! : '');
+	let credsCode = $state(_editCreds ? _editProfile.credsCode! : '');
 	let credsSending = $state(false);
 	let credsVerifying = $state(false);
-	let credsVerified = $state(false);
+	let credsVerified = $state(!!_editCreds);
 	let credsError = $state('');
-	let credsBalance = $state(0);
+	let credsBalance = $state(_editCreds ? (_editProfile.credBalance as number ?? 0) : 0);
 
 	async function sendCredsCode() {
 		if (!credsEmail.trim()) return;
@@ -145,7 +147,6 @@
 			if (data.success) {
 				credsVerified = true;
 				credsBalance = data.creds ?? 0;
-				loginUser(credsEmail.trim(), credsCode.trim(), credsBalance);
 			} else {
 				credsError = data.error || 'Invalid code';
 			}
@@ -153,6 +154,24 @@
 			credsError = 'Verification failed';
 		}
 		credsVerifying = false;
+	}
+
+	// Check for existing creds account from other profiles
+	const existingCredsAccount = getExistingCredsAccount();
+
+	function useExistingCredsAccount() {
+		if (!existingCredsAccount) return;
+		credsEmail = existingCredsAccount.email;
+		credsCode = existingCredsAccount.code;
+		credsVerified = true;
+		// Fetch current balance
+		fetch('/api/creds/verify', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: credsEmail, code: credsCode })
+		}).then(r => r.json()).then((data: any) => {
+			if (data.success) credsBalance = data.creds ?? 0;
+		}).catch(() => {});
 	}
 
 	let selections = $state<{
@@ -432,10 +451,17 @@
 				keys.apiKeys = allKeys;
 			}
 
+			const credsData = apiSource === 'creds' ? {
+					credsEmail: credsEmail.trim(),
+					credsCode: credsCode.trim(),
+					credBalance: credsBalance,
+				} : {};
+
 			if (isEditing) {
 				updateProfile({
 					...formData,
 					...keys,
+					...credsData,
 					apiSource,
 					providerSelections: apiSource === 'byok' ? selections : undefined,
 				});
@@ -444,6 +470,7 @@
 				createProfile({
 					...formData,
 					...keys,
+					...credsData,
 					apiSource,
 					providerSelections: apiSource === 'byok' ? selections : undefined,
 				});
@@ -653,6 +680,19 @@
 
 				{#if apiSource === 'creds'}
 					<div class="creds-setup">
+						{#if !credsVerified && existingCredsAccount}
+							<div class="key-import-prompt">
+								<div class="key-import-content">
+									<span class="key-import-check">&#10003;</span>
+									<div class="key-import-text">
+										<span class="key-import-title">You're signed in as {existingCredsAccount.email} in your "{existingCredsAccount.profileName}" profile</span>
+									</div>
+								</div>
+								<button class="btn-secondary btn-import" onclick={useExistingCredsAccount}>
+									Use this account
+								</button>
+							</div>
+						{/if}
 						{#if credsVerified}
 							<p class="creds-setup-title creds-setup-title-inline">
 								Verified

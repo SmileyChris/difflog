@@ -91,10 +91,3 @@ export interface SyncResult {
   status: 'synced' | 'uploaded' | 'downloaded';
 }
 
-// --- Creds system types ---
-
-export interface User {
-  email: string;
-  code: string;
-  creds: number;
-}

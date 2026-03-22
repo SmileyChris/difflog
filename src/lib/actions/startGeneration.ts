@@ -15,7 +15,7 @@ import {
 	outOfCreds,
 	dailyLimitReached,
 } from '$lib/stores/ui.svelte';
-import { user, updateCredBalance } from '$lib/stores/account.svelte';
+import { getCredsAuth, updateCredBalance } from '$lib/stores/account.svelte';
 import { addDiff, deleteDiff } from '$lib/stores/operations.svelte';
 import type { GenerationDepth } from '$lib/utils/constants';
 import { WAIT_TIPS } from '$lib/utils/constants';
@@ -68,7 +68,7 @@ export async function startGeneration(callbacks: StartGenerationCallbacks): Prom
 	const selectedDepth = depthOverride || profile.depth || 'standard';
 
 	const isCreds = isCredsProfile(profile);
-	const currentUser = user.value;
+	const credsAuth = isCreds ? getCredsAuth() : null;
 
 	try {
 		const result = await runGeneration({
@@ -91,7 +91,7 @@ export async function startGeneration(callbacks: StartGenerationCallbacks): Prom
 					resolvedMappings: mappings as Record<string, ResolvedMapping>,
 				}),
 			apiSource: isCreds ? 'creds' : 'byok',
-			credsAuth: isCreds && currentUser ? { email: currentUser.email, code: currentUser.code } : undefined,
+			credsAuth: credsAuth ?? undefined,
 		});
 
 		// Update cred balance if returned

@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { PageHeader, HeaderNav, SiteFooter } from '$lib/components';
-	import { user, getCredBalance, getUserEmail, isLoggedIn, updateCredBalance } from '$lib/stores/account.svelte';
+	import { getCredsAuth, getCredBalance, getUserEmail, isLoggedIn, updateCredBalance } from '$lib/stores/account.svelte';
 
 	let historyFilter = $state<'topups' | 'usage'>('topups');
 	let transactions = $state<Array<{ id: string; type: string; amount: number; balance_after: number; description: string; created_at: string }>>([]);
@@ -18,12 +18,13 @@
 	const loggedIn = $derived(isLoggedIn());
 
 	async function loadHistory(filter: 'topups' | 'usage') {
-		if (!user.value) return;
+		const auth = getCredsAuth();
+		if (!auth) return;
 		historyLoading = true;
 		try {
 			const params = new URLSearchParams({
-				email: user.value.email,
-				code: user.value.code,
+				email: auth.email,
+				code: auth.code,
 				filter
 			});
 			const res = await fetch(`/api/creds/history?${params}`);
@@ -42,7 +43,8 @@
 	}
 
 	async function startPurchase(pack: 'starter' | 'value') {
-		if (!user.value) return;
+		const auth = getCredsAuth();
+		if (!auth) return;
 		checkoutPack = pack;
 		checkoutError = '';
 		checkoutLoading = true;
@@ -52,7 +54,7 @@
 			const res = await fetch('/api/purchase/create', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ pack, email: user.value.email })
+				body: JSON.stringify({ pack, email: auth.email })
 			});
 
 			if (!res.ok) {
@@ -113,10 +115,11 @@
 		paymentSuccess = true;
 		checkoutLoading = false;
 
+		const pollAuth = getCredsAuth();
 		for (let i = 0; i < 10; i++) {
 			await new Promise(r => setTimeout(r, 2000));
-			if (user.value) {
-				const params = new URLSearchParams({ email: user.value.email, code: user.value.code, filter: 'topups' });
+			if (pollAuth) {
+				const params = new URLSearchParams({ email: pollAuth.email, code: pollAuth.code, filter: 'topups' });
 				const res = await fetch(`/api/creds/history?${params}`);
 				if (res.ok) {
 					const data = await res.json() as { creds: number };
