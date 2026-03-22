@@ -4,7 +4,7 @@
  *
  * Callers own their own animation and navigation via callbacks.
  */
-import { getProfile, isDemoProfile } from '$lib/stores/profiles.svelte';
+import { getProfile, isDemoProfile, isCredsProfile } from '$lib/stores/profiles.svelte';
 import { getHistory } from '$lib/stores/history.svelte';
 import { updateProfile, autoSync } from '$lib/stores/sync.svelte';
 import {
@@ -12,7 +12,10 @@ import {
 	generationError,
 	runGeneration,
 	clearGenerationState,
+	outOfCreds,
+	dailyLimitReached,
 } from '$lib/stores/ui.svelte';
+import { user, updateCredBalance } from '$lib/stores/account.svelte';
 import { addDiff, deleteDiff } from '$lib/stores/operations.svelte';
 import type { GenerationDepth } from '$lib/utils/constants';
 import { WAIT_TIPS } from '$lib/utils/constants';
@@ -64,6 +67,9 @@ export async function startGeneration(callbacks: StartGenerationCallbacks): Prom
 	const lastDiff = getHistory()[0];
 	const selectedDepth = depthOverride || profile.depth || 'standard';
 
+	const isCreds = isCredsProfile(profile);
+	const currentUser = user.value;
+
 	try {
 		const result = await runGeneration({
 			profile: {
@@ -84,7 +90,14 @@ export async function startGeneration(callbacks: StartGenerationCallbacks): Prom
 				updateProfile({
 					resolvedMappings: mappings as Record<string, ResolvedMapping>,
 				}),
+			apiSource: isCreds ? 'creds' : 'byok',
+			credsAuth: isCreds && currentUser ? { email: currentUser.email, code: currentUser.code } : undefined,
 		});
+
+		// Update cred balance if returned
+		if (result.credsRemaining !== undefined) {
+			updateCredBalance(result.credsRemaining);
+		}
 
 		replaceTodaysDiff(forceNew);
 		addDiff(result.diff);
@@ -92,9 +105,19 @@ export async function startGeneration(callbacks: StartGenerationCallbacks): Prom
 
 		clearGenerationState();
 		onSuccess();
-	} catch {
-		// Error already set by runGeneration — stop animation, stay on page
-		onScanStop();
+	} catch (e: unknown) {
+		// Handle creds-specific errors
+		const status = (e as Error & { status?: number }).status;
+		if (status === 402) {
+			outOfCreds.value = true;
+			onScanStop();
+		} else if (status === 429) {
+			dailyLimitReached.value = true;
+			onScanStop();
+		} else {
+			// Error already set by runGeneration — stop animation, stay on page
+			onScanStop();
+		}
 	}
 }
 

@@ -2,7 +2,8 @@
 	import { onMount, onDestroy } from "svelte";
 	import { goto } from "$app/navigation";
 	import { browser } from "$app/environment";
-	import { getProfile, isDemoProfile } from "$lib/stores/profiles.svelte";
+	import { getProfile, isDemoProfile, isCredsProfile } from "$lib/stores/profiles.svelte";
+	import { getCredBalance } from "$lib/stores/account.svelte";
 	import { getHistory, getStreak } from "$lib/stores/history.svelte";
 	import { isMobile, mobileDiff } from "$lib/stores/mobile.svelte";
 	import {
@@ -11,6 +12,8 @@
 		clearGenerationState,
 		hasStageCache,
 		clearStageCache,
+		outOfCreds,
+		dailyLimitReached,
 	} from "$lib/stores/ui.svelte";
 	import { PageHeader, HeaderNav, SiteFooter } from "$lib/components";
 	import MobileHeader from "$lib/components/mobile/MobileHeader.svelte";
@@ -84,6 +87,10 @@
 		if (p.tools?.length) items.push(...p.tools);
 		return items.slice(0, 6);
 	});
+
+	const isCreds = $derived(isCredsProfile());
+	const credBalance = $derived(getCredBalance());
+	const credCost = $derived((selectedDepthOverride || getProfile()?.depth || 'standard') === 'deep' ? 2 : 1);
 
 	const providersText = $derived.by(() => {
 		const p = getProfile();
@@ -296,6 +303,9 @@
 				</div>
 			{/if}
 		{/if}
+		{#if isCreds}
+			<p class="gen-creds-cost">Uses {credCost} cred{credCost > 1 ? 's' : ''} &middot; {credBalance} remaining</p>
+		{/if}
 		<button class="btn-primary btn-branded" onclick={handleGenerate}>
 			{buttonLabel}
 		</button>
@@ -387,6 +397,37 @@
 	<SiteFooter />
 {/if}
 
+{#if outOfCreds.value}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="creds-modal" onclick={() => outOfCreds.value = false}>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="creds-modal-content creds-modal-compact" onclick={(e) => e.stopPropagation()}>
+			<div class="creds-empty-icon">&#128176;</div>
+			<h3 class="creds-empty-title">Out of credits</h3>
+			<p class="creds-empty-desc">You need {credCost} cred{credCost > 1 ? 's' : ''} to generate a diff.</p>
+			<div class="creds-empty-actions">
+				<a href="/creds" class="btn-primary btn-branded">Buy credits</a>
+				<button class="btn-secondary" onclick={() => outOfCreds.value = false}>Cancel</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if dailyLimitReached.value}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="creds-modal" onclick={() => dailyLimitReached.value = false}>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="creds-modal-content creds-modal-compact" onclick={(e) => e.stopPropagation()}>
+			<div class="creds-empty-icon">&#9203;</div>
+			<h3 class="creds-empty-title">Daily limit reached</h3>
+			<p class="creds-empty-desc">You can generate up to 5 diffs per day. Come back tomorrow!</p>
+			<div class="creds-empty-actions">
+				<button class="btn-primary btn-branded" onclick={() => { dailyLimitReached.value = false; goto('/'); }}>Back home</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
 	/* ── Shared content styles ── */
 
@@ -445,6 +486,14 @@
 		color: var(--accent);
 		text-decoration: underline dotted;
 		text-underline-offset: 2px;
+	}
+
+	/* Creds cost indicator */
+	.gen-creds-cost {
+		font-size: 0.8rem;
+		color: var(--accent);
+		margin: 0;
+		font-weight: 500;
 	}
 
 	/* Provider hint */

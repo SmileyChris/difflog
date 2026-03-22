@@ -10,8 +10,11 @@ import {
 	activeProfileId,
 	getProfile,
 	createProfileBase,
+	isCredsProfile,
 	type Profile
 } from './profiles.svelte';
+
+import { user } from './account.svelte';
 
 import {
 	histories,
@@ -63,6 +66,7 @@ export function createProfile(data: {
 	name: string;
 	apiKeys?: Profile['apiKeys'];
 	providerSelections?: Profile['providerSelections'];
+	apiSource?: 'byok' | 'creds';
 	languages: string[];
 	frameworks: string[];
 	tools: string[];
@@ -286,6 +290,51 @@ function migrateToReferenceStars(): void {
 	}
 }
 
+// Pending diff recovery for creds mode
+export async function checkPendingDiffs(): Promise<void> {
+	const currentUser = user.value;
+	if (!currentUser) return;
+
+	try {
+		const res = await fetch('/api/creds/pending', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: currentUser.email, code: currentUser.code })
+		});
+
+		if (!res.ok) return;
+
+		const data = await res.json() as { diffs: Array<{ id: string; title: string; content: string; created_at: string }> };
+		if (!data.diffs || data.diffs.length === 0) return;
+
+		const claimIds: string[] = [];
+		for (const pending of data.diffs) {
+			const existing = getHistory().find((d: Diff) => d.id === pending.id);
+			if (!existing) {
+				addDiff({
+					id: pending.id,
+					title: pending.title,
+					content: pending.content,
+					generated_at: pending.created_at
+				});
+			}
+			claimIds.push(pending.id);
+		}
+
+		// Claim the diffs we imported
+		if (claimIds.length > 0) {
+			await fetch('/api/creds/pending', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email: currentUser.email, code: currentUser.code, claim: claimIds })
+			});
+			console.log(`[Creds] Recovered ${claimIds.length} pending diff(s)`);
+		}
+	} catch (e) {
+		console.error('[Creds] Failed to check pending diffs:', e);
+	}
+}
+
 // Initialize app (runs once per session)
 let initialized = false;
 export function initApp(): void {
@@ -297,6 +346,11 @@ export function initApp(): void {
 	cleanupOrphanedStars();
 	restoreSessionPassword();
 	checkSyncStatus();
+
+	// Recover pending diffs for creds profiles
+	if (isCredsProfile() && user.value) {
+		checkPendingDiffs();
+	}
 
 	document.addEventListener('visibilitychange', () => {
 		if (document.visibilityState === 'visible') {

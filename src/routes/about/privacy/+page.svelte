@@ -45,10 +45,21 @@
 	</section>
 
 	<section>
+		<h3>Credits &amp; Payments</h3>
+		<p>If you use the credits system instead of your own API keys:</p>
+		<ul>
+			<li><strong>Email</strong> — We collect your email address for account verification and purchase receipts. Your email is stored in our database and shared with Stripe for payment processing.</li>
+			<li><strong>Stripe</strong> — Credit purchases are processed by Stripe. We store your Stripe customer ID to link payments to your account. Stripe handles all payment card data — we never see or store your card details.</li>
+			<li><strong>Balance &amp; History</strong> — Your credit balance and transaction history are stored on our servers. Generated diffs are temporarily stored server-side for recovery if you disconnect, and are deleted once claimed by your browser.</li>
+		</ul>
+	</section>
+
+	<section>
 		<h3>Third-Party Services</h3>
 		<p>diff·log interacts with the following external services:</p>
 		<ul>
-			<li><strong>AI providers</strong> (Anthropic, OpenAI, Google) — For generating diffs. Your browser communicates directly with the provider; we don't proxy these requests.</li>
+			<li><strong>AI providers</strong> (Anthropic, OpenAI, Google) — For generating diffs. In BYOK mode, your browser communicates directly with the provider. In credits mode, our server makes the API call on your behalf.</li>
+			<li><strong>Stripe</strong> — For processing credit purchases. Subject to <a href="https://stripe.com/privacy" target="_blank" rel="noopener">Stripe's privacy policy</a>.</li>
 			<li><strong>Feed aggregator</strong> — Our server fetches public RSS/API data from sources like HN, Reddit, and GitHub to provide context for diff generation. No personal data is sent.</li>
 			<li><strong>Cloudflare</strong> — For hosting, optional sync storage (encrypted data only), and privacy-first web analytics.</li>
 		</ul>

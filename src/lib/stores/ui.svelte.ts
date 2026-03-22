@@ -16,6 +16,8 @@ let _syncDropdownRemember = $state(false);
 let _syncResult = $state<{ uploaded: number; downloaded: number } | null>(null);
 let _archiveSearch = $state('');
 let _syncDropdownOpen = $state(false);
+let _outOfCreds = $state(false);
+let _dailyLimitReached = $state(false);
 
 // State accessors
 export const showImportModal = {
@@ -100,6 +102,16 @@ export const syncResult = {
 export const archiveSearch = {
 	get value() { return _archiveSearch; },
 	set value(val: string) { _archiveSearch = val; }
+};
+
+export const outOfCreds = {
+	get value() { return _outOfCreds; },
+	set value(val: boolean) { _outOfCreds = val; }
+};
+
+export const dailyLimitReached = {
+	get value() { return _dailyLimitReached; },
+	set value(val: boolean) { _dailyLimitReached = val; }
 };
 
 // Actions

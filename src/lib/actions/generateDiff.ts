@@ -27,10 +27,13 @@ export interface GenerateOptions {
 	lastDiffContent?: string;
 	onMappingsResolved?: (mappings: Record<string, unknown>) => void;
 	apiHost?: string; // Optional: API host (e.g., 'https://difflog.dev'), defaults to relative paths for web
+	apiSource?: 'byok' | 'creds';
+	credsAuth?: { email: string; code: string };
 }
 
 export interface GenerateResult {
 	diff: Diff;
+	credsRemaining?: number;
 }
 
 // Stage cache for resume-from-failure
@@ -119,7 +122,63 @@ function cleanDiffContent(rawContent: string): string {
  * Generate a new diff based on the user's profile and preferences.
  * This orchestrates the entire generation pipeline.
  */
+/**
+ * Server-side generation for creds mode.
+ * Sends the prompt to /api/generate which calls Anthropic and manages creds.
+ */
+async function generateWithCreds(options: GenerateOptions): Promise<GenerateResult> {
+	const { profile, selectedDepth, lastDiffDate, lastDiffContent, credsAuth } = options;
+	const startTime = Date.now();
+
+	if (!credsAuth) throw new Error('Creds auth required for server-side generation');
+
+	// Build prompt client-side (same as BYOK) but skip feeds/search — server doesn't have keys for those
+	const prompt = buildPrompt(
+		{ ...profile, depth: selectedDepth },
+		'', // No feed context in creds mode
+		lastDiffDate ?? undefined,
+		lastDiffContent,
+		'' // No web search context in creds mode
+	);
+
+	const res = await fetch('/api/generate', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			email: credsAuth.email,
+			code: credsAuth.code,
+			prompt: prompt.content,
+			depth: selectedDepth
+		})
+	});
+
+	if (!res.ok) {
+		const data = await res.json() as { error: string };
+		const err = new Error(data.error || 'Generation failed');
+		(err as Error & { status?: number }).status = res.status;
+		throw err;
+	}
+
+	const data = await res.json() as { id: string; title: string; content: string; creds: number };
+
+	const entry: Diff = {
+		id: data.id,
+		title: data.title || '',
+		content: cleanDiffContent(data.content),
+		generated_at: new Date().toISOString(),
+		duration_seconds: Math.round((Date.now() - startTime) / 1000),
+		window_days: calculateWindowDays(options.lastDiffDate)
+	};
+
+	return { diff: entry, credsRemaining: data.creds };
+}
+
 export async function generateDiffContent(options: GenerateOptions): Promise<GenerateResult> {
+	// Branch: creds mode uses server-side generation
+	if (options.apiSource === 'creds') {
+		return generateWithCreds(options);
+	}
+
 	const { profile, selectedDepth, lastDiffDate, lastDiffContent, onMappingsResolved } = options;
 	const startTime = Date.now();
 

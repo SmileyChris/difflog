@@ -16,6 +16,10 @@ declare global {
 			env: {
 				DB: D1Database;
 				KV: KVNamespace;
+				ANTHROPIC_API_KEY: string;
+				STRIPE_SECRET_KEY: string;
+				STRIPE_WEBHOOK_SECRET: string;
+				STRIPE_PK: string;
 			};
 			context: ExecutionContext;
 			caches: CacheStorage;

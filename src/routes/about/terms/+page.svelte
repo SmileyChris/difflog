@@ -24,14 +24,27 @@
 	</section>
 
 	<section>
-		<h3>API Key &amp; Costs</h3>
-		<p>diff·log requires you to provide your own AI platform API key (Anthropic, OpenAI, or Google). You are solely responsible for:</p>
+		<h3>API Key &amp; Costs (BYOK Mode)</h3>
+		<p>When using your own API keys, you are solely responsible for:</p>
 		<ul>
 			<li>Keeping your API keys secure</li>
 			<li>All charges incurred through your API key usage</li>
 			<li>Compliance with your chosen provider's terms of service</li>
 		</ul>
 		<p>diff·log does not have access to your API keys — they are stored only in your browser and calls are made directly to the provider.</p>
+	</section>
+
+	<section>
+		<h3>Credits System</h3>
+		<p>Instead of your own API key, you may purchase credits to generate diffs through our server:</p>
+		<ul>
+			<li>Credits are non-refundable once purchased</li>
+			<li>Credit prices may change — existing purchased credits are not affected</li>
+			<li>A daily limit of 5 generations per UTC day applies to credits mode</li>
+			<li>Deep-depth diffs cost 2 credits; all other depths cost 1 credit</li>
+			<li>New accounts receive a one-time bonus of 5 free credits</li>
+		</ul>
+		<p>We reserve the right to suspend or terminate credit accounts that violate these terms or engage in abusive behavior.</p>
 	</section>
 
 	<section>
@@ -93,7 +106,7 @@
 		<p>These terms may be updated from time to time. Continued use of the service after changes constitutes acceptance of the new terms.</p>
 	</section>
 
-	<p class="about-updated">Last updated: January 2025</p>
+	<p class="about-updated">Last updated: March 2026</p>
 
 	{#if !getProfile()}
 		<div class="about-cta">

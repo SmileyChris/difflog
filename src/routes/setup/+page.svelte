@@ -4,7 +4,8 @@
 	import RemoveFromServerModal from "./RemoveFromServerModal.svelte";
 	import { ImportProfileModal, ShareProfileModal, ShareInfoModal } from "../profiles/modals";
 	import { createProfile } from "$lib/stores/operations.svelte";
-	import { profiles, activeProfileId, getProfile, isDemoProfile } from "$lib/stores/profiles.svelte";
+	import { profiles, activeProfileId, getProfile, isDemoProfile, isCredsProfile } from "$lib/stores/profiles.svelte";
+	import { loginUser } from "$lib/stores/account.svelte";
 	import { getAnthropicKey } from "$lib/utils/sync";
 	import { SiteFooter, ChipSelector, InputField } from "$lib/components";
 	import {
@@ -95,6 +96,64 @@
 	let customTopics = $state<string[]>(_init.customItems.topics ?? []);
 
 	let providers = $state<Record<string, ProviderState>>(_init.providerStates);
+
+	// API source: BYOK (default) or creds
+	let apiSource = $state<'byok' | 'creds'>(
+		isEditing && isCredsProfile() ? 'creds' : 'byok'
+	);
+
+	// Creds email verification state
+	let credsEmail = $state('');
+	let credsCode = $state('');
+	let credsSending = $state(false);
+	let credsVerifying = $state(false);
+	let credsVerified = $state(false);
+	let credsError = $state('');
+	let credsBalance = $state(0);
+
+	async function sendCredsCode() {
+		if (!credsEmail.trim()) return;
+		credsSending = true;
+		credsError = '';
+		try {
+			const res = await fetch('/api/creds/request', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email: credsEmail.trim() })
+			});
+			if (!res.ok) {
+				const data = await res.json() as { error: string };
+				credsError = data.error || 'Failed to send code';
+			}
+		} catch {
+			credsError = 'Failed to send verification code';
+		}
+		credsSending = false;
+	}
+
+	async function verifyCredsCode() {
+		if (!credsCode.trim()) return;
+		credsVerifying = true;
+		credsError = '';
+		try {
+			const res = await fetch('/api/creds/verify', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email: credsEmail.trim(), code: credsCode.trim() })
+			});
+			const data = await res.json() as { success?: boolean; creds?: number; error?: string };
+			if (data.success) {
+				credsVerified = true;
+				credsBalance = data.creds ?? 0;
+				loginUser(credsEmail.trim(), credsCode.trim(), credsBalance);
+			} else {
+				credsError = data.error || 'Invalid code';
+			}
+		} catch {
+			credsError = 'Verification failed';
+		}
+		credsVerifying = false;
+	}
 
 	let selections = $state<{
 		search: string | null;
@@ -306,7 +365,11 @@
 	}
 
 	function nextStep() {
-		if (step === 1 && !isProviderConfigComplete) {
+		if (step === 1 && apiSource === 'creds' && !credsVerified) {
+			setupError = "Verify your email to continue";
+			return;
+		}
+		if (step === 1 && apiSource === 'byok' && !isProviderConfigComplete) {
 			setupError = "Enter a valid API key to continue";
 			return;
 		}
@@ -342,8 +405,13 @@
 			return;
 		}
 
-		if (!isProviderConfigComplete) {
+		if (apiSource === 'byok' && !isProviderConfigComplete) {
 			setupError = "Configure providers for curation and synthesis";
+			return;
+		}
+
+		if (apiSource === 'creds' && !credsVerified) {
+			setupError = "Verify your email to continue";
 			return;
 		}
 
@@ -351,9 +419,11 @@
 		try {
 			const allKeys: Record<string, string> = {};
 
-			for (const [id, state] of Object.entries(providers)) {
-				if (state.status === "valid" && state.key) {
-					allKeys[id] = state.key;
+			if (apiSource === 'byok') {
+				for (const [id, state] of Object.entries(providers)) {
+					if (state.status === "valid" && state.key) {
+						allKeys[id] = state.key;
+					}
 				}
 			}
 
@@ -366,14 +436,16 @@
 				updateProfile({
 					...formData,
 					...keys,
-					providerSelections: selections,
+					apiSource,
+					providerSelections: apiSource === 'byok' ? selections : undefined,
 				});
 				goto("/profiles");
 			} else {
 				createProfile({
 					...formData,
 					...keys,
-					providerSelections: selections,
+					apiSource,
+					providerSelections: apiSource === 'byok' ? selections : undefined,
 				});
 				goto("/");
 			}
@@ -555,6 +627,93 @@
 		<!-- Step 1: API Providers -->
 		{#if step === 1}
 			<div>
+				<h2 class="step-title">How do you want to generate diffs?</h2>
+				<p class="step-desc">
+					Choose between using your own API keys or purchasing credits.
+				</p>
+
+				<div class="api-source-choice">
+					<button
+						class="api-source-option"
+						class:api-source-option-selected={apiSource === 'creds'}
+						onclick={() => apiSource = 'creds'}
+					>
+						<span class="api-source-option-icon creds-coin">&#9673;</span>
+						<span class="api-source-option-label">Use Credits</span>
+					</button>
+					<button
+						class="api-source-option"
+						class:api-source-option-selected={apiSource === 'byok'}
+						onclick={() => apiSource = 'byok'}
+					>
+						<span class="api-source-option-icon">&#128273;</span>
+						<span class="api-source-option-label">Bring Your Own Key</span>
+					</button>
+				</div>
+
+				{#if apiSource === 'creds'}
+					<div class="creds-setup">
+						{#if credsVerified}
+							<p class="creds-setup-title creds-setup-title-inline">
+								Verified
+								<span class="creds-setup-subtitle">
+									{credsEmail} &middot; <span class="creds-coin">&#9673;</span> {credsBalance} creds
+								</span>
+							</p>
+							<p class="creds-setup-desc">You're all set! Continue to customize your profile.</p>
+						{:else if credsSending || credsCode}
+							<div class="creds-code-form">
+								<p class="creds-setup-title">Check your email</p>
+								<p class="creds-setup-desc">We sent a 6-digit code to {credsEmail}</p>
+								{#if credsError}
+									<div class="creds-error">{credsError}</div>
+								{/if}
+								<div class="input-group">
+									<input
+										type="text"
+										class="text-input text-input-code"
+										maxlength="6"
+										placeholder="000000"
+										bind:value={credsCode}
+										onkeydown={(e) => e.key === 'Enter' && verifyCredsCode()}
+									/>
+								</div>
+								<button
+									class="btn-primary btn-branded btn-creds-verify"
+									disabled={credsVerifying || credsCode.length < 6}
+									onclick={verifyCredsCode}
+								>
+									{credsVerifying ? 'Verifying...' : 'Verify'}
+								</button>
+								<p class="creds-setup-note">Check your console in dev mode for the code</p>
+							</div>
+						{:else}
+							<p class="creds-setup-title">Verify your email</p>
+							<p class="creds-setup-desc">We'll send you a verification code. New accounts get 5 free credits.</p>
+							{#if credsError}
+								<div class="creds-error">{credsError}</div>
+							{/if}
+							<div class="input-group">
+								<input
+									type="email"
+									class="text-input text-input-center"
+									placeholder="you@example.com"
+									bind:value={credsEmail}
+									onkeydown={(e) => e.key === 'Enter' && sendCredsCode()}
+								/>
+							</div>
+							<button
+								class="btn-primary btn-branded btn-creds-verify"
+								disabled={credsSending || !credsEmail.trim()}
+								onclick={sendCredsCode}
+							>
+								{credsSending ? 'Sending...' : 'Send Code'}
+							</button>
+						{/if}
+					</div>
+				{:else}
+				<!-- BYOK mode -->
+				<div class="byok-setup">
 				<h2 class="step-title">Connect API Providers</h2>
 				<p class="step-desc">
 					Add your API key to generate diffs. You can optionally use
@@ -928,6 +1087,8 @@
 						</div>
 					</div>
 				{/if}
+			</div> <!-- end byok-setup -->
+			{/if} <!-- end apiSource === 'creds' / else -->
 			</div>
 		{/if}
 

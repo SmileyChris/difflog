@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { profiles, activeProfileId, isDemoProfile, getProfile } from '$lib/stores/profiles.svelte';
+	import { profiles, activeProfileId, isDemoProfile, isCredsProfile, getProfile } from '$lib/stores/profiles.svelte';
+	import { getCredBalance, getUserEmail } from '$lib/stores/account.svelte';
 
 	onMount(() => {
 		if (!getProfile() && !showImportModal.value) goto('/', { replaceState: true });
@@ -169,6 +170,14 @@
 						{/snippet}
 
 						{#snippet details()}
+							{#if isCredsProfile(profile)}
+								<div class="profile-detail-row">
+									<a href="/creds" class="account-creds" class:creds-empty={getCredBalance() <= 1} onclick={(e) => e.stopPropagation()}>
+										<span class="creds-coin">&#9673;</span> {getCredBalance()} creds
+									</a>
+									<span class="profile-creds-email">{getUserEmail()}</span>
+								</div>
+							{/if}
 							{#if profile.languages?.length}
 								<DetailRow label="Languages" value={profile.languages.join(', ')} onedit={() => handleEditProfile(id, 2)} />
 							{/if}
@@ -537,6 +546,25 @@
 	:global(.profile-card-action .profile-card-id) {
 		font-family: inherit;
 		color: var(--text-subtle);
+	}
+
+	.account-creds {
+		font-size: 0.8rem;
+		color: var(--text-hint);
+		text-decoration: none;
+	}
+
+	.account-creds:hover {
+		color: var(--accent);
+	}
+
+	.account-creds.creds-empty {
+		color: var(--danger);
+	}
+
+	.profile-creds-email {
+		font-size: 0.75rem;
+		color: var(--text-disabled);
 	}
 
 	@media (max-width: 500px) {

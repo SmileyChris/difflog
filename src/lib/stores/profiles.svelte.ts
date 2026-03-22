@@ -49,8 +49,16 @@ export function isDemoProfile(profile?: Profile | null): boolean {
 	return p?.apiKeys?.anthropic === 'demo-key-placeholder';
 }
 
+export function isCredsProfile(profile?: Profile | null): boolean {
+	const p = profile ?? getProfile();
+	return p?.apiSource === 'creds';
+}
+
 export function isUnlocked(): boolean {
-	return getProfile() !== null && getApiKey() !== null;
+	const profile = getProfile();
+	if (!profile) return false;
+	if (isCredsProfile(profile)) return true;
+	return getApiKey() !== null;
 }
 
 // Actions
@@ -59,6 +67,7 @@ export function createProfileBase(data: {
 	name: string;
 	apiKeys?: Profile['apiKeys'];
 	providerSelections?: Profile['providerSelections'];
+	apiSource?: 'byok' | 'creds';
 	languages: string[];
 	frameworks: string[];
 	tools: string[];
@@ -71,6 +80,7 @@ export function createProfileBase(data: {
 		id,
 		name: data.name,
 		apiKeys: data.apiKeys,
+		apiSource: data.apiSource,
 		providerSelections: data.providerSelections,
 		languages: data.languages,
 		frameworks: data.frameworks,

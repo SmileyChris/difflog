@@ -6,3 +6,4 @@ export * from './stars.svelte';
 export * from './sync.svelte';
 export * from './ui.svelte';
 export * from './operations.svelte';
+export * from './account.svelte';

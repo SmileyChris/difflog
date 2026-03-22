@@ -1,8 +1,11 @@
 <script lang="ts">
-	import { getProfile } from '$lib/stores/profiles.svelte';
+	import { getProfile, isCredsProfile } from '$lib/stores/profiles.svelte';
+	import { getCredBalance } from '$lib/stores/account.svelte';
 	import { SyncDropdown } from '$lib/components';
 
 	const profile = $derived(getProfile());
+	const isCreds = $derived(isCredsProfile());
+	const credBalance = $derived(getCredBalance());
 </script>
 
 <div class="header-nav">
@@ -13,7 +16,13 @@
 		</svg>
 		<span>{profile?.name || 'Profile'}</span>
 	</a>
-	<SyncDropdown />
+	{#if isCreds}
+		<a href="/creds" class="header-link">
+			<span class="header-link-icon creds-coin">&#9673;</span> {credBalance}
+		</a>
+	{:else}
+		<SyncDropdown />
+	{/if}
 </div>
 
 <style>

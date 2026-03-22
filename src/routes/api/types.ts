@@ -146,6 +146,37 @@ export interface ShareResponse {
 	password_salt: string | null;
 }
 
+// --- Creds system types ---
+
+export interface AccountRow {
+	id: string;
+	email: string;
+	creds: number;
+	stripe_customer_id: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface TransactionRow {
+	id: string;
+	account_id: string;
+	type: string;
+	amount: number;
+	balance_after: number;
+	description: string | null;
+	stripe_payment_id: string | null;
+	metadata: string | null;
+	created_at: string;
+}
+
+export interface PendingDiffRow {
+	id: string;
+	account_id: string;
+	title: string;
+	content: string;
+	created_at: string;
+}
+
 // Rate limiting constants
 export const RATE_LIMIT = {
 	MAX_ATTEMPTS: 5, // Lock after 5 failed attempts
