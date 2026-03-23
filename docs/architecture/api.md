@@ -290,6 +290,64 @@ Retrieve a publicly shared diff. Returns 404 if the diff doesn't exist or is pri
 
 ---
 
+## Credits Endpoints
+
+See [Credits System](creds.md) for full architecture. All creds endpoints authenticate via email+code.
+
+## `POST /api/creds/request`
+
+Send a verification code to an email address.
+
+**Request:** `{ "email": "user@example.com" }`
+
+**Response:** `{ "success": true }`
+
+## `POST /api/creds/verify`
+
+Verify email code. Creates account with 5 free creds if new.
+
+**Request:** `{ "email": "user@example.com", "code": "123456" }`
+
+**Response:** `{ "success": true, "creds": 5 }`
+
+## `GET /api/creds/history?email=...&code=...&filter=topups|usage`
+
+Get transaction history and current balance.
+
+**Response:** `{ "transactions": [...], "creds": 12 }`
+
+## `POST /api/creds/pending`
+
+Fetch/claim pending diffs for recovery.
+
+**Request:** `{ "email": "...", "code": "...", "claim": ["id1", "id2"] }`
+
+**Response:** `{ "diffs": [{ "id": "...", "title": "...", "content": "...", "created_at": "..." }] }`
+
+## `POST /api/purchase/create`
+
+Create Stripe PaymentIntent.
+
+**Request:** `{ "pack": "starter", "email": "user@example.com" }`
+
+**Response:** `{ "clientSecret": "pi_..." }`
+
+## `POST /api/purchase/webhook`
+
+Stripe webhook handler. Verifies HMAC-SHA256 signature, credits account on `payment_intent.succeeded`.
+
+## `POST /api/generate`
+
+Server-side diff generation for creds mode. Verifies auth, checks balance and daily limit, calls Anthropic, deducts creds.
+
+**Request:** `{ "email": "...", "code": "...", "prompt": "...", "depth": "standard" }`
+
+**Response:** `{ "id": "...", "title": "...", "content": "...", "usage": {...}, "creds": 11 }`
+
+**Error codes:** 401 (bad auth), 402 (insufficient creds), 429 (daily limit)
+
+---
+
 ## `GET /api/share/{id}`
 
 Get public profile info for import flow. **No auth required.**

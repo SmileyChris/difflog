@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **difflog** — A SvelteKit app that generates personalized developer intelligence diffs using multiple AI providers (Anthropic, DeepSeek, Gemini, Perplexity, Serper). Shows you what's changed in the dev ecosystem since you last checked in.
 
+**Two modes:**
+- **BYOK** — User provides their own API keys, calls providers directly from browser
+- **Creds** — User purchases credits, server calls Anthropic on their behalf
+
 ## Commands
 
 ```bash
@@ -25,11 +29,15 @@ bun run docs         # Serve documentation (Zensical/MkDocs)
 ### Routes (in `src/routes/`)
 - `/` — Dashboard: profile summary, generate button, diff display
 - `/about` — Landing/about pages (with `/privacy`, `/terms` sub-routes)
-- `/setup` — Profile setup wizard
+- `/setup` — Profile setup wizard (BYOK or creds mode selection)
 - `/profiles` — Profile management, sync, sharing
 - `/archive` — Past diffs list
 - `/stars` — Bookmarked paragraphs
+- `/creds` — Credit balance, purchase packs, transaction history
 - `/api/*` — Server endpoints for D1 database
+- `/api/creds/*` — Creds auth endpoints (request, verify, history, pending)
+- `/api/purchase/*` — Stripe payment endpoints (create, webhook)
+- `/api/generate` — Server-side diff generation for creds mode
 
 ### Store Architecture (in `src/lib/stores/`)
 
@@ -43,6 +51,7 @@ Domain-driven store modules using Svelte 5 `$state()` runes:
 - `sync.svelte.ts` — Cloud sync state and operations
 - `ui.svelte.ts` — Transient UI state (dropdowns, modals)
 - `operations.svelte.ts` — Cross-domain composite operations
+- `account.svelte.ts` — Creds account (derived from active profile's credsEmail/credsCode/credBalance)
 
 **Pattern:** State is exposed via accessor objects with `get/set value()`. Derived state uses functions. Actions are plain functions that mutate state.
 
@@ -60,7 +69,7 @@ updateProfile({ name: 'New Name' });
 
 localStorage keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-tldrs`, `difflog-active-profile`, `difflog-pending-sync`.
 
-### API Flow
+### API Flow (BYOK)
 1. User clicks Generate → resolves custom sources (curation provider), fetches `/api/feeds` + web search in parallel
 2. Curates general feeds for relevance (curation provider)
 3. Builds prompt with `src/lib/utils/prompt.ts`
@@ -68,6 +77,22 @@ localStorage keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`,
 5. Stores markdown in history, renders with `src/lib/utils/markdown.ts`
 
 Pipeline steps use configurable providers: search (Serper/Perplexity/Anthropic, optional), curation (DeepSeek/Gemini/Anthropic), synthesis (DeepSeek/Gemini/Anthropic/Perplexity). See `src/lib/utils/providers.ts` and `src/lib/utils/llm.ts`.
+
+### API Flow (Creds)
+1. User clicks Generate → builds prompt client-side (no feeds/search — no client API keys)
+2. POSTs prompt to `/api/generate` with email+code auth
+3. Server verifies creds, checks balance and daily limit (5/day), calls Anthropic API
+4. Deducts creds (1 for standard, 2 for deep), stores result in `pending_diffs` for recovery
+5. Client receives diff, adds to local history, claims pending diff from server
+
+### Creds System
+- Profiles choose `apiSource: 'byok' | 'creds'` during setup
+- Creds auth (email, code, balance) stored per-profile, not globally — multiple profiles can share the same email
+- Setup wizard detects existing creds accounts from other profiles and offers reuse
+- Email verification uses deterministic SHA-256 codes (dev mode; production would use real email)
+- Stripe payments via direct `fetch()` (no SDK — works on CF Workers)
+- Packs: Starter (10/$2), Value (50/$7)
+- Webhook verifies HMAC-SHA256 signature, credits account on `payment_intent.succeeded`
 
 ### Sync System
 Local-first with optional password-protected cloud sync via Cloudflare D1. All data encrypted client-side (AES-GCM) before upload. See `src/lib/utils/sync.ts` and `src/lib/utils/crypto.ts`.
@@ -94,6 +119,8 @@ Local-first with optional password-protected cloud sync via Cloudflare D1. All d
 - `src/lib/utils/crypto.ts` — Client-side encryption (AES-GCM, PBKDF2)
 - `src/lib/utils/markdown.ts` — Markdown-to-HTML renderer with `data-p` indices for bookmarking
 - `src/lib/utils/tldr.ts` — Article fetching (via Jina Reader) and LLM summarization for TLDR feature
+- `src/routes/api/creds-auth.ts` — Shared creds email+code verification utility
+- `src/routes/api/generate/+server.ts` — Server-side diff generation for creds mode
 - `svelte.config.js` — SvelteKit configuration (Cloudflare adapter)
 - `vite.config.ts` — Vite configuration
 
@@ -131,7 +158,7 @@ Use and update the design system at `/design` (dev-only route).
 
 Docs use [Zensical](https://zensical.com/) (MkDocs-based). Config in `zensical.toml`.
 
-- `docs/architecture/` — System design (encryption, sync, API)
+- `docs/architecture/` — System design (encryption, sync, API, creds)
 - `docs/operations/` — Deployment, cleanup, migrations
 
 ## Releasing
