@@ -230,6 +230,9 @@
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
+		max-height: 50vh;
+		overflow-y: auto;
+		scrollbar-width: thin;
 	}
 
 	.streak-month {

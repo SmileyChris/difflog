@@ -118,77 +118,87 @@ export function getStreakCalendar(startDateStr: string | null, diffCounts: Map<s
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // The actual first diff date (for gap calculation)
     let firstDiff = new Date(today);
     if (startDateStr) {
         firstDiff = new Date(startDateStr);
         firstDiff.setHours(0, 0, 0, 0);
     }
 
-    // Start of week containing first diff
-    const earliest = new Date(firstDiff);
-    earliest.setDate(earliest.getDate() - earliest.getDay());
+    // Collect the distinct months we need to show
+    const startMonth = new Date(firstDiff.getFullYear(), firstDiff.getMonth(), 1);
+    const endMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    // End of current week (Saturday)
-    const weekEnd = new Date(today);
-    weekEnd.setDate(today.getDate() + (6 - today.getDay()));
+    // Week containing the first diff (clip start of oldest month)
+    const earliestWeekStart = new Date(firstDiff);
+    earliestWeekStart.setDate(earliestWeekStart.getDate() - earliestWeekStart.getDay());
+
+    // Week containing today (clip end of newest month)
+    const latestWeekEnd = new Date(today);
+    latestWeekEnd.setDate(today.getDate() + (6 - today.getDay()));
 
     const months: CalendarMonth[] = [];
-    let currentMonth = -1;
-    let currentWeeks: CalendarWeek[] = [];
+    const monthIter = new Date(startMonth);
 
-    const iter = new Date(earliest);
+    while (monthIter <= endMonth) {
+        const month = monthIter.getMonth();
+        const year = monthIter.getFullYear();
+        const label = monthIter.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-    while (iter <= weekEnd) {
-        // Start new month if needed
-        if (iter.getMonth() !== currentMonth) {
-            if (currentWeeks.length > 0) {
-                const prevMonth = new Date(iter);
-                prevMonth.setMonth(prevMonth.getMonth() - 1);
-                months.push({
-                    monthLabel: prevMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-                    weeks: currentWeeks
+        // First day of month, back to its Sunday
+        const monthStart = new Date(year, month, 1);
+        const gridStart = new Date(monthStart);
+        gridStart.setDate(gridStart.getDate() - gridStart.getDay());
+
+        // Last day of month, forward to its Saturday
+        const monthEnd = new Date(year, month + 1, 0);
+        const gridEnd = new Date(monthEnd);
+        gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
+
+        // Clip: oldest month starts from the week containing firstDiff
+        const weekStart = monthIter.getTime() === startMonth.getTime()
+            ? new Date(Math.max(gridStart.getTime(), earliestWeekStart.getTime()))
+            : gridStart;
+
+        // Clip: newest month ends at the week containing today
+        const weekEnd = monthIter.getTime() === endMonth.getTime()
+            ? new Date(Math.min(gridEnd.getTime(), latestWeekEnd.getTime()))
+            : gridEnd;
+
+        const weeks: CalendarWeek[] = [];
+        const iter = new Date(weekStart);
+
+        while (iter <= weekEnd) {
+            const week: CalendarWeek = [];
+            for (let i = 0; i < 7; i++) {
+                const iso = toLocalDateString(iter);
+                const count = diffCounts.get(iso) || 0;
+                const isActive = count > 0;
+                const isToday = iter.getTime() === today.getTime();
+                const isOutside = iter.getMonth() !== month;
+
+                week.push({
+                    date: new Date(iter),
+                    iso,
+                    isActive,
+                    isGap: !isActive && iter >= firstDiff && iter <= today && !isOutside,
+                    isToday,
+                    isOutside,
+                    label: iter.getDate().toString(),
+                    diffCount: count
                 });
+
+                iter.setDate(iter.getDate() + 1);
             }
-            currentMonth = iter.getMonth();
-            currentWeeks = [];
+            weeks.push(week);
         }
 
-        // Build week
-        const week: CalendarWeek = [];
-        for (let i = 0; i < 7; i++) {
-            const iso = toLocalDateString(iter);
-            const count = diffCounts.get(iso) || 0;
-            const isActive = count > 0;
-            const isToday = iter.getTime() === today.getTime();
-            const isOutside = iter.getMonth() !== currentMonth;
-
-            week.push({
-                date: new Date(iter),
-                iso,
-                isActive,
-                isGap: !isActive && iter >= firstDiff && iter <= today && !isOutside,
-                isToday,
-                isOutside,
-                label: iter.getDate().toString(),
-                diffCount: count
-            });
-
-            iter.setDate(iter.getDate() + 1);
+        if (weeks.length > 0) {
+            months.push({ monthLabel: label, weeks });
         }
-        currentWeeks.push(week);
+
+        monthIter.setMonth(monthIter.getMonth() + 1);
     }
 
-    // Add final month
-    if (currentWeeks.length > 0) {
-        const lastMonth = new Date(iter);
-        lastMonth.setDate(lastMonth.getDate() - 1);
-        months.push({
-            monthLabel: lastMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-            weeks: currentWeeks
-        });
-    }
-
-    // Reverse so most recent month is first
+    // Reverse so most recent month/week is first
     return months.reverse().map(m => ({ ...m, weeks: m.weeks.reverse() }));
 }
