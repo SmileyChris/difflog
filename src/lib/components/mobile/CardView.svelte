@@ -6,7 +6,8 @@
 	import { isStarred, getStars } from '$lib/stores/stars.svelte';
 	import { toggleStar } from '$lib/stores/operations.svelte';
 	import { renderMarkdown, extractParagraphs, extractSummary } from '$lib/utils/markdown';
-	import { buildDiffContent, timeAgoFrom } from '$lib/utils/time';
+	import { buildDiffContent } from '$lib/utils/time';
+	import { timeAgo } from '$lib/utils/time.svelte';
 	import { onMount } from 'svelte';
 	import { mobileDiff } from '$lib/stores/mobile.svelte';
 	import {
@@ -429,7 +430,7 @@
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<span class="focus-title-card-link" onclick={() => showJumpMenu = !showJumpMenu}>{articles.length} categories</span>
 			</span>
-			<span class="focus-title-card-generated">Generated {timeAgoFrom(diff.generated_at, Date.now())}</span>
+			<span class="focus-title-card-generated">Generated {timeAgo(diff.generated_at)}</span>
 			<span class="focus-title-card-swipe">{'ontouchstart' in globalThis ? '\u2191 swipe' : '\u2193 scroll'} to read</span>
 		</div>
 	</div>
@@ -461,7 +462,7 @@
 			<span class="focus-end-diamond"><span class="focus-end-check">&#10004;</span></span>
 			<span class="focus-end-caught-up">All caught up</span>
 			<h2 class="focus-end-title">{diff.title}</h2>
-			<span class="focus-title-card-generated">Generated {timeAgoFrom(diff.generated_at, Date.now())}</span>
+			<span class="focus-title-card-generated">Generated {timeAgo(diff.generated_at)}</span>
 			{#if !arrivedViaSlide}
 				{#if 'ontouchstart' in globalThis}
 					<span class="focus-end-swipe-hint" class:focus-end-swipe-both={!!prevDiff} class:focus-end-swipe-right-only={!prevDiff}>{#if prevDiff}<span class="focus-end-swipe-arrow">&larr;</span>{/if} swipe <span class="focus-end-swipe-arrow">&rarr;</span></span>
