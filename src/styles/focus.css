@@ -378,6 +378,16 @@
   margin: 0;
 }
 
+.focus-title-card-summary {
+  font-size: 1.05rem;
+  font-style: italic;
+  color: var(--text-hint);
+  line-height: 1.6;
+  margin: 0.25rem 0 0;
+  max-width: 30ch;
+  text-align: left;
+}
+
 .focus-title-card-meta {
   display: flex;
   align-items: center;

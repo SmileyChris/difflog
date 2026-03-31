@@ -10,6 +10,17 @@
   letter-spacing: 0.03em;
 }
 
+/* Executive summary paragraph between title and first section */
+.md-summary {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--md-border);
+  line-height: 1.6;
+}
+
 .md-h2 {
   font-family: var(--font-mono);
   font-size: 1.05rem;

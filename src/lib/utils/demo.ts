@@ -94,8 +94,18 @@ function shuffle<T>(arr: T[]): T[] {
 	return a;
 }
 
+const SUMMARIES = [
+	'Security patches dominate the week as Node.js and SQLite ship critical fixes, while Rust and Bun push major releases forward.',
+	'A busy week for runtime releases and breaking vulnerabilities — upgrade your dependencies before the next zero-day drops.',
+	'The open-source world debates monoliths versus microservices again, but this time the data is on the monolith\'s side.',
+	'Critical CVEs across the stack, exciting language releases, and a surprisingly heated debate about code formatting.',
+	'Infrastructure security takes center stage with multiple high-severity patches, plus some genuinely useful new developer tools.',
+];
+
 function buildContent(): string {
 	const parts: string[] = [];
+
+	parts.push(SUMMARIES[Math.floor(Math.random() * SUMMARIES.length)]);
 
 	for (const section of SECTIONS) {
 		const picked = shuffle(section.pool).slice(0, section.pick);

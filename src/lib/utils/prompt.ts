@@ -34,6 +34,7 @@ export function buildPrompt(profile: Profile, feedContext?: string, lastDiffDate
 
 FORMAT:
 - Begin with a single # heading: a short, creative plain-text title (3-8 words, no links or bold) that captures the overall theme of this diff — not just the first section
+- Immediately after the # title, write ONE short paragraph (1-2 sentences) that gives an executive summary of the day's highlights — no links, no bold, just a plain-text snapshot of what matters most
 - Use plain Unicode characters (·, —, →, etc.), NEVER HTML entities (&middot; &mdash; &rarr; etc.)
 - Use real URLs from the feed data or web search — never placeholder or hallucinated links
 - IMPORTANT: Make the headline itself a link. The bold text should BE the link:
@@ -85,7 +86,7 @@ ${profile.customFocus ? `- Custom focus: ${profile.customFocus}` : ''}
 DEPTH: ${DEPTH_INSTRUCTIONS[(profile.depth as GenerationDepth) || 'standard']}
 ${webSection}${feedSection}${sourcesNote}${previousDiffSection}
 
-Generate the diff now. Start with the # title, then ## sections.`;
+Generate the diff now. Start with the # title, then a one-paragraph executive summary, then ## sections.`;
 
   return { system, user };
 }

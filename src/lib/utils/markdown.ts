@@ -237,6 +237,7 @@ export function renderMarkdown(text: string, citations?: Citation[]): string {
   let html = '';
   let pIndex = 0;
   let inSection = false;
+  let seenH2 = false;
 
   for (const block of blocks) {
     switch (block.type) {
@@ -245,6 +246,7 @@ export function renderMarkdown(text: string, citations?: Citation[]): string {
         html += `<h1 class="md-h1">${parseInline(block.content!)}</h1>\n`;
         break;
       case 'h2':
+        seenH2 = true;
         if (inSection) html += `</div>\n</details>\n`;
         html += `<details class="md-section" open>\n`;
         html += `<summary class="md-h2">${parseInline(block.content!)}</summary>\n`;
@@ -264,9 +266,11 @@ export function renderMarkdown(text: string, citations?: Citation[]): string {
         }
         html += `</ul>\n`;
         break;
-      case 'paragraph':
-        html += `<p class="md-p" data-p="${pIndex++}">${parseInline(block.content!)}</p>\n`;
+      case 'paragraph': {
+        const cls = !seenH2 && !inSection ? 'md-p md-summary' : 'md-p';
+        html += `<p class="${cls}" data-p="${pIndex++}">${parseInline(block.content!)}</p>\n`;
         break;
+      }
     }
   }
 
@@ -307,6 +311,13 @@ export interface Paragraph {
   html: string;
   text: string;
   sectionTitle: string;
+}
+
+/** Extract the executive summary paragraph (marked with md-summary class). */
+export function extractSummary(html: string): string | null {
+  const match = html.match(/<p class="md-p md-summary"[^>]*>([\s\S]*?)<\/p>/);
+  if (!match) return null;
+  return match[1].replace(/<[^>]+>/g, '').trim() || null;
 }
 
 /** Extract individual [data-p] paragraphs from rendered markdown HTML. */

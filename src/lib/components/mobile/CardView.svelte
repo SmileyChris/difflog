@@ -5,7 +5,7 @@
 	import { type Diff, getHistory } from '$lib/stores/history.svelte';
 	import { isStarred, getStars } from '$lib/stores/stars.svelte';
 	import { toggleStar } from '$lib/stores/operations.svelte';
-	import { renderMarkdown, extractParagraphs } from '$lib/utils/markdown';
+	import { renderMarkdown, extractParagraphs, extractSummary } from '$lib/utils/markdown';
 	import { buildDiffContent, timeAgoFrom } from '$lib/utils/time';
 	import { onMount } from 'svelte';
 	import { mobileDiff } from '$lib/stores/mobile.svelte';
@@ -39,6 +39,8 @@
 	const fullContent = $derived(diff ? buildDiffContent(diff) : '');
 
 	const html = $derived(fullContent ? renderMarkdown(fullContent) : '');
+
+	const summary = $derived(html ? extractSummary(html) : null);
 
 	// --- Flat cards: one entry per [data-p] element ---
 	const flatCards = $derived.by((): FlatCard[] => {
@@ -411,6 +413,9 @@
 		<div class="focus-title-card-content">
 			<span class="focus-logo-mark">&#9670;</span>
 			<h1 class="focus-title-card-heading">{diff.title}</h1>
+			{#if summary}
+				<p class="focus-title-card-summary">{summary}</p>
+			{/if}
 			<span class="focus-title-card-meta">
 				<span>{flatCards.length} articles</span>
 				{#if starredCount > 0}
