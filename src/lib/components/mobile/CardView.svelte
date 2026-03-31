@@ -489,7 +489,7 @@
 		<button class="focus-nav-arrow" class:focus-nav-disabled={!prevDiff} disabled={!prevDiff} onclick={() => prevDiff && slideTo(prevDiff, 'right')}>&#8249;</button>
 		{new Date(diff.generated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
 		{#if !nextDiff && onNewest}
-			<button class="focus-nav-arrow" onclick={() => slideOut('left', onNewest!)}><span class="focus-nav-diamond">&#9670;</span> <span class="focus-nav-gen-label">Generate</span> &#8250;</button>
+			<button class="focus-nav-arrow" onclick={() => slideOut('left', onNewest!)}><span class="focus-nav-diamond">&#9670;</span> <span class="focus-nav-gen-label">New diff</span> &#8250;</button>
 		{:else}
 			<button class="focus-nav-arrow" class:focus-nav-disabled={!nextDiff} disabled={!nextDiff} onclick={() => nextDiff && slideTo(nextDiff, 'left')}>&#8250;</button>
 		{/if}

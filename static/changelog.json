@@ -6,8 +6,8 @@
       "summary": "Executive summary on every diff",
       "description": "Each diff now opens with a short, snappy executive summary — a plain-text paragraph capturing the day's highlights at a glance, shown in the title card in focus mode and above the sections on desktop.",
       "changes": [
-        { "type": "feature", "text": "Executive summary paragraph generated at the top of every diff — no links, just the headline picture", "in": "4.2.0" },
-        { "type": "feature", "text": "Summary displayed in the focus mode title card for quick context before swiping", "in": "4.2.0" }
+        { "type": "feature", "text": "Executive summary paragraph at the top of every diff — a plain-text snapshot shown on desktop and in the focus mode title card", "in": "4.2.0" },
+        { "type": "fix", "text": "Focus mode nav bar alignment and live-updating timestamps", "in": "4.2.0" }
       ]
     },
     {

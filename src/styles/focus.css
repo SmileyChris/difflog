@@ -327,12 +327,13 @@
   font-size: 0.7rem;
   color: var(--text-disabled);
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.5rem;
 }
 
 .focus-nav-arrow {
-  font-size: 0.9rem;
+  font: inherit;
+  font-size: 0.7rem;
   color: var(--accent);
   transition: opacity 0.15s;
   background: none;
@@ -340,6 +341,9 @@
   padding: 0.25rem;
   cursor: pointer;
   line-height: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
 }
 
 .focus-nav-disabled {
@@ -347,13 +351,12 @@
 }
 
 .focus-nav-diamond {
-  font-size: 0.75rem;
-  vertical-align: 0.1em;
+  font-size: 0.6rem;
+  align-self: start;
   margin-left: 0.15rem;
 }
 
 .focus-nav-gen-label {
-  font-size: 0.7rem;
 }
 
 /* Title card */
