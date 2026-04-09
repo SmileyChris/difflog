@@ -1,3 +1,5 @@
+import { LIST_MARKER } from './constants';
+
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -93,12 +95,17 @@ interface Block {
   items?: string[];
 }
 
+// Precompiled regexes using shared list marker
+const separatorOnlyRe = new RegExp(`^(?:${LIST_MARKER}|\\.)+$`);
+const listItemRe = new RegExp(`^${LIST_MARKER}\\s+(.+)$`);
+const listStartRe = new RegExp(`^${LIST_MARKER}\\s`);
+
 function preprocessContent(text: string): string {
   return text
     .split('\n')
     .filter(line => {
       const trimmed = line.trim();
-      if (/^[-*\u2022.]+$/.test(trimmed)) return false;
+      if (separatorOnlyRe.test(trimmed)) return false;
       return true;
     })
     .join('\n');
@@ -124,7 +131,7 @@ export function parseBlocks(text: string): Block[] {
       continue;
     }
 
-    if (/^[-*\u2022.]+$/.test(trimmed)) {
+    if (separatorOnlyRe.test(trimmed)) {
       i++;
       continue;
     }
@@ -156,7 +163,7 @@ export function parseBlocks(text: string): Block[] {
     }
 
     // List items
-    const listMatch = trimmed.match(/^[-*\u2022]\s+(.+)$/);
+    const listMatch = trimmed.match(listItemRe);
     if (listMatch) {
       if (currentBlock && currentBlock.type !== 'list') {
         blocks.push(currentBlock);
@@ -180,7 +187,7 @@ export function parseBlocks(text: string): Block[] {
           if (peek >= lines.length) break;
           const peekTrimmed = lines[peek].trim();
           // If next non-empty line is a new item, header, or rule, stop
-          if (/^[-*\u2022]\s/.test(peekTrimmed) ||
+          if (listStartRe.test(peekTrimmed) ||
             /^#{1,3}\s/.test(peekTrimmed) ||
             /^(-{3,}|\*{3,}|_{3,})$/.test(peekTrimmed)) {
             break;
@@ -192,10 +199,10 @@ export function parseBlocks(text: string): Block[] {
           continue;
         }
 
-        if (/^[-*\u2022]\s/.test(nextTrimmed) ||
+        if (listStartRe.test(nextTrimmed) ||
           /^#{1,3}\s/.test(nextTrimmed) ||
           /^(-{3,}|\*{3,}|_{3,})$/.test(nextTrimmed) ||
-          /^[-*\u2022.]+$/.test(nextTrimmed)) {
+          separatorOnlyRe.test(nextTrimmed)) {
           break;
         }
         itemContent += ' ' + nextTrimmed;

@@ -56,6 +56,9 @@ export const FIELD_OPTIONS: Record<string, string[]> = {
   topics: TOPICS
 };
 
+// Markdown list bullet markers (hyphen, asterisk, bullet, em-dash, en-dash, hyphen-bullet)
+export const LIST_MARKER = '[-*\u2022\u2014\u2013\u2043]';
+
 // Storage keys
 export const STORAGE_KEYS = {
   PROFILES: 'difflog-profiles',

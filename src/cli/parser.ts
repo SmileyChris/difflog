@@ -2,6 +2,10 @@
  * Parse markdown diffs into structured categories and topics.
  */
 
+import { LIST_MARKER } from '../lib/utils/constants';
+
+const listStartRe = new RegExp(`^\\s*${LIST_MARKER}\\s`);
+
 export interface Topic {
 	content: string; // The full bullet point content (including list marker)
 	lines: string[]; // Multi-line topic content
@@ -66,7 +70,7 @@ export function parseDiff(markdown: string): ParsedDiff {
 		}
 
 		// Check for bullet point (topic start)
-		if (line.match(/^\s*[-*]\s/) && currentCategory) {
+		if (listStartRe.test(line) && currentCategory) {
 			// Save previous topic if exists
 			if (currentTopic) {
 				// Extract all links from complete topic
