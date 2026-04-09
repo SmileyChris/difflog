@@ -2,13 +2,14 @@
   "versions": [
     {
       "version": "4.2",
-      "date": "2026-04-01",
+      "date": "2026-04-09",
       "summary": "Executive summary on every diff",
       "description": "Each diff now opens with a short, snappy executive summary — a plain-text paragraph capturing the day's highlights at a glance, shown in the title card in focus mode and above the sections on desktop.",
       "changes": [
         { "type": "feature", "text": "Executive summary paragraph at the top of every diff — a plain-text snapshot shown on desktop and in the focus mode title card", "in": "4.2.0" },
         { "type": "fix", "text": "Focus mode nav bar alignment and live-updating timestamps", "in": "4.2.0" },
-        { "type": "fix", "text": "Streak calendar month boundaries and scrollable overflow", "in": "4.2.1" }
+        { "type": "fix", "text": "Streak calendar month boundaries and scrollable overflow", "in": "4.2.1" },
+        { "type": "fix", "text": "Markdown parsers now recognize non-standard list markers like em dashes and en dashes", "in": "4.2.1" }
       ]
     },
     {
