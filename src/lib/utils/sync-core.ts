@@ -6,11 +6,13 @@ import { encryptData, decryptData, decryptApiKeys, uint8ToBase64, computeContent
 import type {
   Diff,
   PendingChanges,
+  PendingDeletion,
   EncryptedKeysBlob,
   ProviderSelections,
   ApiKeys,
   ProfileCore,
-  Star
+  Star,
+  Tldr
 } from '../types/sync';
 
 // Compute deterministic star ID from its semantic identity
@@ -21,6 +23,27 @@ export function starId(starOrDiffId: Star | string, pIndex?: number): string {
     return `${starOrDiffId}:${pIndex}`;
   }
   return `${starOrDiffId.diff_id}:${starOrDiffId.p_index}`;
+}
+
+/** Compute deterministic TLDR ID (same shape as stars — "diffId:pIndex"). */
+export function tldrId(tldr: Tldr): string;
+export function tldrId(diffId: string, pIndex: number): string;
+export function tldrId(tldrOrDiffId: Tldr | string, pIndex?: number): string {
+  if (typeof tldrOrDiffId === 'string') {
+    return `${tldrOrDiffId}:${pIndex}`;
+  }
+  return `${tldrOrDiffId.diff_id}:${tldrOrDiffId.p_index}`;
+}
+
+/** Helper: build a Set of ids from a PendingDeletion[] list. */
+function deletedIdSet(deletions: PendingDeletion[]): Set<string> {
+  return new Set(deletions.map(d => d.id));
+}
+
+/** Helper: find the deletion timestamp for a given id, or null. */
+function findDeletedAt(deletions: PendingDeletion[], id: string): string | null {
+  const match = deletions.find(d => d.id === id);
+  return match ? match.deletedAt : null;
 }
 
 /** Encrypt diffs that are in the pending-modified set (or all diffs if modifiedIds is null). */
@@ -44,17 +67,24 @@ export async function encryptDiffs(
   return result;
 }
 
-/** Decrypt server diffs (public/private detection), merge with local respecting pending changes. */
+/** Decrypt server diffs (public/private detection), merge with local respecting pending changes.
+ *  Also reconciles stale tombstones: if the server has a diff that the client has pending-deleted,
+ *  the client's tombstone is stale (the server would have honored any earlier client delete), so
+ *  we drop it from `remainingDeletions` and accept the server's diff. Diffs don't have their own
+ *  `updated_at` in the encrypted payload, so presence-on-server is treated as newer than the
+ *  tombstone — the client would only have a tombstone older than this server entry if another
+ *  device wrote the entry after our delete. */
 export async function decryptAndMergeDiffs(
   serverDiffs: { id: string; encrypted_data: string }[],
   localDiffs: Diff[],
   pending: PendingChanges,
   password: string,
   salt: string
-): Promise<{ merged: Diff[]; downloaded: number; errors: number }> {
-  const pendingDeletedDiffs = new Set(pending.deletedDiffs);
+): Promise<{ merged: Diff[]; downloaded: number; errors: number; remainingDeletions: PendingDeletion[] }> {
+  const pendingDeletedDiffsSet = deletedIdSet(pending.deletedDiffs);
   const pendingModifiedDiffs = new Set(pending.modifiedDiffs);
   const serverDiffIds = new Set<string>();
+  const staleTombstones = new Set<string>();
   let merged = [...localDiffs];
   let downloaded = 0;
   let errors = 0;
@@ -71,11 +101,25 @@ export async function decryptAndMergeDiffs(
       }
       serverDiffIds.add(encryptedDiff.id);
 
+      // Stale tombstone reconciliation: server has this diff but client marked it deleted.
+      // Server wins — drop the tombstone and accept the server's diff.
+      if (pendingDeletedDiffsSet.has(encryptedDiff.id)) {
+        staleTombstones.add(encryptedDiff.id);
+        const existingIdx = merged.findIndex(d => d.id === encryptedDiff.id);
+        if (existingIdx === -1) {
+          merged.push(diff);
+          downloaded++;
+        } else {
+          merged[existingIdx] = { ...merged[existingIdx], isPublic: diff.isPublic };
+        }
+        continue;
+      }
+
       const existingIdx = merged.findIndex(d => d.id === encryptedDiff.id);
-      if (existingIdx === -1 && !pendingDeletedDiffs.has(encryptedDiff.id)) {
+      if (existingIdx === -1) {
         merged.push(diff);
         downloaded++;
-      } else if (existingIdx !== -1 && !pendingModifiedDiffs.has(encryptedDiff.id)) {
+      } else if (!pendingModifiedDiffs.has(encryptedDiff.id)) {
         // Server wins for non-locally-modified diffs (update isPublic at minimum)
         merged[existingIdx] = { ...merged[existingIdx], isPublic: diff.isPublic };
       }
@@ -86,10 +130,12 @@ export async function decryptAndMergeDiffs(
 
   // Remove diffs deleted on server (unless locally modified or pending delete)
   merged = merged.filter(d =>
-    serverDiffIds.has(d.id) || pendingDeletedDiffs.has(d.id) || pendingModifiedDiffs.has(d.id)
+    serverDiffIds.has(d.id) || pendingDeletedDiffsSet.has(d.id) || pendingModifiedDiffs.has(d.id)
   );
 
-  return { merged, downloaded, errors };
+  const remainingDeletions = pending.deletedDiffs.filter(d => !staleTombstones.has(d.id));
+
+  return { merged, downloaded, errors, remainingDeletions };
 }
 
 /** Encrypt stars that are in the pending-modified set (or all stars if modifiedIds is null). */
@@ -115,17 +161,21 @@ export async function computeStarsHash(stars: Star[]): Promise<string> {
   return computeContentHash(starsWithIds);
 }
 
-/** Decrypt server stars, merge with local respecting pending changes. */
+/** Decrypt server stars, merge with local respecting pending changes.
+ *  Stars don't carry an updated_at in their payload — if a server star exists despite a pending
+ *  tombstone, another device must have re-created it after our delete, so the tombstone is stale
+ *  and we accept the server's star. */
 export async function decryptAndMergeStars(
   serverStars: { id: string; encrypted_data: string }[],
   localStars: Star[],
   pending: PendingChanges,
   password: string,
   salt: string
-): Promise<{ merged: Star[]; downloaded: number; errors: number }> {
-  const pendingDeletedStars = new Set(pending.deletedStars);
+): Promise<{ merged: Star[]; downloaded: number; errors: number; remainingDeletions: PendingDeletion[] }> {
+  const pendingDeletedStarsSet = deletedIdSet(pending.deletedStars);
   const pendingModifiedStars = new Set(pending.modifiedStars);
   const serverStarIds = new Set<string>();
+  const staleTombstones = new Set<string>();
   let merged = [...localStars];
   let downloaded = 0;
   let errors = 0;
@@ -135,8 +185,19 @@ export async function decryptAndMergeStars(
       const star = await decryptData(encryptedStar.encrypted_data, password, salt) as Star;
       serverStarIds.add(encryptedStar.id);
 
+      if (pendingDeletedStarsSet.has(encryptedStar.id)) {
+        // Stale tombstone: server has this star, accept it and drop the tombstone
+        staleTombstones.add(encryptedStar.id);
+        const existingIdx = merged.findIndex(s => starId(s) === encryptedStar.id);
+        if (existingIdx === -1) {
+          merged.push(star);
+          downloaded++;
+        }
+        continue;
+      }
+
       const existingIdx = merged.findIndex(s => starId(s) === encryptedStar.id);
-      if (existingIdx === -1 && !pendingDeletedStars.has(encryptedStar.id)) {
+      if (existingIdx === -1) {
         merged.push(star);
         downloaded++;
       }
@@ -145,13 +206,13 @@ export async function decryptAndMergeStars(
     }
   }
 
-  // Remove stars deleted on server
+  // Remove stars deleted on server (keep pending-deleted and pending-modified as-is)
   const beforeCount = merged.length;
   merged = merged.filter(s => {
     const id = starId(s);
-    const keep = serverStarIds.has(id) || pendingDeletedStars.has(id) || pendingModifiedStars.has(id);
+    const keep = serverStarIds.has(id) || pendingDeletedStarsSet.has(id) || pendingModifiedStars.has(id);
     if (!keep) {
-      console.warn(`[Sync] Dropping local star ${id} — not on server (${serverStarIds.size} server stars), not in pending modified (${pendingModifiedStars.size}), not in pending deleted (${pendingDeletedStars.size})`);
+      console.warn(`[Sync] Dropping local star ${id} — not on server (${serverStarIds.size} server stars), not in pending modified (${pendingModifiedStars.size}), not in pending deleted (${pendingDeletedStarsSet.size})`);
     }
     return keep;
   });
@@ -159,7 +220,104 @@ export async function decryptAndMergeStars(
     console.warn(`[Sync] Star merge: ${beforeCount} → ${merged.length} (dropped ${beforeCount - merged.length}). Server stars: [${[...serverStarIds].join(', ')}], Pending modified: [${[...pendingModifiedStars].join(', ')}]`);
   }
 
-  return { merged, downloaded, errors };
+  const remainingDeletions = pending.deletedStars.filter(d => !staleTombstones.has(d.id));
+
+  return { merged, downloaded, errors, remainingDeletions };
+}
+
+/** Encrypt TLDRs that are in the pending-modified set (or all TLDRs if modifiedIds is null). */
+export async function encryptTldrs(
+  tldrs: Tldr[],
+  modifiedIds: Set<string> | null,
+  password: string,
+  salt: string
+): Promise<{ id: string; encrypted_data: string }[]> {
+  const result: { id: string; encrypted_data: string }[] = [];
+  for (const tldr of tldrs) {
+    const id = tldrId(tldr);
+    if (modifiedIds && !modifiedIds.has(id)) continue;
+    const encrypted = await encryptData(tldr, password, salt);
+    result.push({ id, encrypted_data: encrypted });
+  }
+  return result;
+}
+
+/** Compute a deterministic hash over TLDRs (with IDs added for consistency). */
+export async function computeTldrsHash(tldrs: Tldr[]): Promise<string> {
+  const tldrsWithIds = tldrs.map(t => ({ ...t, id: tldrId(t) }));
+  return computeContentHash(tldrsWithIds);
+}
+
+/** Decrypt server TLDRs, merge with local respecting pending changes.
+ *  Uses last-write-wins by `updated_at` for conflicts. Tombstones are reconciled by comparing
+ *  the server's `updated_at` against the local `deletedAt`: if the server entry is newer, the
+ *  tombstone is stale and gets dropped — we accept the server's TLDR. */
+export async function decryptAndMergeTldrs(
+  serverTldrs: { id: string; encrypted_data: string }[],
+  localTldrs: Tldr[],
+  pending: PendingChanges,
+  password: string,
+  salt: string
+): Promise<{ merged: Tldr[]; downloaded: number; errors: number; remainingDeletions: PendingDeletion[] }> {
+  const pendingDeletedTldrsSet = deletedIdSet(pending.deletedTldrs);
+  const pendingModifiedTldrs = new Set(pending.modifiedTldrs);
+  const serverTldrIds = new Set<string>();
+  const staleTombstones = new Set<string>();
+  let merged = [...localTldrs];
+  let downloaded = 0;
+  let errors = 0;
+
+  for (const encryptedTldr of serverTldrs) {
+    try {
+      const tldr = await decryptData(encryptedTldr.encrypted_data, password, salt) as Tldr;
+      serverTldrIds.add(encryptedTldr.id);
+      const serverUpdatedAt = tldr.updated_at || tldr.created_at || '';
+
+      if (pendingDeletedTldrsSet.has(encryptedTldr.id)) {
+        const deletedAt = findDeletedAt(pending.deletedTldrs, encryptedTldr.id);
+        // If server's updated_at is newer than our tombstone, tombstone is stale — accept server's TLDR
+        if (deletedAt && serverUpdatedAt > deletedAt) {
+          staleTombstones.add(encryptedTldr.id);
+          const existingIdx = merged.findIndex(t => tldrId(t) === encryptedTldr.id);
+          if (existingIdx === -1) {
+            merged.push(tldr);
+            downloaded++;
+          } else {
+            merged[existingIdx] = tldr;
+          }
+        }
+        // Otherwise: keep the tombstone; upload phase will delete the stale server row
+        continue;
+      }
+
+      const existingIdx = merged.findIndex(t => tldrId(t) === encryptedTldr.id);
+      if (existingIdx === -1) {
+        if (!pendingModifiedTldrs.has(encryptedTldr.id)) {
+          merged.push(tldr);
+          downloaded++;
+        }
+      } else if (!pendingModifiedTldrs.has(encryptedTldr.id)) {
+        // Last-write-wins by updated_at
+        const local = merged[existingIdx];
+        const localUpdatedAt = local.updated_at || local.created_at || '';
+        if (serverUpdatedAt > localUpdatedAt) {
+          merged[existingIdx] = tldr;
+        }
+      }
+    } catch {
+      errors++;
+    }
+  }
+
+  // Remove TLDRs deleted on server (keep pending-deleted and pending-modified)
+  merged = merged.filter(t => {
+    const id = tldrId(t);
+    return serverTldrIds.has(id) || pendingDeletedTldrsSet.has(id) || pendingModifiedTldrs.has(id);
+  });
+
+  const remainingDeletions = pending.deletedTldrs.filter(d => !staleTombstones.has(d.id));
+
+  return { merged, downloaded, errors, remainingDeletions };
 }
 
 /** Decrypt an encrypted keys blob, handling new and legacy formats.
@@ -251,8 +409,11 @@ export function buildSyncPayload(opts: {
   deletedDiffIds: string[];
   diffsHash: string;
   starsHash: string;
+  tldrsHash?: string;
   stars?: { id: string; encrypted_data: string }[];
   deletedStarIds?: string[];
+  tldrs?: { id: string; encrypted_data: string }[];
+  deletedTldrIds?: string[];
   encryptedApiKey?: string;
   keysHash?: string;
   profile?: ReturnType<typeof buildProfileMetadata>;
@@ -261,10 +422,13 @@ export function buildSyncPayload(opts: {
     password_hash: opts.passwordHash,
     diffs: opts.diffs,
     stars: opts.stars || [],
+    tldrs: opts.tldrs || [],
     deleted_diff_ids: opts.deletedDiffIds,
     deleted_star_ids: opts.deletedStarIds || [],
+    deleted_tldr_ids: opts.deletedTldrIds || [],
     diffs_hash: opts.diffsHash,
     stars_hash: opts.starsHash,
+    tldrs_hash: opts.tldrsHash,
     encrypted_api_key: opts.encryptedApiKey,
     keys_hash: opts.keysHash,
     profile: opts.profile

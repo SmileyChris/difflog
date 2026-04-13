@@ -34,7 +34,14 @@ import {
 	type Star
 } from './stars.svelte';
 
-import { removeTldrsForDiff } from './tldrs.svelte';
+import {
+	getTldr,
+	setTldrBase,
+	removeTldrBase,
+	removeTldrsForDiff,
+	tldrKey,
+	type TldrEntry
+} from './tldrs.svelte';
 
 import {
 	syncError,
@@ -46,6 +53,8 @@ import {
 	trackDeletedDiff,
 	trackModifiedStar,
 	trackDeletedStar,
+	trackModifiedTldr,
+	trackDeletedTldr,
 	checkSyncStatus,
 	syncContent,
 	syncIfStale,
@@ -87,6 +96,8 @@ export function deleteDiff(id: string): void {
 	for (const star of starsToRemove) {
 		trackDeletedStar(starId(star));
 	}
+	// TLDRs cascade on the server when the diff is deleted (handled by sync endpoint).
+	// We still remove them locally to keep UI consistent; no per-TLDR tombstone needed.
 	removeTldrsForDiff(id);
 	deleteDiffBase(id);
 	trackDeletedDiff(id);
@@ -109,6 +120,25 @@ export function toggleStar(diffId: string, pIndex: number): void {
 	} else {
 		addStar({ diff_id: diffId, p_index: pIndex, added_at: new Date().toISOString() });
 	}
+}
+
+// TLDR operations with sync tracking
+export function addTldr(diffId: string, pIndex: number, data: { summary: string; url: string }): void {
+	const now = new Date().toISOString();
+	const existing = getTldr(diffId, pIndex);
+	const entry: TldrEntry = {
+		summary: data.summary,
+		url: data.url,
+		created_at: existing?.created_at ?? now,
+		updated_at: now
+	};
+	setTldrBase(diffId, pIndex, entry);
+	trackModifiedTldr(tldrKey(diffId, pIndex));
+}
+
+export function deleteTldr(diffId: string, pIndex: number): void {
+	removeTldrBase(diffId, pIndex);
+	trackDeletedTldr(tldrKey(diffId, pIndex));
 }
 
 // Public diff sharing

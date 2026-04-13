@@ -3,7 +3,7 @@ import { persist } from './persist.svelte';
 import { activeProfileId, profiles, getProfile, isDemoProfile, updateProfile as updateProfileBase } from './profiles.svelte';
 import { histories, getHistory, initHistoryForProfile, deleteHistoryForProfile } from './history.svelte';
 import { bookmarks, getStars, initStarsForProfile, deleteStarsForProfile, removeStarsForDiff, starId } from './stars.svelte';
-import { deleteTldrsForProfile } from './tldrs.svelte';
+import { deleteTldrsForProfile, getTldrsAsArray, setTldrsFromArray, tldrKey } from './tldrs.svelte';
 import { isGenerating, clearGenerationState, clearStageCache } from './ui.svelte';
 import { timeAgo } from '$lib/utils/time.svelte';
 import { ApiError } from '$lib/utils/api';
@@ -15,6 +15,7 @@ import {
 	clearRememberedPassword,
 	hasRememberedPassword,
 	createEmptyPending,
+	upgradePendingChanges,
 	trackChange,
 	hasPendingChanges as checkPending,
 	checkStatus,
@@ -28,12 +29,27 @@ import {
 	type SyncStatus,
 	type Profile,
 	type Diff,
-	type Star
+	type Star,
+	type Tldr
 } from '$lib/utils/sync';
 import { fetchJson } from '$lib/utils/api';
 
 // Persisted state
 const _pendingSync = persist<Record<string, PendingChanges>>('difflog-pending-sync', {});
+
+// One-shot migration: upgrade legacy pending-changes shape (string[] deletions, no tldr fields)
+// to the current PendingChanges shape. Idempotent.
+if (browser) {
+	const raw = _pendingSync.value;
+	let changed = false;
+	const upgraded: Record<string, PendingChanges> = {};
+	for (const [profileId, pending] of Object.entries(raw)) {
+		const normalized = upgradePendingChanges(pending as PendingChanges);
+		if (normalized !== pending) changed = true;
+		upgraded[profileId] = normalized;
+	}
+	if (changed) _pendingSync.value = upgraded;
+}
 
 // Session state
 let _syncStatus = $state<SyncStatus | null>(null);
@@ -182,10 +198,9 @@ export function trackProfileModified(): void {
 }
 
 /**
- * Track a change to a diff or star for sync.
- * Consolidates the four tracking functions into one parameterized function.
+ * Track a change to a diff, star, or TLDR for sync.
  */
-function trackItemChange(type: 'diff' | 'star', action: 'modified' | 'deleted', id: string): void {
+function trackItemChange(type: 'diff' | 'star' | 'tldr', action: 'modified' | 'deleted', id: string): void {
 	const profile = getProfile();
 	if (!activeProfileId.value || !profile?.syncedAt) return;
 	const pending = getPendingSync();
@@ -211,6 +226,14 @@ export function trackModifiedStar(id: string): void {
 
 export function trackDeletedStar(id: string): void {
 	trackItemChange('star', 'deleted', id);
+}
+
+export function trackModifiedTldr(id: string): void {
+	trackItemChange('tldr', 'modified', id);
+}
+
+export function trackDeletedTldr(id: string): void {
+	trackItemChange('tldr', 'deleted', id);
 }
 
 // Track that API keys or provider selections changed
@@ -248,6 +271,7 @@ export async function checkSyncStatus(): Promise<void> {
 
 	const history = getHistory();
 	const stars = getStars();
+	const tldrs = getTldrsAsArray();
 	const password = getCachedPassword();
 
 	const status = await checkStatus(
@@ -255,8 +279,29 @@ export async function checkSyncStatus(): Promise<void> {
 		profile,
 		history,
 		stars,
+		tldrs,
 		password
 	);
+
+	// First-sync migration: if server has no TLDRs but we have local ones, mark them all
+	// as modified so they upload on the next sync.
+	if (status.exists && !status.tldrs_hash && tldrs.length > 0 && activeProfileId.value) {
+		const pending = getPendingSync();
+		if (pending) {
+			const existingIds = new Set(pending.modifiedTldrs);
+			const allIds = tldrs.map((t) => tldrKey(t.diff_id, t.p_index));
+			const merged = [...pending.modifiedTldrs];
+			for (const id of allIds) {
+				if (!existingIds.has(id)) merged.push(id);
+			}
+			if (merged.length !== pending.modifiedTldrs.length) {
+				_pendingSync.value = {
+					..._pendingSync.value,
+					[activeProfileId.value]: { ...pending, modifiedTldrs: merged }
+				};
+			}
+		}
+	}
 
 	const hasPending = hasPendingChanges();
 	_syncStatus = {
@@ -300,6 +345,7 @@ async function uploadContentInternal(password: string): Promise<{ uploaded: numb
 	try {
 		const history = getHistory();
 		const stars = getStars();
+		const tldrs = getTldrsAsArray();
 		const uploadedPending = getPendingSync() || createEmptyPending();
 
 		const result = await uploadContent(
@@ -307,6 +353,7 @@ async function uploadContentInternal(password: string): Promise<{ uploaded: numb
 			profile,
 			history,
 			stars,
+			tldrs,
 			uploadedPending,
 			password
 		);
@@ -314,7 +361,8 @@ async function uploadContentInternal(password: string): Promise<{ uploaded: numb
 		const profileUpdate: Partial<Profile> & { syncedAt: string } = {
 			syncedAt: new Date().toISOString(),
 			diffsHash: result.diffsHash,
-			starsHash: result.starsHash
+			starsHash: result.starsHash,
+			tldrsHash: result.tldrsHash
 		};
 		if (result.keysHash) {
 			profileUpdate.keysHash = result.keysHash;
@@ -322,13 +370,18 @@ async function uploadContentInternal(password: string): Promise<{ uploaded: numb
 		updateProfileBase(profileUpdate);
 
 		const currentPending = getPendingSync() || createEmptyPending();
+		const uploadedDeletedDiffIds = new Set(uploadedPending.deletedDiffs.map((d) => d.id));
+		const uploadedDeletedStarIds = new Set(uploadedPending.deletedStars.map((d) => d.id));
+		const uploadedDeletedTldrIds = new Set(uploadedPending.deletedTldrs.map((d) => d.id));
 		_pendingSync.value = {
 			..._pendingSync.value,
 			[activeProfileId.value]: {
 				modifiedDiffs: currentPending.modifiedDiffs.filter((id) => !uploadedPending.modifiedDiffs.includes(id)),
 				modifiedStars: currentPending.modifiedStars.filter((id) => !uploadedPending.modifiedStars.includes(id)),
-				deletedDiffs: currentPending.deletedDiffs.filter((id) => !uploadedPending.deletedDiffs.includes(id)),
-				deletedStars: currentPending.deletedStars.filter((id) => !uploadedPending.deletedStars.includes(id)),
+				modifiedTldrs: currentPending.modifiedTldrs.filter((id) => !uploadedPending.modifiedTldrs.includes(id)),
+				deletedDiffs: currentPending.deletedDiffs.filter((d) => !uploadedDeletedDiffIds.has(d.id)),
+				deletedStars: currentPending.deletedStars.filter((d) => !uploadedDeletedStarIds.has(d.id)),
+				deletedTldrs: currentPending.deletedTldrs.filter((d) => !uploadedDeletedTldrIds.has(d.id)),
 				profileModified: currentPending.profileModified && !uploadedPending.profileModified,
 				keysModified: currentPending.keysModified && !uploadedPending.keysModified
 			}
@@ -338,6 +391,7 @@ async function uploadContentInternal(password: string): Promise<{ uploaded: numb
 			exists: true,
 			diffs_hash: result.diffsHash,
 			stars_hash: result.starsHash,
+			tldrs_hash: result.tldrsHash,
 			content_updated_at: new Date().toISOString()
 		};
 
@@ -360,6 +414,7 @@ async function downloadContentInternal(password: string): Promise<{ downloaded: 
 	try {
 		const history = getHistory();
 		const stars = getStars();
+		const tldrs = getTldrsAsArray();
 		const pending = getPendingSync() || createEmptyPending();
 
 		const result = await downloadContent(
@@ -367,14 +422,17 @@ async function downloadContentInternal(password: string): Promise<{ downloaded: 
 			profile,
 			history,
 			stars,
+			tldrs,
 			pending,
 			password,
-			profile.diffsHash,
-			profile.starsHash
+			profile.diffsHash as string | undefined,
+			profile.starsHash as string | undefined,
+			profile.tldrsHash as string | undefined
 		);
 
 		histories.value = { ...histories.value, [activeProfileId.value]: result.diffs };
 		bookmarks.value = { ...bookmarks.value, [activeProfileId.value]: result.stars };
+		setTldrsFromArray(activeProfileId.value, result.tldrs);
 
 		if (result.profileUpdates && activeProfileId.value) {
 			const current = profiles.value[activeProfileId.value];
@@ -388,7 +446,8 @@ async function downloadContentInternal(password: string): Promise<{ downloaded: 
 			syncedAt: new Date().toISOString(),
 			salt: result.salt,
 			diffsHash: result.diffsHash,
-			starsHash: result.starsHash
+			starsHash: result.starsHash,
+			tldrsHash: result.tldrsHash
 		};
 		if (result.keysHash) {
 			downloadProfileUpdate.keysHash = result.keysHash;
@@ -402,19 +461,22 @@ async function downloadContentInternal(password: string): Promise<{ downloaded: 
 			};
 		}
 
-		// If decryption errors occurred, mark all local diffs/stars as pending
+		// If decryption errors occurred, mark all local diffs/stars/tldrs as pending
 		// so the next upload re-encrypts everything with the correct salt
 		if (result.decryptionErrors > 0 && activeProfileId.value) {
 			console.warn(`${result.decryptionErrors} item(s) failed to decrypt — scheduling full re-upload`);
 			const currentHistory = result.diffs;
 			const currentStars = result.stars;
+			const currentTldrs = result.tldrs;
 			_pendingSync.value = {
 				..._pendingSync.value,
 				[activeProfileId.value]: {
 					modifiedDiffs: currentHistory.map((d: Diff) => d.id),
 					modifiedStars: currentStars.map((s: Star) => starId(s)),
+					modifiedTldrs: currentTldrs.map((t: Tldr) => tldrKey(t.diff_id, t.p_index)),
 					deletedDiffs: [],
 					deletedStars: [],
+					deletedTldrs: [],
 				}
 			};
 		}
@@ -423,6 +485,7 @@ async function downloadContentInternal(password: string): Promise<{ downloaded: 
 			exists: true,
 			diffs_hash: result.diffsHash,
 			stars_hash: result.starsHash,
+			tldrs_hash: result.tldrsHash,
 			content_updated_at: new Date().toISOString()
 		};
 
@@ -541,16 +604,20 @@ export async function shareProfile(password: string): Promise<string> {
 
 	const history = getHistory();
 	const stars = getStars();
-	if (history.length > 0 || stars.length > 0) {
+	const tldrs = getTldrsAsArray();
+	if (history.length > 0 || stars.length > 0 || tldrs.length > 0) {
 		const allDiffIds = history.map((d: Diff) => d.id);
 		const allStarIds = stars.map((s: Star) => starId(s));
+		const allTldrIds = tldrs.map((t: Tldr) => tldrKey(t.diff_id, t.p_index));
 		_pendingSync.value = {
 			..._pendingSync.value,
 			[activeProfileId.value]: {
 				modifiedDiffs: allDiffIds,
 				modifiedStars: allStarIds,
+				modifiedTldrs: allTldrIds,
 				deletedDiffs: [],
-				deletedStars: []
+				deletedStars: [],
+				deletedTldrs: []
 			}
 		};
 
@@ -600,11 +667,13 @@ export async function updatePasswordSync(oldPassword: string, newPassword: strin
 	try {
 		const history = getHistory();
 		const stars = getStars();
+		const tldrs = getTldrsAsArray();
 		const { passwordSalt, salt } = await updatePasswordApi(
 			activeProfileId.value,
 			profile,
 			history,
 			stars,
+			tldrs,
 			oldPassword,
 			newPassword
 		);
@@ -688,6 +757,7 @@ export async function removeFromServer(password: string): Promise<void> {
 		salt: undefined,
 		diffsHash: undefined,
 		starsHash: undefined,
+		tldrsHash: undefined,
 		keysHash: undefined
 	});
 	setCachedPassword(null);

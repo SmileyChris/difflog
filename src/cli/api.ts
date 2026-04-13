@@ -97,7 +97,10 @@ export async function login(
 	const salt = content.salt || profileData.salt;
 
 	// 5. Decrypt and merge diffs (empty local state on fresh login)
-	const emptyPending = { modifiedDiffs: [], modifiedStars: [], deletedDiffs: [], deletedStars: [] };
+	const emptyPending = {
+		modifiedDiffs: [], modifiedStars: [], modifiedTldrs: [],
+		deletedDiffs: [], deletedStars: [], deletedTldrs: []
+	};
 	const { merged: diffs } = await decryptAndMergeDiffs(content.diffs, [], emptyPending, password, salt);
 	sortDiffsNewestFirst(diffs);
 

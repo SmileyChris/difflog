@@ -13,6 +13,7 @@ interface PasswordUpdateRequest {
 	new_salt: string;
 	diffs: { id: string; encrypted_data: string }[];
 	stars: { id: string; encrypted_data: string }[];
+	tldrs?: { id: string; encrypted_data: string }[];
 }
 
 export const POST: RequestHandler = async ({ request, params, platform }) => {
@@ -63,6 +64,9 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 		// Delete all existing stars for this profile
 		statements.push(DB.prepare('DELETE FROM stars WHERE profile_id = ?').bind(profileId));
 
+		// Delete all existing TLDRs for this profile
+		statements.push(DB.prepare('DELETE FROM tldrs WHERE profile_id = ?').bind(profileId));
+
 		// Insert new encrypted diffs
 		if (body.diffs && body.diffs.length > 0) {
 			for (const diff of body.diffs) {
@@ -87,6 +91,20 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 						VALUES (?, ?, ?)
 					`
 					).bind(star.id, profileId, star.encrypted_data)
+				);
+			}
+		}
+
+		// Insert new encrypted TLDRs
+		if (body.tldrs && body.tldrs.length > 0) {
+			for (const tldr of body.tldrs) {
+				statements.push(
+					DB.prepare(
+						`
+						INSERT INTO tldrs (id, profile_id, encrypted_data)
+						VALUES (?, ?, ?)
+					`
+					).bind(tldr.id, profileId, tldr.encrypted_data)
 				);
 			}
 		}

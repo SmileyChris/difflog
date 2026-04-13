@@ -10,10 +10,11 @@ mock.module("./api", () => ({
 }));
 
 // Import sync AFTER mocking api
-const { starId, downloadContent, createEmptyPending } = await import("./sync");
+const { starId, downloadContent, createEmptyPending, trackChange, upgradePendingChanges, hasPendingChanges } = await import("./sync");
 type Star = import("./sync").Star;
 type Diff = import("./sync").Diff;
 type Profile = import("./sync").Profile;
+type PendingChanges = import("./sync").PendingChanges;
 
 describe("sync.ts", () => {
   describe("starId", () => {
@@ -96,6 +97,7 @@ describe("sync.ts", () => {
         makeProfile(),
         [],
         [],
+        [],
         createEmptyPending(),
         password
       );
@@ -124,6 +126,7 @@ describe("sync.ts", () => {
       const result = await downloadContent(
         "profile-1",
         makeProfile({ salt: localSalt }),
+        [],
         [],
         [],
         createEmptyPending(),
@@ -155,6 +158,7 @@ describe("sync.ts", () => {
         makeProfile({ salt: wrongSalt }),
         [],
         [],
+        [],
         createEmptyPending(),
         password
       );
@@ -177,6 +181,7 @@ describe("sync.ts", () => {
       const result = await downloadContent(
         "profile-1",
         makeProfile(),
+        [],
         [],
         [],
         createEmptyPending(),
@@ -213,6 +218,7 @@ describe("sync.ts", () => {
         makeProfile({ salt: wrongSalt }),
         [localDiff],
         [],
+        [],
         pending,
         password
       );
@@ -221,6 +227,85 @@ describe("sync.ts", () => {
       // Local pending diff is preserved through the filter
       expect(result.diffs).toHaveLength(1);
       expect(result.diffs[0].id).toBe("d-local");
+    });
+  });
+
+  describe("trackChange", () => {
+    test("modified adds to modified list, removes from deleted", () => {
+      const pending = createEmptyPending();
+      const withDelete = trackChange(pending, "diff", "deleted", "d1");
+      expect(withDelete.deletedDiffs).toHaveLength(1);
+      expect(withDelete.deletedDiffs[0].id).toBe("d1");
+      expect(withDelete.deletedDiffs[0].deletedAt).toBeString();
+
+      const withModify = trackChange(withDelete, "diff", "modified", "d1");
+      expect(withModify.deletedDiffs).toHaveLength(0);
+      expect(withModify.modifiedDiffs).toEqual(["d1"]);
+    });
+
+    test("deleted adds tombstone with timestamp, removes from modified", () => {
+      const pending = createEmptyPending();
+      const withMod = trackChange(pending, "star", "modified", "s1");
+      expect(withMod.modifiedStars).toEqual(["s1"]);
+
+      const withDel = trackChange(withMod, "star", "deleted", "s1");
+      expect(withDel.modifiedStars).toHaveLength(0);
+      expect(withDel.deletedStars).toHaveLength(1);
+      expect(withDel.deletedStars[0].id).toBe("s1");
+    });
+
+    test("supports tldr type", () => {
+      const pending = createEmptyPending();
+      const result = trackChange(pending, "tldr", "modified", "d1:3");
+      expect(result.modifiedTldrs).toEqual(["d1:3"]);
+
+      const deleted = trackChange(result, "tldr", "deleted", "d1:3");
+      expect(deleted.modifiedTldrs).toHaveLength(0);
+      expect(deleted.deletedTldrs[0].id).toBe("d1:3");
+    });
+  });
+
+  describe("upgradePendingChanges", () => {
+    test("upgrades legacy string[] tombstones to PendingDeletion[]", () => {
+      const legacy = {
+        modifiedDiffs: ["d1"],
+        modifiedStars: [],
+        deletedDiffs: ["old-diff"] as unknown,
+        deletedStars: ["old-star"] as unknown
+      } as Partial<PendingChanges>;
+
+      const upgraded = upgradePendingChanges(legacy);
+      expect(upgraded.deletedDiffs).toHaveLength(1);
+      expect(upgraded.deletedDiffs[0]).toHaveProperty("id", "old-diff");
+      expect(upgraded.deletedDiffs[0]).toHaveProperty("deletedAt");
+      expect(upgraded.deletedStars[0].id).toBe("old-star");
+      expect(upgraded.modifiedTldrs).toEqual([]);
+      expect(upgraded.deletedTldrs).toEqual([]);
+    });
+
+    test("passes through already-upgraded deletions", () => {
+      const existing = createEmptyPending();
+      existing.deletedDiffs = [{ id: "d1", deletedAt: "2026-01-01T00:00:00Z" }];
+      const upgraded = upgradePendingChanges(existing);
+      expect(upgraded.deletedDiffs[0].deletedAt).toBe("2026-01-01T00:00:00Z");
+    });
+  });
+
+  describe("hasPendingChanges", () => {
+    test("returns false for empty pending", () => {
+      expect(hasPendingChanges(createEmptyPending())).toBe(false);
+    });
+
+    test("returns true when a TLDR is modified", () => {
+      const p = createEmptyPending();
+      p.modifiedTldrs = ["d1:0"];
+      expect(hasPendingChanges(p)).toBe(true);
+    });
+
+    test("returns true when a TLDR is deleted", () => {
+      const p = createEmptyPending();
+      p.deletedTldrs = [{ id: "d1:0", deletedAt: "2026-01-01T00:00:00Z" }];
+      expect(hasPendingChanges(p)).toBe(true);
     });
   });
 });

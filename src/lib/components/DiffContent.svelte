@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getStars, isStarred } from '$lib/stores/stars.svelte';
-	import { toggleStar, isDiffPublic, getPublicDiffUrl } from '$lib/stores/operations.svelte';
-	import { getTldr, setTldr, removeTldr } from '$lib/stores/tldrs.svelte';
+	import { toggleStar, isDiffPublic, getPublicDiffUrl, addTldr, deleteTldr } from '$lib/stores/operations.svelte';
+	import { getTldr } from '$lib/stores/tldrs.svelte';
 	import { getProfile } from '$lib/stores/profiles.svelte';
 	import { type Diff } from '$lib/stores/history.svelte';
 	import { renderMarkdown, parseInline } from '$lib/utils/markdown';
@@ -214,7 +214,7 @@
 			const summary = await summarizeArticle(keys, text, paragraphText, curationProvider);
 			if (!summary) throw new Error('Summarization failed');
 
-			setTldr(diff.id, pIndex, { summary, url, created_at: new Date().toISOString() });
+			addTldr(diff.id, pIndex, { summary, url });
 			showTldrSummary(el, pIndex, summary);
 		} catch (e) {
 			console.warn('TLDR error:', e);
@@ -238,7 +238,7 @@
 		trashBtn.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			removeTldr(diff.id, pIndex);
+			deleteTldr(diff.id, pIndex);
 			tldrStates.delete(pIndex);
 			tldrStates = new Map(tldrStates);
 			div.remove();

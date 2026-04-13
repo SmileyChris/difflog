@@ -1,4 +1,4 @@
-import { getSession, getProfile, getDiffs, saveDiffs, saveProfile, getStars, saveStars, getPendingChanges, clearPendingChanges, getSyncMeta, saveSyncMeta, getApiKeys } from './config';
+import { getSession, getProfile, getDiffs, saveDiffs, saveProfile, getStars, saveStars, getPendingChanges, savePendingChanges, clearPendingChanges, getSyncMeta, saveSyncMeta, getApiKeys } from './config';
 import type { Session, Profile, Diff, PendingChanges, SyncMeta } from './config';
 import { cliFetchJson, BASE } from './api';
 import { encryptData, hashPasswordForTransport, computeContentHash } from '../lib/utils/crypto';
@@ -41,7 +41,8 @@ export async function upload(session: Session): Promise<number> {
 	const pending = getPendingChanges();
 	const hasPending = pending.profileModified || pending.keysModified ||
 		pending.modifiedDiffs.length > 0 || pending.deletedDiffs.length > 0 ||
-		pending.modifiedStars.length > 0 || pending.deletedStars.length > 0;
+		pending.modifiedStars.length > 0 || pending.deletedStars.length > 0 ||
+		pending.modifiedTldrs.length > 0 || pending.deletedTldrs.length > 0;
 	if (!hasPending) return 0;
 
 	const passwordHash = await hashPasswordForTransport(session.password, session.passwordSalt);
@@ -82,11 +83,12 @@ export async function upload(session: Session): Promise<number> {
 		body: JSON.stringify(buildSyncPayload({
 			passwordHash,
 			diffs: diffsToUpload,
-			deletedDiffIds: pending.deletedDiffs,
+			deletedDiffIds: pending.deletedDiffs.map(d => d.id),
 			diffsHash,
 			starsHash,
 			stars: starsToUpload,
-			deletedStarIds: pending.deletedStars,
+			deletedStarIds: pending.deletedStars.map(d => d.id),
+			// CLI doesn't manage TLDRs — omit tldrs_hash so server doesn't touch it
 			encryptedApiKey,
 			keysHash,
 			profile: profileData
@@ -105,6 +107,7 @@ export async function upload(session: Session): Promise<number> {
 
 	return pending.modifiedDiffs.length + pending.deletedDiffs.length +
 		pending.modifiedStars.length + pending.deletedStars.length +
+		pending.modifiedTldrs.length + pending.deletedTldrs.length +
 		(pending.profileModified ? 1 : 0) + (pending.keysModified ? 1 : 0);
 }
 
@@ -157,18 +160,31 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 
 	// Merge diffs using shared helper (unless server indicated no changes)
 	let mergedDiffs = [...localDiffs];
+	let remainingDeletedDiffs = pending.deletedDiffs;
 	if (!data.diffs_skipped) {
 		const result = await decryptAndMergeDiffs(data.diffs, localDiffs, pending, session.password, salt);
 		mergedDiffs = result.merged;
 		downloaded = result.downloaded;
+		remainingDeletedDiffs = result.remainingDeletions;
 	}
 
 	// Merge stars using shared helper (unless server indicated no changes)
 	let mergedStars = [...localStars];
+	let remainingDeletedStars = pending.deletedStars;
 	if (!data.stars_skipped) {
 		const result = await decryptAndMergeStars(data.stars, localStars, pending, session.password, salt);
 		mergedStars = result.merged;
 		downloaded += result.downloaded;
+		remainingDeletedStars = result.remainingDeletions;
+	}
+
+	// Persist any tombstones that were reconciled away (stale tombstones dropped)
+	if (remainingDeletedDiffs !== pending.deletedDiffs || remainingDeletedStars !== pending.deletedStars) {
+		savePendingChanges({
+			...pending,
+			deletedDiffs: remainingDeletedDiffs,
+			deletedStars: remainingDeletedStars
+		});
 	}
 
 	// Apply keys blob if server returned one and no local key changes pending

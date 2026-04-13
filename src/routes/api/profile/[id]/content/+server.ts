@@ -41,11 +41,13 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 		// Check if client already has current content (skip fetching if hashes match)
 		const skipDiffs = body.diffs_hash && body.diffs_hash === profile.diffs_hash;
 		const skipStars = body.stars_hash && body.stars_hash === profile.stars_hash;
+		const skipTldrs = body.tldrs_hash && body.tldrs_hash === (profile as ProfileRow).tldrs_hash;
 		const skipKeys = body.keys_hash && body.keys_hash === (profile as ProfileRow).keys_hash;
 
-		// Fetch diffs and stars only if needed
+		// Fetch diffs, stars, tldrs only if needed
 		let diffs: { id: string; encrypted_data: string }[] = [];
 		let stars: { id: string; encrypted_data: string }[] = [];
+		let tldrs: { id: string; encrypted_data: string }[] = [];
 
 		if (!skipDiffs) {
 			const diffsResult = await DB.prepare(
@@ -65,11 +67,22 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 			stars = starsResult.results || [];
 		}
 
+		if (!skipTldrs) {
+			const tldrsResult = await DB.prepare(
+				'SELECT id, encrypted_data FROM tldrs WHERE profile_id = ?'
+			)
+				.bind(profileId)
+				.all<{ id: string; encrypted_data: string }>();
+			tldrs = tldrsResult.results || [];
+		}
+
 		const response: ContentResponse = {
 			diffs,
 			stars,
+			tldrs,
 			diffs_skipped: skipDiffs || undefined,
 			stars_skipped: skipStars || undefined,
+			tldrs_skipped: skipTldrs || undefined,
 			encrypted_api_key: skipKeys ? undefined : profile.encrypted_api_key,
 			keys_skipped: skipKeys || undefined,
 			content_hash: profile.content_hash,

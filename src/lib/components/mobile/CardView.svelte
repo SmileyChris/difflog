@@ -4,8 +4,8 @@
 	import { browser } from '$app/environment';
 	import { type Diff, getHistory } from '$lib/stores/history.svelte';
 	import { isStarred, getStars } from '$lib/stores/stars.svelte';
-	import { toggleStar } from '$lib/stores/operations.svelte';
-	import { getTldr, setTldr, removeTldr } from '$lib/stores/tldrs.svelte';
+	import { toggleStar, addTldr, deleteTldr } from '$lib/stores/operations.svelte';
+	import { getTldr } from '$lib/stores/tldrs.svelte';
 	import { getProfile } from '$lib/stores/profiles.svelte';
 	import { renderMarkdown, extractParagraphs, extractSummary, parseInline } from '$lib/utils/markdown';
 	import { buildDiffContent } from '$lib/utils/time';
@@ -405,7 +405,7 @@
 			const summary = await summarizeArticle(keys, text, paragraphText, curationProvider);
 			if (!summary) throw new Error('Summarization failed');
 
-			setTldr(diff.id, pIndex, { summary, url, created_at: new Date().toISOString() });
+			addTldr(diff.id, pIndex, { summary, url });
 		} catch (e) {
 			console.warn('TLDR error:', e);
 			const msg = e instanceof Error && e.message === 'Article content not accessible'
@@ -417,8 +417,8 @@
 		}
 	}
 
-	function deleteTldr(card: FlatCard) {
-		removeTldr(diff.id, card.pIndex);
+	function removeCardTldr(card: FlatCard) {
+		deleteTldr(diff.id, card.pIndex);
 		const next = new Set(tldrExpanded); next.delete(card.pIndex); tldrExpanded = next;
 	}
 
@@ -553,7 +553,7 @@
 						class="focus-tldr-trash"
 						title="Delete summary"
 						aria-label="Delete summary"
-						onclick={(e) => { e.stopPropagation(); deleteTldr(card); }}
+						onclick={(e) => { e.stopPropagation(); removeCardTldr(card); }}
 						ontouchend={(e) => e.stopPropagation()}
 					>&#x1F5D1;&#xFE0F;</button>
 				{/if}

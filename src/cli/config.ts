@@ -219,14 +219,42 @@ export function toggleStar(diffId: string, pIndex: number): boolean {
 
 export type PendingChanges = SharedPendingChanges;
 
-export function getPendingChanges(): PendingChanges {
-	return readJson<PendingChanges>('pending.json') || {
+function emptyPending(): PendingChanges {
+	return {
 		modifiedDiffs: [],
 		modifiedStars: [],
+		modifiedTldrs: [],
 		deletedDiffs: [],
 		deletedStars: [],
+		deletedTldrs: [],
 		profileModified: false,
 		keysModified: false
+	};
+}
+
+export function getPendingChanges(): PendingChanges {
+	const raw = readJson<Partial<PendingChanges> & { deletedDiffs?: unknown; deletedStars?: unknown }>('pending.json');
+	if (!raw) return emptyPending();
+	const now = new Date().toISOString();
+	const normalize = (list: unknown) => {
+		if (!Array.isArray(list)) return [];
+		return list.map((item) => {
+			if (typeof item === 'string') return { id: item, deletedAt: now };
+			if (item && typeof item === 'object' && 'id' in item && 'deletedAt' in item) {
+				return item as { id: string; deletedAt: string };
+			}
+			return null;
+		}).filter((x): x is { id: string; deletedAt: string } => x !== null);
+	};
+	return {
+		modifiedDiffs: raw.modifiedDiffs || [],
+		modifiedStars: raw.modifiedStars || [],
+		modifiedTldrs: raw.modifiedTldrs || [],
+		deletedDiffs: normalize(raw.deletedDiffs),
+		deletedStars: normalize(raw.deletedStars),
+		deletedTldrs: normalize(raw.deletedTldrs),
+		profileModified: raw.profileModified || false,
+		keysModified: raw.keysModified || false
 	};
 }
 
@@ -240,7 +268,7 @@ export function clearPendingChanges(): void {
 
 export function trackDiffModified(diffId: string): void {
 	const pending = getPendingChanges();
-	pending.deletedDiffs = pending.deletedDiffs.filter(id => id !== diffId);
+	pending.deletedDiffs = pending.deletedDiffs.filter(d => d.id !== diffId);
 	if (!pending.modifiedDiffs.includes(diffId)) {
 		pending.modifiedDiffs.push(diffId);
 	}
@@ -249,7 +277,7 @@ export function trackDiffModified(diffId: string): void {
 
 export function trackStarModified(starId: string): void {
 	const pending = getPendingChanges();
-	pending.deletedStars = pending.deletedStars.filter(id => id !== starId);
+	pending.deletedStars = pending.deletedStars.filter(d => d.id !== starId);
 	if (!pending.modifiedStars.includes(starId)) {
 		pending.modifiedStars.push(starId);
 	}
@@ -259,8 +287,8 @@ export function trackStarModified(starId: string): void {
 export function trackStarDeleted(starId: string): void {
 	const pending = getPendingChanges();
 	pending.modifiedStars = pending.modifiedStars.filter(id => id !== starId);
-	if (!pending.deletedStars.includes(starId)) {
-		pending.deletedStars.push(starId);
+	if (!pending.deletedStars.some(d => d.id === starId)) {
+		pending.deletedStars.push({ id: starId, deletedAt: new Date().toISOString() });
 	}
 	savePendingChanges(pending);
 }
@@ -268,8 +296,8 @@ export function trackStarDeleted(starId: string): void {
 export function trackDiffDeleted(diffId: string): void {
 	const pending = getPendingChanges();
 	pending.modifiedDiffs = pending.modifiedDiffs.filter(id => id !== diffId);
-	if (!pending.deletedDiffs.includes(diffId)) {
-		pending.deletedDiffs.push(diffId);
+	if (!pending.deletedDiffs.some(d => d.id === diffId)) {
+		pending.deletedDiffs.push({ id: diffId, deletedAt: new Date().toISOString() });
 	}
 	savePendingChanges(pending);
 }

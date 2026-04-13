@@ -2,10 +2,14 @@ import { expect, test, describe } from 'bun:test';
 import { encryptData, decryptData, uint8ToBase64 } from './crypto';
 import {
   starId,
+  tldrId,
   encryptDiffs,
   decryptAndMergeDiffs,
   encryptStars,
+  encryptTldrs,
   decryptAndMergeStars,
+  decryptAndMergeTldrs,
+  computeTldrsHash,
   decryptKeysBlob,
   inferProviderSelections,
   buildProfileMetadata,
@@ -14,13 +18,20 @@ import {
   buildApiKeysRecord,
   computeKeysHash,
 } from './sync-core';
-import type { Diff, Star, PendingChanges, ProfileCore } from '../types/sync';
+import type { Diff, Star, Tldr, PendingChanges, ProfileCore } from '../types/sync';
 
 const password = 'test-password';
 const salt = uint8ToBase64(new Uint8Array(16).fill(42));
 
 function emptyPending(): PendingChanges {
-  return { modifiedDiffs: [], modifiedStars: [], deletedDiffs: [], deletedStars: [] };
+  return {
+    modifiedDiffs: [], modifiedStars: [], modifiedTldrs: [],
+    deletedDiffs: [], deletedStars: [], deletedTldrs: []
+  };
+}
+
+function tombstone(id: string, deletedAt = '2026-01-01T00:00:00Z') {
+  return { id, deletedAt };
 }
 
 function makeDiff(overrides: Partial<Diff> = {}): Diff {
@@ -29,6 +40,18 @@ function makeDiff(overrides: Partial<Diff> = {}): Diff {
 
 function makeStar(overrides: Partial<Star> = {}): Star {
   return { diff_id: 'diff-1', p_index: 0, added_at: '2026-01-01T00:00:00Z', ...overrides };
+}
+
+function makeTldr(overrides: Partial<Tldr> = {}): Tldr {
+  return {
+    diff_id: 'diff-1',
+    p_index: 0,
+    summary: 'Short summary.',
+    url: 'https://example.com',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    ...overrides
+  };
 }
 
 describe('sync-core.ts', () => {
@@ -126,11 +149,13 @@ describe('sync-core.ts', () => {
       expect(result.merged[0].isPublic).toBe(true);
     });
 
-    test('new server diff skipped when pending delete', async () => {
+    test('stale tombstone dropped: server still has diff a client tried to delete', async () => {
+      // Scenario: client A deleted offline, client B re-created it or client A's delete
+      // never landed; server presence means the tombstone is stale.
       const serverDiff = makeDiff({ id: 's1' });
       const encrypted = await encryptData(serverDiff, password, salt);
       const pending = emptyPending();
-      pending.deletedDiffs = ['s1'];
+      pending.deletedDiffs = [tombstone('s1')];
 
       const result = await decryptAndMergeDiffs(
         [{ id: 's1', encrypted_data: encrypted }],
@@ -139,8 +164,10 @@ describe('sync-core.ts', () => {
         password,
         salt,
       );
-      expect(result.downloaded).toBe(0);
-      expect(result.merged).toHaveLength(0);
+      expect(result.merged).toHaveLength(1);
+      expect(result.merged[0].id).toBe('s1');
+      // Stale tombstone should be dropped from remainingDeletions
+      expect(result.remainingDeletions.find(d => d.id === 's1')).toBeUndefined();
     });
 
     test('local-only diff removed when not on server (server deletion)', async () => {
@@ -158,7 +185,7 @@ describe('sync-core.ts', () => {
     test('local-only diff preserved when in pendingDeletedDiffs', async () => {
       const localDiff = makeDiff({ id: 'local-only' });
       const pending = emptyPending();
-      pending.deletedDiffs = ['local-only'];
+      pending.deletedDiffs = [tombstone('local-only')];
 
       const result = await decryptAndMergeDiffs([], [localDiff], pending, password, salt);
       expect(result.merged).toHaveLength(1);
@@ -248,11 +275,11 @@ describe('sync-core.ts', () => {
       expect(result.merged).toHaveLength(1);
     });
 
-    test('pending delete skipped', async () => {
+    test('stale tombstone dropped: server still has star a client tried to delete', async () => {
       const star = makeStar({ diff_id: 'd1', p_index: 0 });
       const encrypted = await encryptData(star, password, salt);
       const pending = emptyPending();
-      pending.deletedStars = ['d1:0'];
+      pending.deletedStars = [tombstone('d1:0')];
 
       const result = await decryptAndMergeStars(
         [{ id: 'd1:0', encrypted_data: encrypted }],
@@ -261,7 +288,8 @@ describe('sync-core.ts', () => {
         password,
         salt,
       );
-      expect(result.downloaded).toBe(0);
+      expect(result.merged).toHaveLength(1);
+      expect(result.remainingDeletions.find(d => d.id === 'd1:0')).toBeUndefined();
     });
 
     test('server deletion removes local star', async () => {
@@ -476,6 +504,174 @@ describe('sync-core.ts', () => {
       const h = await computeKeysHash(undefined, undefined);
       expect(h).toBeString();
       expect(h.length).toBeGreaterThan(0);
+    });
+  });
+
+  // --- tldrId ---
+  describe('tldrId', () => {
+    test('from Tldr object', () => {
+      expect(tldrId(makeTldr({ diff_id: 'abc', p_index: 7 }))).toBe('abc:7');
+    });
+
+    test('from string + number components', () => {
+      expect(tldrId('abc', 7)).toBe('abc:7');
+    });
+  });
+
+  // --- encryptTldrs ---
+  describe('encryptTldrs', () => {
+    test('encrypts only modified TLDRs when modifiedIds provided', async () => {
+      const tldrs = [
+        makeTldr({ diff_id: 'd1', p_index: 0 }),
+        makeTldr({ diff_id: 'd2', p_index: 0 })
+      ];
+      const result = await encryptTldrs(tldrs, new Set(['d1:0']), password, salt);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('d1:0');
+    });
+
+    test('encrypts all when modifiedIds is null', async () => {
+      const tldrs = [makeTldr({ diff_id: 'd1' }), makeTldr({ diff_id: 'd2' })];
+      const result = await encryptTldrs(tldrs, null, password, salt);
+      expect(result).toHaveLength(2);
+    });
+  });
+
+  // --- computeTldrsHash ---
+  describe('computeTldrsHash', () => {
+    test('deterministic for same content', async () => {
+      const t = makeTldr();
+      const h1 = await computeTldrsHash([t]);
+      const h2 = await computeTldrsHash([t]);
+      expect(h1).toBe(h2);
+    });
+
+    test('changes when content changes', async () => {
+      const h1 = await computeTldrsHash([makeTldr({ summary: 'A' })]);
+      const h2 = await computeTldrsHash([makeTldr({ summary: 'B' })]);
+      expect(h1).not.toBe(h2);
+    });
+  });
+
+  // --- decryptAndMergeTldrs ---
+  describe('decryptAndMergeTldrs', () => {
+    test('new server TLDR added to local', async () => {
+      const t = makeTldr({ diff_id: 's1', p_index: 0 });
+      const encrypted = await encryptData(t, password, salt);
+      const result = await decryptAndMergeTldrs(
+        [{ id: 's1:0', encrypted_data: encrypted }],
+        [],
+        emptyPending(),
+        password,
+        salt,
+      );
+      expect(result.downloaded).toBe(1);
+      expect(result.merged[0].summary).toBe('Short summary.');
+    });
+
+    test('last-write-wins: server newer than local replaces local', async () => {
+      const local = makeTldr({ summary: 'old', updated_at: '2026-01-01T00:00:00Z' });
+      const server = makeTldr({ summary: 'new', updated_at: '2026-02-01T00:00:00Z' });
+      const encrypted = await encryptData(server, password, salt);
+
+      const result = await decryptAndMergeTldrs(
+        [{ id: tldrId(server), encrypted_data: encrypted }],
+        [local],
+        emptyPending(),
+        password,
+        salt,
+      );
+      expect(result.merged).toHaveLength(1);
+      expect(result.merged[0].summary).toBe('new');
+    });
+
+    test('last-write-wins: local newer than server keeps local', async () => {
+      const local = makeTldr({ summary: 'local-new', updated_at: '2026-03-01T00:00:00Z' });
+      const server = makeTldr({ summary: 'server-old', updated_at: '2026-01-01T00:00:00Z' });
+      const encrypted = await encryptData(server, password, salt);
+
+      const result = await decryptAndMergeTldrs(
+        [{ id: tldrId(server), encrypted_data: encrypted }],
+        [local],
+        emptyPending(),
+        password,
+        salt,
+      );
+      expect(result.merged[0].summary).toBe('local-new');
+    });
+
+    test('local-modified TLDR not overwritten by server', async () => {
+      const local = makeTldr({ summary: 'local edit', updated_at: '2026-01-01T00:00:00Z' });
+      const server = makeTldr({ summary: 'server', updated_at: '2026-02-01T00:00:00Z' });
+      const encrypted = await encryptData(server, password, salt);
+      const pending = emptyPending();
+      pending.modifiedTldrs = [tldrId(server)];
+
+      const result = await decryptAndMergeTldrs(
+        [{ id: tldrId(server), encrypted_data: encrypted }],
+        [local],
+        pending,
+        password,
+        salt,
+      );
+      expect(result.merged[0].summary).toBe('local edit');
+    });
+
+    test('stale tombstone dropped: server updated_at is newer than deletedAt', async () => {
+      // Device A deleted offline at T1; device B wrote a newer version at T2.
+      // On sync, A should drop its tombstone and accept B's version.
+      const server = makeTldr({ summary: 'B newer', updated_at: '2026-03-01T00:00:00Z' });
+      const encrypted = await encryptData(server, password, salt);
+      const pending = emptyPending();
+      pending.deletedTldrs = [tombstone(tldrId(server), '2026-02-01T00:00:00Z')];
+
+      const result = await decryptAndMergeTldrs(
+        [{ id: tldrId(server), encrypted_data: encrypted }],
+        [],
+        pending,
+        password,
+        salt,
+      );
+      expect(result.merged).toHaveLength(1);
+      expect(result.merged[0].summary).toBe('B newer');
+      expect(result.remainingDeletions).toHaveLength(0);
+    });
+
+    test('tombstone preserved: server updated_at is older than deletedAt', async () => {
+      // Server has a stale version; the client's later deletion should still be honored.
+      const server = makeTldr({ summary: 'stale', updated_at: '2026-01-01T00:00:00Z' });
+      const encrypted = await encryptData(server, password, salt);
+      const pending = emptyPending();
+      pending.deletedTldrs = [tombstone(tldrId(server), '2026-02-01T00:00:00Z')];
+
+      const result = await decryptAndMergeTldrs(
+        [{ id: tldrId(server), encrypted_data: encrypted }],
+        [],
+        pending,
+        password,
+        salt,
+      );
+      // Tombstone still valid; server TLDR not accepted, deletion persists
+      expect(result.merged).toHaveLength(0);
+      expect(result.remainingDeletions).toHaveLength(1);
+    });
+
+    test('server deletion removes local TLDR', async () => {
+      const local = makeTldr();
+      const result = await decryptAndMergeTldrs([], [local], emptyPending(), password, salt);
+      expect(result.merged).toHaveLength(0);
+    });
+
+    test('decryption error counted, TLDR skipped', async () => {
+      const result = await decryptAndMergeTldrs(
+        [{ id: 'bad:0', encrypted_data: 'not-encrypted' }],
+        [],
+        emptyPending(),
+        password,
+        salt,
+      );
+      expect(result.errors).toBe(1);
+      expect(result.merged).toHaveLength(0);
     });
   });
 });

@@ -21,11 +21,29 @@ export interface Star {
   [key: string]: unknown;
 }
 
+export interface Tldr {
+  diff_id: string;
+  p_index: number;
+  summary: string;
+  url: string;
+  created_at: string;
+  updated_at: string;
+  [key: string]: unknown;
+}
+
+/** A tombstone for a deleted item — id plus timestamp for stale-deletion reconciliation. */
+export interface PendingDeletion {
+  id: string;
+  deletedAt: string;  // ISO timestamp, client-side only (not transmitted)
+}
+
 export interface PendingChanges {
   modifiedDiffs: string[];
   modifiedStars: string[];
-  deletedDiffs: string[];
-  deletedStars: string[];
+  modifiedTldrs: string[];
+  deletedDiffs: PendingDeletion[];
+  deletedStars: PendingDeletion[];
+  deletedTldrs: PendingDeletion[];
   profileModified?: boolean;
   keysModified?: boolean;
 }
@@ -75,11 +93,13 @@ export interface SyncStatus {
   exists: boolean;
   diffs_hash?: string;
   stars_hash?: string;
+  tldrs_hash?: string;
   keys_hash?: string;
   content_updated_at?: string;
   error?: string;
   localDiffsHash?: string | null;
   localStarsHash?: string | null;
+  localTldrsHash?: string | null;
   localKeysHash?: string | null;
   needsSync?: boolean;
   hasPassword?: boolean;

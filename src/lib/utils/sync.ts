@@ -10,12 +10,16 @@ import { fetchJson, postJson } from './api';
 import { STORAGE_KEYS } from './constants';
 import {
   starId,
+  tldrId,
   computeKeysHash,
   encryptDiffs,
   encryptStars,
+  encryptTldrs,
   computeStarsHash,
+  computeTldrsHash,
   decryptAndMergeDiffs,
   decryptAndMergeStars,
+  decryptAndMergeTldrs,
   decryptKeysBlob,
   buildProfileMetadata,
   buildSyncPayload,
@@ -23,13 +27,15 @@ import {
   buildApiKeysRecord
 } from './sync-core';
 
-export { starId, computeKeysHash } from './sync-core';
+export { starId, tldrId, computeKeysHash } from './sync-core';
 
 // Re-export shared types from canonical location
 export type {
   Diff,
   Star,
+  Tldr,
   PendingChanges,
+  PendingDeletion,
   ApiKeys,
   ProviderSelections,
   EncryptedKeysBlob,
@@ -43,7 +49,9 @@ export type {
 import type {
   Diff,
   Star,
+  Tldr,
   PendingChanges,
+  PendingDeletion,
   ApiKeys,
   ProviderSelections,
   EncryptedKeysBlob,
@@ -125,8 +133,10 @@ export function createEmptyPending(): PendingChanges {
   return {
     modifiedDiffs: [],
     modifiedStars: [],
+    modifiedTldrs: [],
     deletedDiffs: [],
     deletedStars: [],
+    deletedTldrs: [],
     profileModified: false,
     keysModified: false
   };
@@ -135,32 +145,78 @@ export function createEmptyPending(): PendingChanges {
 /** Configuration for change tracking by type and action */
 const CHANGE_HANDLERS = {
   diff: {
-    modified: { addTo: 'modifiedDiffs', removeFrom: 'deletedDiffs' },
-    deleted: { addTo: 'deletedDiffs', removeFrom: 'modifiedDiffs' }
+    modified: { modifiedKey: 'modifiedDiffs', deletedKey: 'deletedDiffs' },
+    deleted: { modifiedKey: 'modifiedDiffs', deletedKey: 'deletedDiffs' }
   },
   star: {
-    modified: { addTo: 'modifiedStars', removeFrom: 'deletedStars' },
-    deleted: { addTo: 'deletedStars', removeFrom: 'modifiedStars' }
+    modified: { modifiedKey: 'modifiedStars', deletedKey: 'deletedStars' },
+    deleted: { modifiedKey: 'modifiedStars', deletedKey: 'deletedStars' }
+  },
+  tldr: {
+    modified: { modifiedKey: 'modifiedTldrs', deletedKey: 'deletedTldrs' },
+    deleted: { modifiedKey: 'modifiedTldrs', deletedKey: 'deletedTldrs' }
   }
 } as const;
 
-type ArrayKeys = 'modifiedDiffs' | 'modifiedStars' | 'deletedDiffs' | 'deletedStars';
+type ModifiedKeys = 'modifiedDiffs' | 'modifiedStars' | 'modifiedTldrs';
+type DeletedKeys = 'deletedDiffs' | 'deletedStars' | 'deletedTldrs';
+
+/** Normalize any upgraded-from-legacy tombstone list (string[]) to PendingDeletion[] */
+function normalizeDeletions(raw: unknown): PendingDeletion[] {
+  if (!Array.isArray(raw)) return [];
+  const now = new Date().toISOString();
+  return raw.map(item => {
+    if (typeof item === 'string') return { id: item, deletedAt: now };
+    if (item && typeof item === 'object' && 'id' in item && 'deletedAt' in item) {
+      return item as PendingDeletion;
+    }
+    return null;
+  }).filter((x): x is PendingDeletion => x !== null);
+}
+
+/** Upgrade a legacy pending-changes record to the current shape. Idempotent. */
+export function upgradePendingChanges(raw: Partial<PendingChanges> & {
+  deletedDiffs?: unknown;
+  deletedStars?: unknown;
+  deletedTldrs?: unknown;
+}): PendingChanges {
+  return {
+    modifiedDiffs: raw.modifiedDiffs || [],
+    modifiedStars: raw.modifiedStars || [],
+    modifiedTldrs: raw.modifiedTldrs || [],
+    deletedDiffs: normalizeDeletions(raw.deletedDiffs),
+    deletedStars: normalizeDeletions(raw.deletedStars),
+    deletedTldrs: normalizeDeletions(raw.deletedTldrs),
+    profileModified: raw.profileModified || false,
+    keysModified: raw.keysModified || false
+  };
+}
 
 export function trackChange(
   pending: PendingChanges,
-  type: 'diff' | 'star',
+  type: 'diff' | 'star' | 'tldr',
   action: 'modified' | 'deleted',
   id: string
 ): PendingChanges {
-  const { addTo, removeFrom } = CHANGE_HANDLERS[type][action];
+  const { modifiedKey, deletedKey } = CHANGE_HANDLERS[type][action];
   const result = { ...pending };
 
-  // Remove from opposite list (e.g., remove from deleted when modifying)
-  result[removeFrom as ArrayKeys] = result[removeFrom as ArrayKeys].filter(i => i !== id);
-
-  // Add to target list if not already present
-  if (!result[addTo as ArrayKeys].includes(id)) {
-    result[addTo as ArrayKeys] = [...result[addTo as ArrayKeys], id];
+  if (action === 'modified') {
+    // Remove from deletions, add to modifications
+    result[deletedKey as DeletedKeys] = result[deletedKey as DeletedKeys].filter(d => d.id !== id);
+    if (!result[modifiedKey as ModifiedKeys].includes(id)) {
+      result[modifiedKey as ModifiedKeys] = [...result[modifiedKey as ModifiedKeys], id];
+    }
+  } else {
+    // Remove from modifications, add to deletions with timestamp
+    result[modifiedKey as ModifiedKeys] = result[modifiedKey as ModifiedKeys].filter(i => i !== id);
+    const existing = result[deletedKey as DeletedKeys].find(d => d.id === id);
+    if (!existing) {
+      result[deletedKey as DeletedKeys] = [
+        ...result[deletedKey as DeletedKeys],
+        { id, deletedAt: new Date().toISOString() }
+      ];
+    }
   }
 
   return result;
@@ -172,8 +228,10 @@ export function hasPendingChanges(pending: PendingChanges | null): boolean {
     pending.keysModified ||
     pending.modifiedDiffs.length > 0 ||
     pending.modifiedStars.length > 0 ||
+    pending.modifiedTldrs.length > 0 ||
     pending.deletedDiffs.length > 0 ||
-    pending.deletedStars.length > 0;
+    pending.deletedStars.length > 0 ||
+    pending.deletedTldrs.length > 0;
 }
 
 // API operations
@@ -186,6 +244,7 @@ export async function checkStatus(
   profile: Profile,
   history: Diff[],
   stars: Star[],
+  tldrs: Tldr[],
   password: string | null
 ): Promise<SyncStatus> {
   try {
@@ -198,11 +257,13 @@ export async function checkStatus(
       exists: boolean;
       diffs_hash?: string;
       stars_hash?: string;
+      tldrs_hash?: string;
       keys_hash?: string;
       error?: string;
     };
     let localDiffsHash: string | null = null;
     let localStarsHash: string | null = null;
+    let localTldrsHash: string | null = null;
     let localKeysHash: string | null = null;
     let needsSync = false;
 
@@ -211,10 +272,12 @@ export async function checkStatus(
         // Hash plaintext content for deterministic comparison
         localDiffsHash = await computeContentHash(history);
         localStarsHash = await computeStarsHash(stars);
+        localTldrsHash = await computeTldrsHash(tldrs);
         localKeysHash = await computeKeysHash(profile.apiKeys, profile.providerSelections);
 
         needsSync = localDiffsHash !== status.diffs_hash ||
           localStarsHash !== status.stars_hash ||
+          localTldrsHash !== status.tldrs_hash ||
           localKeysHash !== status.keys_hash;
       } catch (e) {
         console.error('Failed to compute local hashes:', e);
@@ -225,6 +288,7 @@ export async function checkStatus(
       ...status,
       localDiffsHash,
       localStarsHash,
+      localTldrsHash,
       localKeysHash,
       needsSync,
       hasPassword: !!password
@@ -285,7 +349,7 @@ export async function importProfile(
   id: string,
   password: string,
   opts?: { baseUrl?: string; fetchFn?: typeof fetch }
-): Promise<{ profile: Profile; diffs: Diff[]; stars: Star[] }> {
+): Promise<{ profile: Profile; diffs: Diff[]; stars: Star[]; tldrs: Tldr[] }> {
   const base = opts?.baseUrl ?? '';
   const fetcher = opts?.fetchFn;
 
@@ -331,7 +395,7 @@ export async function importProfile(
     syncedAt: new Date().toISOString(),
   };
 
-  return { profile, diffs: [], stars: [] };
+  return { profile, diffs: [], stars: [], tldrs: [] };
 }
 
 /**
@@ -343,9 +407,10 @@ export async function uploadContent(
   profile: Profile,
   history: Diff[],
   stars: Star[],
+  tldrs: Tldr[],
   pending: PendingChanges,
   password: string
-): Promise<{ uploaded: number; diffsHash: string; starsHash: string; keysHash?: string }> {
+): Promise<{ uploaded: number; diffsHash: string; starsHash: string; tldrsHash: string; keysHash?: string }> {
   const salt = profile.salt;
   if (!salt) throw new Error('Profile missing encryption salt');
 
@@ -362,12 +427,13 @@ export async function uploadContent(
   try {
     const statusRes = await fetch(`/api/profile/${profileId}/status`);
     if (statusRes.ok) {
-      const status = (await statusRes.json()) as { diffs_hash?: string; stars_hash?: string };
+      const status = (await statusRes.json()) as { diffs_hash?: string; stars_hash?: string; tldrs_hash?: string };
       // If server hashes match our stored hashes, server hasn't changed
       // We can safely upload only modified items
       const serverDiffsMatch = status.diffs_hash === profile.diffsHash;
       const serverStarsMatch = status.stars_hash === profile.starsHash;
-      useSelectiveUpload = serverDiffsMatch && serverStarsMatch;
+      const serverTldrsMatch = status.tldrs_hash === profile.tldrsHash;
+      useSelectiveUpload = serverDiffsMatch && serverStarsMatch && serverTldrsMatch;
     }
   } catch {
     // On error, fall back to full upload
@@ -381,9 +447,14 @@ export async function uploadContent(
   const modifiedStarIds = useSelectiveUpload ? new Set(pending.modifiedStars) : null;
   const starsToUpload = await encryptStars(stars, modifiedStarIds, password, salt);
 
+  // Upload TLDRs: selective (only modified) or full (all)
+  const modifiedTldrIds = useSelectiveUpload ? new Set(pending.modifiedTldrs) : null;
+  const tldrsToUpload = await encryptTldrs(tldrs, modifiedTldrIds, password, salt);
+
   // Compute hashes over plaintext content for deterministic comparison
   const diffsHash = await computeContentHash(history);
   const starsHash = await computeStarsHash(stars);
+  const tldrsHash = await computeTldrsHash(tldrs);
 
   // Include profile data if modified
   const profileData = pending.profileModified ? buildProfileMetadata(profile) : undefined;
@@ -404,20 +475,25 @@ export async function uploadContent(
   await postJson(`/api/profile/${profileId}/sync`, buildSyncPayload({
     passwordHash,
     diffs: diffsToUpload,
-    deletedDiffIds: pending.deletedDiffs,
+    deletedDiffIds: pending.deletedDiffs.map(d => d.id),
     diffsHash,
     starsHash,
+    tldrsHash,
     stars: starsToUpload,
-    deletedStarIds: pending.deletedStars,
+    deletedStarIds: pending.deletedStars.map(d => d.id),
+    tldrs: tldrsToUpload,
+    deletedTldrIds: pending.deletedTldrs.map(d => d.id),
     encryptedApiKey,
     keysHash,
     profile: profileData
   }));
 
   const uploaded = pending.modifiedDiffs.length + pending.modifiedStars.length +
-    pending.deletedDiffs.length + pending.deletedStars.length;
+    pending.modifiedTldrs.length +
+    pending.deletedDiffs.length + pending.deletedStars.length +
+    pending.deletedTldrs.length;
 
-  return { uploaded, diffsHash, starsHash, keysHash };
+  return { uploaded, diffsHash, starsHash, tldrsHash, keysHash };
 }
 
 /**
@@ -429,16 +505,20 @@ export async function downloadContent(
   profile: Profile,
   localHistory: Diff[],
   localStars: Star[],
+  localTldrs: Tldr[],
   pending: PendingChanges,
   password: string,
   localDiffsHash?: string,
-  localStarsHash?: string
+  localStarsHash?: string,
+  localTldrsHash?: string
 ): Promise<{
   downloaded: number;
   diffs: Diff[];
   stars: Star[];
+  tldrs: Tldr[];
   diffsHash: string;
   starsHash: string;
+  tldrsHash: string;
   keysHash?: string;
   profileUpdates?: Partial<Profile>;
   remainingPending: PendingChanges;
@@ -458,8 +538,10 @@ export async function downloadContent(
     salt?: string;
     diffs: { id: string; encrypted_data: string }[];
     stars: { id: string; encrypted_data: string }[];
+    tldrs: { id: string; encrypted_data: string }[];
     diffs_skipped?: boolean;
     stars_skipped?: boolean;
+    tldrs_skipped?: boolean;
     encrypted_api_key?: string;
     keys_skipped?: boolean;
     profile?: {
@@ -475,6 +557,7 @@ export async function downloadContent(
     password_hash: passwordHash,
     diffs_hash: localDiffsHash,
     stars_hash: localStarsHash,
+    tldrs_hash: localTldrsHash,
     keys_hash: localKeysHash
   });
 
@@ -528,9 +611,11 @@ export async function downloadContent(
 
   // Decrypt and merge diffs (skip if server indicated no changes)
   let filteredHistory = [...localHistory];
+  let remainingDeletedDiffs = pending.deletedDiffs;
   if (!data.diffs_skipped) {
     const diffResult = await decryptAndMergeDiffs(data.diffs, localHistory, pending, password, salt);
     filteredHistory = diffResult.merged;
+    remainingDeletedDiffs = diffResult.remainingDeletions;
     totalDownloaded += diffResult.downloaded;
     totalErrors += diffResult.errors;
     if (diffResult.errors > 0) {
@@ -540,10 +625,12 @@ export async function downloadContent(
 
   // Decrypt and merge stars (skip if server indicated no changes)
   let filteredStars = [...localStars];
+  let remainingDeletedStars = pending.deletedStars;
   if (!data.stars_skipped) {
     console.warn(`[Sync] Star merge starting: ${localStars.length} local, ${data.stars.length} from server, ${pending.modifiedStars.length} pending modified, ${pending.deletedStars.length} pending deleted`);
     const starResult = await decryptAndMergeStars(data.stars, localStars, pending, password, salt);
     filteredStars = starResult.merged;
+    remainingDeletedStars = starResult.remainingDeletions;
     totalDownloaded += starResult.downloaded;
     totalErrors += starResult.errors;
     if (starResult.errors > 0) {
@@ -551,12 +638,32 @@ export async function downloadContent(
     }
   }
 
+  // Decrypt and merge TLDRs (skip if server indicated no changes)
+  let filteredTldrs = [...localTldrs];
+  let remainingDeletedTldrs = pending.deletedTldrs;
+  if (!data.tldrs_skipped) {
+    const tldrResult = await decryptAndMergeTldrs(data.tldrs || [], localTldrs, pending, password, salt);
+    filteredTldrs = tldrResult.merged;
+    remainingDeletedTldrs = tldrResult.remainingDeletions;
+    totalDownloaded += tldrResult.downloaded;
+    totalErrors += tldrResult.errors;
+    if (tldrResult.errors > 0) {
+      console.error(`Failed to decrypt ${tldrResult.errors} tldr(s)`);
+    }
+  }
+
+  // When a diff was deleted server-side, its cascaded TLDRs are also gone — drop
+  // local TLDRs that reference a diff no longer present.
+  const finalDiffIds = new Set(filteredHistory.map(d => d.id));
+  filteredTldrs = filteredTldrs.filter(t => finalDiffIds.has(t.diff_id));
+
   // Sort history by date (newest first)
   sortDiffsNewestFirst(filteredHistory);
 
   // Compute hashes over plaintext content for deterministic comparison
   const diffsHash = await computeContentHash(filteredHistory);
   const starsHash = await computeStarsHash(filteredStars);
+  const tldrsHash = await computeTldrsHash(filteredTldrs);
 
   // Compute keys hash from the final state (after potential merge from server)
   const finalApiKeys = profileUpdates?.apiKeys || profile.apiKeys;
@@ -565,11 +672,14 @@ export async function downloadContent(
 
   // Keep all pending modifications - they still need to be uploaded even if server has the item
   // (e.g., local changes like isPublic flag need to be pushed to server)
+  // Deletions are filtered by the merge reconciliation (stale tombstones dropped).
   const remainingPending: PendingChanges = {
     modifiedDiffs: [...pending.modifiedDiffs],
     modifiedStars: [...pending.modifiedStars],
-    deletedDiffs: pending.deletedDiffs,
-    deletedStars: pending.deletedStars,
+    modifiedTldrs: [...pending.modifiedTldrs],
+    deletedDiffs: remainingDeletedDiffs,
+    deletedStars: remainingDeletedStars,
+    deletedTldrs: remainingDeletedTldrs,
     profileModified: hasLocalProfileChanges,
     keysModified: pending.keysModified || keysNeedReupload
   };
@@ -578,8 +688,10 @@ export async function downloadContent(
     downloaded: totalDownloaded,
     diffs: filteredHistory,
     stars: filteredStars,
+    tldrs: filteredTldrs,
     diffsHash,
     starsHash,
+    tldrsHash,
     keysHash,
     salt,
     decryptionErrors: totalErrors,
@@ -596,6 +708,7 @@ export async function updatePassword(
   profile: Profile,
   history: Diff[],
   stars: Star[],
+  tldrs: Tldr[],
   oldPassword: string,
   newPassword: string
 ): Promise<{ passwordSalt: string; salt: string }> {
@@ -637,6 +750,13 @@ export async function updatePassword(
     encryptedStars.push({ id: starId(star), encrypted_data: encrypted });
   }
 
+  // Re-encrypt all TLDRs with new password + new salt
+  const encryptedTldrs: { id: string; encrypted_data: string }[] = [];
+  for (const tldr of tldrs) {
+    const encrypted = await encryptData(tldr, newPassword, newSalt);
+    encryptedTldrs.push({ id: tldrId(tldr), encrypted_data: encrypted });
+  }
+
   // POST to server
   await postJson(`/api/profile/${profileId}/password`, {
     old_password_hash: oldPasswordHash,
@@ -644,7 +764,8 @@ export async function updatePassword(
     new_encrypted_api_key: newEncryptedApiKey,
     new_salt: newSalt,
     diffs: encryptedDiffs,
-    stars: encryptedStars
+    stars: encryptedStars,
+    tldrs: encryptedTldrs
   });
 
   return { passwordSalt: newPasswordSalt, salt: newSalt };

@@ -18,6 +18,7 @@ export interface ProfileRow {
 	resolved_sources: string | null;
 	diffs_hash: string | null;
 	stars_hash: string | null;
+	tldrs_hash: string | null;
 	keys_hash: string | null;
 	password_salt: string | null;
 	content_hash: string | null;
@@ -38,6 +39,13 @@ export interface EncryptedDiffRow {
 
 export interface EncryptedStarRow {
 	id: string;
+	profile_id: string;
+	encrypted_data: string; // AES-GCM encrypted JSON blob
+	created_at: string;
+}
+
+export interface EncryptedTldrRow {
+	id: string; // "diffId:pIndex"
 	profile_id: string;
 	encrypted_data: string; // AES-GCM encrypted JSON blob
 	created_at: string;
@@ -84,11 +92,14 @@ export interface SyncRequest {
 	// Diffs: encrypted base64 blob, or plaintext JSON if public (detected by checking if starts with '{')
 	diffs?: { id: string; encrypted_data: string }[];
 	stars?: { id: string; encrypted_data: string }[];
+	tldrs?: { id: string; encrypted_data: string }[];
 	deleted_diff_ids?: string[];
 	deleted_star_ids?: string[];
+	deleted_tldr_ids?: string[];
 	// Client-computed hashes over all local content
 	diffs_hash?: string;
 	stars_hash?: string;
+	tldrs_hash?: string;
 	// Encrypted API keys + provider selections blob
 	encrypted_api_key?: string;
 	keys_hash?: string;
@@ -109,15 +120,18 @@ export interface ContentRequest {
 	// Optional: skip fetching collections where local hash matches server
 	diffs_hash?: string;
 	stars_hash?: string;
+	tldrs_hash?: string;
 	keys_hash?: string;
 }
 
 export interface ContentResponse {
 	diffs: { id: string; encrypted_data: string }[];
 	stars: { id: string; encrypted_data: string }[];
+	tldrs: { id: string; encrypted_data: string }[];
 	// Indicates which collections were skipped (hash matched)
 	diffs_skipped?: boolean;
 	stars_skipped?: boolean;
+	tldrs_skipped?: boolean;
 	// Encrypted API keys + provider selections blob (included when keys_hash differs)
 	encrypted_api_key?: string;
 	keys_skipped?: boolean;

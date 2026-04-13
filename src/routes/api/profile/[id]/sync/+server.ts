@@ -74,7 +74,21 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 			}
 		}
 
-		// Delete removed diffs (and track for cache purging)
+		// Insert/update TLDRs
+		if (body.tldrs && body.tldrs.length > 0) {
+			for (const tldr of body.tldrs) {
+				statements.push(
+					DB.prepare(
+						`
+						INSERT OR REPLACE INTO tldrs (id, profile_id, encrypted_data)
+						VALUES (?, ?, ?)
+					`
+					).bind(tldr.id, profileId, tldr.encrypted_data)
+				);
+			}
+		}
+
+		// Delete removed diffs (and cascade TLDRs belonging to those diffs, track for cache purging)
 		if (body.deleted_diff_ids && body.deleted_diff_ids.length > 0) {
 			for (const diffId of body.deleted_diff_ids) {
 				statements.push(
@@ -82,6 +96,12 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 						diffId,
 						profileId
 					)
+				);
+				// Cascade: delete any TLDRs belonging to this diff
+				statements.push(
+					DB.prepare(
+						"DELETE FROM tldrs WHERE profile_id = ? AND id LIKE ? || ':%'"
+					).bind(profileId, diffId)
 				);
 				// Add to purge list in case it was public
 				publicDiffIds.push(diffId);
@@ -94,6 +114,18 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 				statements.push(
 					DB.prepare('DELETE FROM stars WHERE id = ? AND profile_id = ?').bind(
 						starId,
+						profileId
+					)
+				);
+			}
+		}
+
+		// Delete removed TLDRs
+		if (body.deleted_tldr_ids && body.deleted_tldr_ids.length > 0) {
+			for (const tldrId of body.deleted_tldr_ids) {
+				statements.push(
+					DB.prepare('DELETE FROM tldrs WHERE id = ? AND profile_id = ?').bind(
+						tldrId,
 						profileId
 					)
 				);
@@ -138,6 +170,11 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 		if (body.stars_hash) {
 			updateClauses.push('stars_hash = ?');
 			updateValues.push(body.stars_hash);
+		}
+
+		if (body.tldrs_hash) {
+			updateClauses.push('tldrs_hash = ?');
+			updateValues.push(body.tldrs_hash);
 		}
 
 		if (body.encrypted_api_key) {
@@ -220,11 +257,14 @@ export const POST: RequestHandler = async ({ request, params, platform }) => {
 				success: true,
 				diffs_hash: body.diffs_hash,
 				stars_hash: body.stars_hash,
+				tldrs_hash: body.tldrs_hash,
 				synced: {
 					diffs: body.diffs?.length || 0,
 					stars: body.stars?.length || 0,
+					tldrs: body.tldrs?.length || 0,
 					deleted_diffs: body.deleted_diff_ids?.length || 0,
-					deleted_stars: body.deleted_star_ids?.length || 0
+					deleted_stars: body.deleted_star_ids?.length || 0,
+					deleted_tldrs: body.deleted_tldr_ids?.length || 0
 				}
 			}),
 			{
@@ -255,15 +295,17 @@ export const GET: RequestHandler = async ({ url, params, platform }) => {
 	try {
 		const clientDiffsHash = url.searchParams.get('diffs_hash');
 		const clientStarsHash = url.searchParams.get('stars_hash');
+		const clientTldrsHash = url.searchParams.get('tldrs_hash');
 
 		// Public endpoint - just returns whether sync is needed
 		const profile = await DB.prepare(
-			'SELECT diffs_hash, stars_hash, content_updated_at FROM profiles WHERE id = ?'
+			'SELECT diffs_hash, stars_hash, tldrs_hash, content_updated_at FROM profiles WHERE id = ?'
 		)
 			.bind(profileId)
 			.first<{
 				diffs_hash: string | null;
 				stars_hash: string | null;
+				tldrs_hash: string | null;
 				content_updated_at: string | null;
 			}>();
 
@@ -276,6 +318,7 @@ export const GET: RequestHandler = async ({ url, params, platform }) => {
 
 		const diffsSyncNeeded = !clientDiffsHash || clientDiffsHash !== profile.diffs_hash;
 		const starsSyncNeeded = !clientStarsHash || clientStarsHash !== profile.stars_hash;
+		const tldrsSyncNeeded = !clientTldrsHash || clientTldrsHash !== profile.tldrs_hash;
 
 		// Append Z to timestamp so JS parses as UTC
 		const serverUpdatedAt = profile.content_updated_at
@@ -284,11 +327,13 @@ export const GET: RequestHandler = async ({ url, params, platform }) => {
 
 		return new Response(
 			JSON.stringify({
-				needs_sync: diffsSyncNeeded || starsSyncNeeded,
+				needs_sync: diffsSyncNeeded || starsSyncNeeded || tldrsSyncNeeded,
 				diffs_sync_needed: diffsSyncNeeded,
 				stars_sync_needed: starsSyncNeeded,
+				tldrs_sync_needed: tldrsSyncNeeded,
 				server_diffs_hash: profile.diffs_hash,
 				server_stars_hash: profile.stars_hash,
+				server_tldrs_hash: profile.tldrs_hash,
 				server_updated_at: serverUpdatedAt
 			}),
 			{
