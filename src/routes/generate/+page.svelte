@@ -192,6 +192,16 @@
 		}
 	}
 
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.key !== 'ArrowLeft') return;
+		if (genState !== 'ready') return;
+		if (!hasDiff) return;
+		const target = e.target as HTMLElement | null;
+		if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+		e.preventDefault();
+		goBack();
+	}
+
 	onMount(() => {
 		if (generating.value) startScanAnimation();
 		mobileDiff.navigateBack = goBack;
@@ -321,6 +331,8 @@
 <svelte:head>
 	<title>{generating.value ? "Generating..." : isTodayDiff ? "Regenerate" : "Generate"} | diff·log</title>
 </svelte:head>
+
+<svelte:window onkeydown={handleKeydown} />
 
 {#if isMobile.value}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->

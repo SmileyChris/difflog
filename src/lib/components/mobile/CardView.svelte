@@ -5,9 +5,12 @@
 	import { type Diff, getHistory } from '$lib/stores/history.svelte';
 	import { isStarred, getStars } from '$lib/stores/stars.svelte';
 	import { toggleStar } from '$lib/stores/operations.svelte';
-	import { renderMarkdown, extractParagraphs, extractSummary } from '$lib/utils/markdown';
+	import { getTldr, setTldr, removeTldr } from '$lib/stores/tldrs.svelte';
+	import { getProfile } from '$lib/stores/profiles.svelte';
+	import { renderMarkdown, extractParagraphs, extractSummary, parseInline } from '$lib/utils/markdown';
 	import { buildDiffContent } from '$lib/utils/time';
 	import { timeAgo } from '$lib/utils/time.svelte';
+	import { extractFirstUrl, fetchArticleText, summarizeArticle } from '$lib/utils/tldr';
 	import { onMount } from 'svelte';
 	import { mobileDiff } from '$lib/stores/mobile.svelte';
 	import {
@@ -339,6 +342,94 @@
 		});
 	});
 
+	// ── TLDR state (per-article pulldown) ──
+	let tldrExpanded = $state(new Set<number>());
+	let tldrLoading = $state(new Set<number>());
+	let tldrErrors = $state(new Map<number, string>());
+
+	function cardHasLink(card: FlatCard): boolean {
+		return /<a\s[^>]*href=/i.test(card.html);
+	}
+
+	function htmlToText(html: string): string {
+		return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+	}
+
+	function tldrSummaryBlocks(summary: string): string[] {
+		return summary.split(/\n\n+/).filter(Boolean);
+	}
+
+	function renderSummaryBlock(block: string): string {
+		return block.split('\n').map((line) => parseInline(line)).join('<br>');
+	}
+
+	async function handleTldrTap(card: FlatCard) {
+		const pIndex = card.pIndex;
+		// Ignore taps while loading
+		if (tldrLoading.has(pIndex)) return;
+
+		// Toggle off if already expanded (clears any error too)
+		if (tldrExpanded.has(pIndex)) {
+			const next = new Set(tldrExpanded); next.delete(pIndex); tldrExpanded = next;
+			if (tldrErrors.has(pIndex)) {
+				const errs = new Map(tldrErrors); errs.delete(pIndex); tldrErrors = errs;
+			}
+			return;
+		}
+
+		// Expand
+		const nextExpanded = new Set(tldrExpanded); nextExpanded.add(pIndex); tldrExpanded = nextExpanded;
+
+		// If already cached, nothing more to do — the panel will render it
+		if (getTldr(diff.id, pIndex)) return;
+
+		await generateTldr(card);
+	}
+
+	async function generateTldr(card: FlatCard) {
+		const pIndex = card.pIndex;
+		// Clear any previous error, mark loading
+		const errs = new Map(tldrErrors); errs.delete(pIndex); tldrErrors = errs;
+		const loading = new Set(tldrLoading); loading.add(pIndex); tldrLoading = loading;
+
+		try {
+			const url = extractFirstUrl(card.html);
+			if (!url) throw new Error('No URL found');
+
+			const profile = getProfile();
+			const keys = profile?.apiKeys ?? {};
+			const curationProvider = profile?.providerSelections?.curation ?? null;
+
+			const paragraphText = htmlToText(card.html);
+			const text = await fetchArticleText(url);
+			const summary = await summarizeArticle(keys, text, paragraphText, curationProvider);
+			if (!summary) throw new Error('Summarization failed');
+
+			setTldr(diff.id, pIndex, { summary, url, created_at: new Date().toISOString() });
+		} catch (e) {
+			console.warn('TLDR error:', e);
+			const msg = e instanceof Error && e.message === 'Article content not accessible'
+				? 'Could not access article — try opening it directly'
+				: 'Failed to generate summary';
+			const errs2 = new Map(tldrErrors); errs2.set(pIndex, msg); tldrErrors = errs2;
+		} finally {
+			const loading2 = new Set(tldrLoading); loading2.delete(pIndex); tldrLoading = loading2;
+		}
+	}
+
+	function deleteTldr(card: FlatCard) {
+		removeTldr(diff.id, card.pIndex);
+		const next = new Set(tldrExpanded); next.delete(card.pIndex); tldrExpanded = next;
+	}
+
+	// Reset tldr UI state when diff changes (errors/expansion don't carry across diffs)
+	$effect(() => {
+		void diff?.id;
+		tldrExpanded = new Set();
+		tldrLoading = new Set();
+		tldrErrors = new Map();
+	});
+
 	// Reset when diff changes — restore saved card position if available
 	$effect(() => {
 		const id = diff?.id;
@@ -436,7 +527,59 @@
 	</div>
 
 	{#each flatCards as card, i (card.globalIndex)}
+		{@const hasLink = cardHasLink(card)}
+		{@const tldrEntry = hasLink ? getTldr(diff.id, card.pIndex) : null}
+		{@const isLoading = tldrLoading.has(card.pIndex)}
+		{@const isExpanded = tldrExpanded.has(card.pIndex)}
+		{@const tldrError = tldrErrors.get(card.pIndex)}
 		<div class="focus-card focus-content-card" class:focus-card-starred={isStarred(diff.id, card.pIndex)} data-card-index={i + 1} tabindex="-1">
+			{#if hasLink}
+				<button
+					class="focus-tldr-tab"
+					class:focus-tldr-tab-cached={!!tldrEntry}
+					class:focus-tldr-tab-loading={isLoading}
+					class:focus-tldr-tab-active={isExpanded}
+					aria-expanded={isExpanded}
+					onclick={(e) => { e.stopPropagation(); handleTldrTap(card); }}
+					ontouchend={(e) => e.stopPropagation()}
+				>
+					<span class="focus-tldr-tab-label">&there4; {isLoading ? 'loading' : 'tldr'}</span>
+					{#if !isLoading && (tldrEntry || isExpanded)}
+						<span class="focus-tldr-tab-chevron">{isExpanded ? '\u25B2' : '\u25BC'}</span>
+					{/if}
+				</button>
+				{#if isExpanded && tldrEntry && !isLoading}
+					<button
+						class="focus-tldr-trash"
+						title="Delete summary"
+						aria-label="Delete summary"
+						onclick={(e) => { e.stopPropagation(); deleteTldr(card); }}
+						ontouchend={(e) => e.stopPropagation()}
+					>&#x1F5D1;&#xFE0F;</button>
+				{/if}
+				{#if isExpanded}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<div
+						class="focus-tldr-panel"
+						onclick={(e) => e.stopPropagation()}
+						ontouchend={(e) => e.stopPropagation()}
+					>
+						{#if isLoading}
+							<p class="focus-tldr-loading">Summarizing article&hellip;</p>
+						{:else if tldrError}
+							<p class="focus-tldr-error">{tldrError}</p>
+							<button class="focus-tldr-retry" onclick={() => generateTldr(card)}>Retry</button>
+						{:else if tldrEntry}
+							<div class="focus-tldr-content">
+								{#each tldrSummaryBlocks(tldrEntry.summary) as block}
+									<p>{@html renderSummaryBlock(block)}</p>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{/if}
+			{/if}
 			<div class="focus-card-category-row">
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -538,5 +681,142 @@
 		background-clip: text;
 	}
 
+	/* ── TLDR pulldown tab & panel (mobile) ── */
 
+	.focus-tldr-tab {
+		position: absolute;
+		top: 0.5rem;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 11;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.3rem 0.75rem;
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--text-subtle);
+		background: var(--bg-base);
+		border: 1px solid var(--border-subtle);
+		border-radius: 9999px;
+		cursor: pointer;
+		transition: color 0.15s, border-color 0.15s, background 0.15s;
+	}
+
+	.focus-tldr-tab-cached {
+		color: gold;
+		border-color: gold;
+	}
+
+	.focus-tldr-tab-active {
+		color: var(--accent);
+		border-color: var(--accent);
+		background: var(--accent-bg);
+	}
+
+	.focus-tldr-tab-loading {
+		color: var(--accent);
+		border-color: var(--accent);
+		background: var(--accent-bg);
+		animation: tldr-pulse 1.2s ease-in-out infinite;
+		pointer-events: none;
+	}
+
+	.focus-tldr-tab-chevron {
+		font-size: 0.6rem;
+		line-height: 1;
+	}
+
+	.focus-tldr-panel {
+		position: absolute;
+		top: 2.4rem;
+		left: 0.75rem;
+		right: 0.75rem;
+		max-height: calc(100% - 3rem);
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		z-index: 10;
+		padding: 0.9rem 1rem;
+		font-size: 0.9rem;
+		line-height: 1.55;
+		color: var(--text-primary);
+		background: var(--bg-surface, var(--bg-base));
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+		transform-origin: top center;
+		animation: focus-tldr-slide-down 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+
+	@keyframes focus-tldr-slide-down {
+		from {
+			opacity: 0;
+			transform: translateY(-2.4rem) scaleY(0.6);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0) scaleY(1);
+		}
+	}
+
+	.focus-tldr-panel :global(p) {
+		margin: 0;
+	}
+
+	.focus-tldr-panel :global(p + p) {
+		margin-top: 0.5rem;
+	}
+
+	.focus-tldr-loading {
+		margin: 0;
+		font-style: italic;
+		opacity: 0.7;
+	}
+
+	.focus-tldr-error {
+		margin: 0 0 0.5rem;
+		font-style: italic;
+		color: var(--text-subtle);
+		opacity: 0.85;
+	}
+
+	.focus-tldr-retry {
+		font-family: var(--font-mono);
+		font-size: 0.75rem;
+		padding: 0.25rem 0.6rem;
+		color: var(--accent);
+		background: transparent;
+		border: 1px solid var(--accent);
+		border-radius: 9999px;
+		cursor: pointer;
+	}
+
+	.focus-tldr-trash {
+		position: absolute;
+		top: 0.5rem;
+		right: 0.75rem;
+		z-index: 12;
+		width: 2rem;
+		height: 2rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--bg-base);
+		border: 1px solid var(--border-subtle);
+		border-radius: 9999px;
+		font-size: 0.85rem;
+		color: var(--text-subtle);
+		cursor: pointer;
+		opacity: 0.85;
+	}
+
+	.focus-tldr-trash:active {
+		opacity: 1;
+		color: var(--accent);
+		border-color: var(--accent);
+		background: var(--accent-bg);
+	}
 </style>
