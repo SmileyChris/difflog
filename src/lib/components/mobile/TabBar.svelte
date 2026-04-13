@@ -19,6 +19,7 @@
 	// Diff age label for current tab
 	const diffAgeDays = $derived(latestDiff ? daysSince(latestDiff.generated_at) : Infinity);
 	const isTodayDiff = $derived(diffAgeDays <= 0);
+	const isStaleDiff = $derived(diffAgeDays > 5);
 
 	const diffAgeLabel = $derived.by(() => {
 		if (!latestDiff) return '';
@@ -52,7 +53,7 @@
 	function handleTab(tab: Tab) {
 		switch (tab) {
 			case 'current':
-				if (!hasDiffs || !isTodayDiff) { goto('/generate'); }
+				if (!hasDiffs || isStaleDiff) { goto('/generate'); }
 				else if (mobileDiff.navigateBack) { mobileDiff.navigateBack(); }
 				else { goto('/'); }
 				break;
