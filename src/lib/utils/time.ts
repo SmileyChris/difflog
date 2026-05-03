@@ -36,9 +36,13 @@ export function isToday(dateStr: string): boolean {
   return new Date(dateStr).toDateString() === new Date().toDateString();
 }
 
-/** Get the number of days since a date from a timestamp. */
+/** Get the number of calendar days since a date (midnight-based, like timeAgoFrom). */
 export function daysSinceFrom(dateStr: string, now: number): number {
-  return Math.floor((now - new Date(dateStr).getTime()) / 86400000);
+  const date = new Date(dateStr);
+  const nowDate = new Date(now);
+  const midnightNow = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate());
+  const midnightDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return Math.round((midnightNow.getTime() - midnightDate.getTime()) / 86400000);
 }
 
 /** Get current date formatted for display. */
@@ -73,8 +77,11 @@ export function formatDiffDate(generatedAt: string, windowDays?: number): string
 
 /** Compact relative date string (e.g. "1d ago", "2w ago"). */
 export function relativeDate(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const days = Math.floor(diff / 86400000);
+  const date = new Date(dateStr);
+  const now = new Date();
+  const midnightNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const midnightDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const days = Math.round((midnightNow.getTime() - midnightDate.getTime()) / 86400000);
   if (days === 0) return 'today';
   if (days === 1) return '1d ago';
   if (days < 7) return `${days}d ago`;
