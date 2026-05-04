@@ -31,7 +31,7 @@
 	let scannerError = $state('');
 	let scannerStream: MediaStream | null = null;
 	let scannerInterval: ReturnType<typeof setInterval> | null = null;
-	let videoEl: HTMLVideoElement;
+	let videoEl = $state<HTMLVideoElement>();
 
 	let dialog: { open: () => void; close: () => void };
 
@@ -118,18 +118,19 @@
 			});
 			scannerStream = stream;
 
-			videoEl.srcObject = stream;
-			await videoEl.play();
+			const video = videoEl!;
+			video.srcObject = stream;
+			await video.play();
 
 			const canvas = document.createElement('canvas');
 			const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
 
 			scannerInterval = setInterval(() => {
-				if (videoEl.readyState !== videoEl.HAVE_ENOUGH_DATA) return;
+				if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
 
-				canvas.width = videoEl.videoWidth;
-				canvas.height = videoEl.videoHeight;
-				ctx.drawImage(videoEl, 0, 0);
+				canvas.width = video.videoWidth;
+				canvas.height = video.videoHeight;
+				ctx.drawImage(video, 0, 0);
 
 				const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 				const jsQR = (window as { jsQR: (data: Uint8ClampedArray, width: number, height: number) => { data: string } | null }).jsQR;
@@ -228,9 +229,10 @@
 		{/if}
 		<button class="btn-secondary" style="width: 100%" onclick={stopScanner}>Cancel Scan</button>
 	{:else}
-		<label class="input-label">Profile ID or Share Code</label>
+		<label class="input-label" for="import-profile-id">Profile ID or Share Code</label>
 		<div class="import-id-row">
 			<InputField
+				id="import-profile-id"
 				placeholder="diff-●●●● or full profile ID"
 				bind:value={profileId}
 				status={resolving ? 'checking' : codeError ? 'invalid' : isValidUuid ? 'valid' : null}

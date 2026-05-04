@@ -279,8 +279,10 @@
 
 {#if showStreakCalendar}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div class="streak-overlay" onclick={() => showStreakCalendar = false}>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div class="streak-panel" onclick={(e) => e.stopPropagation()}>
 			<StreakCalendar onDayClick={goToDiffOnDate} />
 		</div>

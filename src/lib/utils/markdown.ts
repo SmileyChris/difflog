@@ -77,18 +77,18 @@ function wrapScorePatterns(html: string): string {
   // - "(500 stars on JavaScript GitHub)" or "(1289 stars, Python GitHub)"
   // - "(100 [HN](url) pts)" -> "(100 <a>HN ↗</a> pts)" after link parsing
   return html
-    .replace(/\\(([\d,]+)\s+pts\s+on\s+([^)]+)\\)/gi, '<small class="md-score">($1 pts on $2)</small>')
-    .replace(/\\(([\d,]+)\s+([\w.\/]+)\s+pts\\)/gi, '<small class="md-score">($1 $2 pts)</small>')
-    .replace(/\\(([\d,]+)\s+pts\\)/gi, '<small class="md-score">($1 pts)</small>')
-    .replace(/\\(([\d,]+)\s+stars[,\s]+([^)]+)\\)/gi, '<small class="md-score">($1 stars, $2)</small>')
-    .replace(/\\(([\d,]+)\s+stars\\)/gi, '<small class="md-score">($1 stars)</small>')
+    .replace(/\(([\d,]+)\s+pts\s+on\s+([^)]+)\)/gi, '<small class="md-score">($1 pts on $2)</small>')
+    .replace(/\(([\d,]+)\s+([\w.\/]+)\s+pts\)/gi, '<small class="md-score">($1 $2 pts)</small>')
+    .replace(/\(([\d,]+)\s+pts\)/gi, '<small class="md-score">($1 pts)</small>')
+    .replace(/\(([\d,]+)\s+stars[,\s]+([^)]+)\)/gi, '<small class="md-score">($1 stars, $2)</small>')
+    .replace(/\(([\d,]+)\s+stars\)/gi, '<small class="md-score">($1 stars)</small>')
     // Handle multiple comma-separated point values with links: "(165 HN ↗ pts, 19 Lobsters ↗ pts)"
     .replace(
-      /\\(((?:[\d,]+\s+<a[^>]+>[^<]*\s*↗<\/a>\s+pts,\s*)+[\d,]+\s+<a[^>]+>[^<]*\s*↗<\/a>\s+pts)\)/g,
+      /\(((?:[\d,]+\s+<a[^>]+>[^<]*\s*↗<\/a>\s+pts,\s*)+[\d,]+\s+<a[^>]+>[^<]*\s*↗<\/a>\s+pts)\)/g,
       (match) => `<small class="md-score">${match}</small>`
     )
     .replace(
-      /\\(([\d,]+\s+)(<a[^>]+>)([^<]*)\s*↗(<\/a>)(\s+pts)?\)/g,
+      /\(([\d,]+\s+)(<a[^>]+>)([^<]*)\s*↗(<\/a>)(\s+pts)?\)/g,
       (_, num, openTag, text, closeTag, pts) =>
         `<small class="md-score">(${num}${openTag}${text}↗${closeTag}${pts || ''})</small>`
     );

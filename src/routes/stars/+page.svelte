@@ -11,7 +11,7 @@
 	import MobileHeader from '$lib/components/mobile/MobileHeader.svelte';
 
 	const swipe = createSwipeState();
-	let listEl: HTMLDivElement;
+	let listEl = $state<HTMLDivElement>();
 
 	// Removed stars kept locally for undo
 	let removedStars = $state<Map<string, Star>>(new Map());
@@ -72,10 +72,11 @@
 	}
 
 	onMount(() => {
-		if (!listEl) return;
+		const el = listEl;
+		if (!el) return;
 		const handler = (e: TouchEvent) => swipe.move(e);
-		listEl.addEventListener('touchmove', handler, { passive: false });
-		return () => listEl.removeEventListener('touchmove', handler);
+		el.addEventListener('touchmove', handler, { passive: false });
+		return () => el.removeEventListener('touchmove', handler);
 	});
 
 	function shortDate(dateStr: string): string {
@@ -144,6 +145,7 @@
 							</div>
 						{/if}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
 						<div
 							class="passage"
 							style:transform={isMobile.value ? `translateX(${swipe.offset(key)}px)` : undefined}
@@ -179,6 +181,7 @@
 								<span class="swipe-delete-icon">&#9734;</span>
 							</div>
 						{/if}
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div
 							class="passage passage-orphan"
 							style:transform={isMobile.value ? `translateX(${swipe.offset(key)}px)` : undefined}
@@ -341,6 +344,7 @@
 		overflow: hidden;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 	}
 

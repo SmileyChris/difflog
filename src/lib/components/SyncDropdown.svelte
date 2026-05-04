@@ -18,7 +18,7 @@
   import { doSyncFromDropdown } from "$lib/stores/operations.svelte";
   import { clickOutside } from "$lib/actions/clickOutside";
 
-  let passwordInput: HTMLInputElement;
+  let passwordInput = $state<HTMLInputElement>();
 
   $effect(() => {
     if (syncError.value && passwordInput) {
@@ -247,18 +247,6 @@
   .sync-dropdown-error {
     color: var(--danger);
     font-size: 0.8rem;
-  }
-
-  .sync-dropdown-syncing {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--text-subtle);
-    font-size: 0.85rem;
-  }
-
-  .sync-dropdown-syncing-icon {
-    animation: spin 1s linear infinite;
   }
 
   @keyframes spin {

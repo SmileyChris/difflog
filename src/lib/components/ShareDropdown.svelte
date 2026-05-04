@@ -81,7 +81,8 @@
 		</button>
 
 		{#if isOpen}
-			<div class="visibility-menu" role="menu" onclick={(e) => e.stopPropagation()}>
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div class="visibility-menu" role="menu" tabindex="-1" onclick={(e) => e.stopPropagation()}>
 				{#if !isPublic}
 					<div class="visibility-menu-content">
 						{#if canModify}

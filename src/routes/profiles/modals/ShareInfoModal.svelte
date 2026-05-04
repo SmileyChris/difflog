@@ -182,9 +182,10 @@
   {/if}
 
   <div class="share-id-box">
-    <label class="input-label">Profile ID</label>
+    <span class="input-label">Profile ID</span>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <code class="share-id-code" onclick={copyId}>{profileId}</code>
     {#if copied}
       <span class="share-copied">Copied!</span>
@@ -192,11 +193,12 @@
   </div>
 
   <div class="share-code-section">
-    <label class="input-label">Quick Share Code</label>
+    <span class="input-label">Quick Share Code</span>
     {#if shareCode}
       <div class="share-code-display" class:share-code-used={codeUsed}>
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
         <code class="share-code-value" onclick={copyCode}>{formatShareCode(shareCode)}</code>
         {#if codeUsed}
           <span class="share-code-used-label">Code used</span>

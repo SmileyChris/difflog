@@ -11,9 +11,9 @@
     }
   });
 
-  let demoDialog: { open: () => void; close: () => void };
-  let demoDialogSm: { open: () => void; close: () => void };
-  let demoDialogLg: { open: () => void; close: () => void };
+  let demoDialog = $state<{ open: () => void; close: () => void }>();
+  let demoDialogSm = $state<{ open: () => void; close: () => void }>();
+  let demoDialogLg = $state<{ open: () => void; close: () => void }>();
 
   let validValue = $state('Valid input');
   let invalidValue = $state('Invalid input');
@@ -26,9 +26,6 @@
 </svelte:head>
 
 <style>
-  .design-page-hidden {
-    display: none;
-  }
     .design-nav {
       position: fixed;
       top: 0;
@@ -337,21 +334,21 @@
 
       <div class="component-demo">
         <div class="input-group">
-          <label class="input-label">Text Input</label>
-          <input type="text" class="text-input" placeholder="Placeholder text" />
+          <label class="input-label" for="design-text-input">Text Input</label>
+          <input id="design-text-input" type="text" class="text-input" placeholder="Placeholder text" />
         </div>
 
         <div class="input-group" style="margin-top: 1rem;">
-          <label class="input-label">With Action Button</label>
+          <label class="input-label" for="design-action-input">With Action Button</label>
           <div class="input-with-action">
-            <input type="text" class="text-input" placeholder="Enter value" />
+            <input id="design-action-input" type="text" class="text-input" placeholder="Enter value" />
             <button class="btn-inline-action">Action</button>
           </div>
         </div>
 
         <div class="input-group" style="margin-top: 1rem;">
-          <label class="input-label">Textarea</label>
-          <textarea class="text-input" rows="3" placeholder="Enter longer text..."></textarea>
+          <label class="input-label" for="design-textarea">Textarea</label>
+          <textarea id="design-textarea" class="text-input" rows="3" placeholder="Enter longer text..."></textarea>
         </div>
       </div>
 
@@ -557,8 +554,8 @@ function example() {'{'}
           <h2 class="step-title">Step Title</h2>
           <p class="step-desc">Step description text that explains what this step is for and what the user should do.</p>
           <div class="input-group" style="margin-top: 1rem;">
-            <label class="input-label">Example Field</label>
-            <input type="text" class="text-input" placeholder="Enter value" />
+            <label class="input-label" for="design-example-field">Example Field</label>
+            <input id="design-example-field" type="text" class="text-input" placeholder="Enter value" />
           </div>
         </div>
       </div>
@@ -592,8 +589,8 @@ function example() {'{'}
 
     <ModalDialog bind:this={demoDialogSm} title="Small Dark Dialog" subtitle="Used for forms and confirmations." size="sm" dark onclose={() => demoDialogSm?.close()}>
       <div class="input-group">
-        <label class="input-label">Example Field</label>
-        <input type="text" class="text-input" placeholder="Enter value" />
+        <label class="input-label" for="design-dialog-field">Example Field</label>
+        <input id="design-dialog-field" type="text" class="text-input" placeholder="Enter value" />
       </div>
       {#snippet footer()}
         <button class="btn-secondary" onclick={() => demoDialogSm?.close()}>Cancel</button>
