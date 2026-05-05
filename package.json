@@ -1,7 +1,7 @@
 {
   "name": "difflog",
   "private": true,
-  "version": "4.2.2",
+  "version": "4.2.3",
   "cliVersion": "1.2.1",
   "type": "module",
   "scripts": {
