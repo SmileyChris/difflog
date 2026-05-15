@@ -4,7 +4,7 @@ import { canSync, sync } from '../sync';
 import { cliFetchJson, BASE } from '../api';
 import { encryptData, hashPasswordForTransport, computeContentHash, uint8ToBase64 } from '../../lib/utils/crypto';
 import { computeKeysHash } from '../../lib/utils/sync-core';
-import type { ProviderSelections, ApiKeys, EncryptedKeysBlob } from '../../lib/types/sync';
+import type { ProviderSelections, ModelSelections, ProfileMigrations, ApiKeys, EncryptedKeysBlob } from '../../lib/types/sync';
 import { formatAiConfig } from './config/index';
 import { PROVIDER_LABELS } from '../../lib/utils/providers';
 import { timeAgo } from '../time';
@@ -70,7 +70,9 @@ async function showInfo(session: Session, verbose = false): Promise<void> {
 		const currentApiKeys = await getApiKeys();
 		const currentKeysHash = await computeKeysHash(
 			currentApiKeys as ApiKeys,
-			profile.providerSelections as ProviderSelections
+			profile.providerSelections as ProviderSelections,
+			profile.modelSelections as ModelSelections,
+			profile.migrations as ProfileMigrations
 		);
 		const diffsMatch = currentDiffsHash === syncMeta.diffsHash;
 		const keysMatch = currentKeysHash === syncMeta.keysHash;
@@ -121,7 +123,9 @@ async function shareCommand(session: Session): Promise<void> {
 	// Build encrypted keys blob
 	const blob: EncryptedKeysBlob = {
 		apiKeys,
-		providerSelections: profile.providerSelections as ProviderSelections
+		providerSelections: profile.providerSelections as ProviderSelections,
+		modelSelections: profile.modelSelections as ModelSelections,
+		migrations: profile.migrations as ProfileMigrations
 	};
 
 	// Generate encryption salt
@@ -136,7 +140,12 @@ async function shareCommand(session: Session): Promise<void> {
 	const passwordSalt = passwordHash.split(':')[0];
 
 	// Compute keys hash
-	const keysHash = await computeKeysHash(apiKeys as ApiKeys, profile.providerSelections as ProviderSelections);
+	const keysHash = await computeKeysHash(
+		apiKeys as ApiKeys,
+		profile.providerSelections as ProviderSelections,
+		profile.modelSelections as ModelSelections,
+		profile.migrations as ProfileMigrations
+	);
 
 	// Upload to server
 	await cliFetchJson(`${BASE}/api/profile/create`, {
@@ -219,7 +228,9 @@ async function passwordCommand(session: Session): Promise<void> {
 	const apiKeys = await getApiKeys();
 	const blob: EncryptedKeysBlob = {
 		apiKeys,
-		providerSelections: profile.providerSelections as ProviderSelections
+		providerSelections: profile.providerSelections as ProviderSelections,
+		modelSelections: profile.modelSelections as ModelSelections,
+		migrations: profile.migrations as ProfileMigrations
 	};
 	const newEncryptedApiKey = await encryptData(blob, newPassword, newSalt);
 

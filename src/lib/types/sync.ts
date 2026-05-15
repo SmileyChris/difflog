@@ -69,11 +69,20 @@ export interface ModelSelections {
   synthesis?: string | null;
 }
 
+/** Per-flag record of one-time client migrations that have already run.
+ *  Travels in the encrypted keys blob so peers can see which seeds are
+ *  authoritative without re-running them. */
+export interface ProfileMigrations {
+  /** previousDefault models seeded into modelSelections after per-step picker shipped */
+  modelSelectionsSeeded?: boolean;
+}
+
 /** Shape of the expanded encrypted blob (apiKeys + providerSelections) */
 export interface EncryptedKeysBlob {
   apiKeys: Record<string, string>;
   providerSelections?: ProviderSelections;
   modelSelections?: ModelSelections;
+  migrations?: ProfileMigrations;
 }
 
 /** Core profile fields shared between web and CLI */
@@ -88,6 +97,7 @@ export interface ProfileCore {
   customFocus: string;
   providerSelections?: ProviderSelections;
   modelSelections?: ModelSelections;
+  migrations?: ProfileMigrations;
 }
 
 // --- Web-only types (co-located for convenience) ---

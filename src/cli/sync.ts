@@ -2,7 +2,7 @@ import { getSession, getProfile, getDiffs, saveDiffs, saveProfile, getStars, sav
 import type { Session, Profile, Diff, PendingChanges, SyncMeta } from './config';
 import { cliFetchJson, BASE } from './api';
 import { encryptData, hashPasswordForTransport, computeContentHash } from '../lib/utils/crypto';
-import type { ProviderSelections, ApiKeys, EncryptedKeysBlob } from '../lib/types/sync';
+import type { ProviderSelections, ModelSelections, ProfileMigrations, ApiKeys, EncryptedKeysBlob } from '../lib/types/sync';
 import {
 	encryptDiffs,
 	encryptStars,
@@ -68,10 +68,17 @@ export async function upload(session: Session): Promise<number> {
 		const apiKeys = await getApiKeys();
 		const blob: EncryptedKeysBlob = {
 			apiKeys,
-			providerSelections: profile.providerSelections as ProviderSelections
+			providerSelections: profile.providerSelections as ProviderSelections,
+			modelSelections: profile.modelSelections as ModelSelections,
+			migrations: profile.migrations as ProfileMigrations
 		};
 		encryptedApiKey = await encryptData(blob, session.password, session.salt);
-		keysHash = await computeKeysHash(apiKeys as ApiKeys, profile.providerSelections as ProviderSelections);
+		keysHash = await computeKeysHash(
+			apiKeys as ApiKeys,
+			profile.providerSelections as ProviderSelections,
+			profile.modelSelections as ModelSelections,
+			profile.migrations as ProfileMigrations
+		);
 	}
 
 	// Build profile metadata if modified
@@ -211,6 +218,33 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 				};
 				profileUpdated = true;
 			}
+
+			// modelSelections merge: if remote ran the seed migration and we
+			// haven't, adopt remote wholesale (avoid clobbering user's actual
+			// picks with our locally-seeded previousDefault values). Otherwise
+			// local-precedence.
+			const remoteSeeded = result.migrations?.modelSelectionsSeeded === true;
+			const localSeeded = profile.migrations?.modelSelectionsSeeded === true;
+			if (result.modelSelections || remoteSeeded) {
+				if (remoteSeeded && !localSeeded) {
+					profile.modelSelections = result.modelSelections as ModelSelections;
+				} else if (result.modelSelections) {
+					profile.modelSelections = {
+						...result.modelSelections,
+						...profile.modelSelections
+					} as ModelSelections;
+				}
+				profileUpdated = true;
+			}
+
+			// Merge migrations: union (any side having a flag wins)
+			if (result.migrations) {
+				profile.migrations = {
+					...result.migrations,
+					...profile.migrations
+				};
+				profileUpdated = true;
+			}
 		} catch {
 			// skip key decryption failures
 		}
@@ -247,7 +281,9 @@ export async function download(session: Session): Promise<{ downloaded: number; 
 	const currentKeys = await getApiKeys();
 	const newKeysHash = await computeKeysHash(
 		currentKeys as ApiKeys,
-		profile.providerSelections as ProviderSelections
+		profile.providerSelections as ProviderSelections,
+		profile.modelSelections as ModelSelections,
+		profile.migrations as ProfileMigrations
 	);
 	updatedMeta.keysHash = newKeysHash;
 

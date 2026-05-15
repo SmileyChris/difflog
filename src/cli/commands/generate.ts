@@ -234,6 +234,7 @@ Options:
 				depth,
 				resolvedMappings: profile.resolvedMappings || {},
 				providerSelections: { synthesis: selections.synthesis || undefined },
+				modelSelections: profile.modelSelections,
 				apiKeys
 			},
 			selectedDepth: depth,

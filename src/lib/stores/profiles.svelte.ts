@@ -8,20 +8,24 @@ const _profiles = persist<Record<string, Profile>>('difflog-profiles', {});
 
 /**
  * Seed `modelSelections` from the implicit previous defaults for any profile
- * that predates the per-step model picker. Pure function, no side effects.
+ * that predates the per-step model picker, then record the seed flag so peers
+ * (CLI / other devices) treat this profile as authoritative on its next sync.
  * Returns true if the profile was changed.
  */
 function seedLegacyModelSelections(profile: Profile): boolean {
-	if (profile.modelSelections) return false;
-	const seeded: Record<string, string | null> = { search: null, curation: null, synthesis: null };
-	const sel = profile.providerSelections;
-	if (sel) {
-		for (const s of ['search', 'curation', 'synthesis'] as ProviderStep[]) {
-			const pid = sel[s];
-			if (pid) seeded[s] = getPreviousDefaultModel(pid, s);
+	if (profile.migrations?.modelSelectionsSeeded) return false;
+	if (!profile.modelSelections) {
+		const seeded: Record<string, string | null> = { search: null, curation: null, synthesis: null };
+		const sel = profile.providerSelections;
+		if (sel) {
+			for (const s of ['search', 'curation', 'synthesis'] as ProviderStep[]) {
+				const pid = sel[s];
+				if (pid) seeded[s] = getPreviousDefaultModel(pid, s);
+			}
 		}
+		profile.modelSelections = seeded as Profile['modelSelections'];
 	}
-	profile.modelSelections = seeded as Profile['modelSelections'];
+	profile.migrations = { ...profile.migrations, modelSelectionsSeeded: true };
 	return true;
 }
 
@@ -97,6 +101,7 @@ export function createProfileBase(data: {
 		apiKeys: data.apiKeys,
 		providerSelections: data.providerSelections,
 		modelSelections: data.modelSelections,
+		migrations: { modelSelectionsSeeded: true },
 		languages: data.languages,
 		frameworks: data.frameworks,
 		tools: data.tools,

@@ -2,9 +2,9 @@ import { mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { getPassword } from 'cross-keychain';
-import { PROVIDER_IDS } from '../lib/utils/providers';
+import { PROVIDER_IDS, getPreviousDefaultModel, type ProviderStep } from '../lib/utils/providers';
 import { SERVICE_NAME } from './ui';
-import type { Diff, Star, ProfileCore, PendingChanges as SharedPendingChanges, ResolvedMapping } from '../lib/types/sync';
+import type { Diff, Star, ProfileCore, ModelSelections, PendingChanges as SharedPendingChanges, ResolvedMapping } from '../lib/types/sync';
 
 export type { Diff, Star } from '../lib/types/sync';
 
@@ -108,8 +108,36 @@ export interface Profile extends ProfileCore {
 	resolvedMappings?: Record<string, ResolvedMapping>;
 }
 
+/**
+ * Seed `modelSelections` from each provider's previousDefault for profiles
+ * that predate the per-step model picker, then record the seed flag. The
+ * flag tells the next sync peer (web/CLI) to treat our values as already-
+ * migrated rather than re-running its own seed and clobbering ours.
+ * Mirrors the web migration in src/lib/stores/profiles.svelte.ts.
+ */
+function seedLegacyModelSelections(profile: Profile): boolean {
+	if (profile.migrations?.modelSelectionsSeeded) return false;
+	if (!profile.modelSelections) {
+		const seeded: ModelSelections = { search: null, curation: null, synthesis: null };
+		const sel = profile.providerSelections;
+		if (sel) {
+			for (const s of ['search', 'curation', 'synthesis'] as ProviderStep[]) {
+				const pid = sel[s];
+				if (pid) seeded[s] = getPreviousDefaultModel(pid, s);
+			}
+		}
+		profile.modelSelections = seeded;
+	}
+	profile.migrations = { ...profile.migrations, modelSelectionsSeeded: true };
+	return true;
+}
+
 export function getProfile(): Profile | null {
-	return readJson<Profile>('profile.json');
+	const profile = readJson<Profile>('profile.json');
+	if (profile && seedLegacyModelSelections(profile)) {
+		writeJson('profile.json', profile);
+	}
+	return profile;
 }
 
 export function saveProfile(profile: Profile): void {
