@@ -7,6 +7,31 @@ export { hasStageCache, clearStageCache };
 // Track the active generation promise at module level so it survives navigation
 let _activeGeneration: Promise<GenerateResult> | null = null;
 
+// Screen Wake Lock — prevent mobile browsers from suspending the tab while generating.
+// Auto-released when the tab hides; must reacquire on visibilitychange.
+let _wakeLock: WakeLockSentinel | null = null;
+let _wakeLockHandler: (() => void) | null = null;
+
+async function acquireWakeLock(): Promise<void> {
+	if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) return;
+	try {
+		_wakeLock = await navigator.wakeLock.request('screen');
+	} catch {
+		// Permission denied, page hidden, or unsupported — silently skip
+	}
+}
+
+async function releaseWakeLock(): Promise<void> {
+	if (_wakeLockHandler) {
+		document.removeEventListener('visibilitychange', _wakeLockHandler);
+		_wakeLockHandler = null;
+	}
+	if (_wakeLock) {
+		try { await _wakeLock.release(); } catch { /* already released */ }
+		_wakeLock = null;
+	}
+}
+
 let _generating = $state(false);
 let _showImportModal = $state(false);
 let _generationError = $state<string | null>(null);
@@ -68,6 +93,15 @@ export async function runGeneration(options: GenerateOptions): Promise<GenerateR
 	// Create the promise at module level
 	_activeGeneration = generateDiffContent(options);
 
+	// Acquire wake lock + reacquire on tab return (lock auto-released when hidden)
+	await acquireWakeLock();
+	_wakeLockHandler = () => {
+		if (document.visibilityState === 'visible' && _generating && !_wakeLock) {
+			void acquireWakeLock();
+		}
+	};
+	document.addEventListener('visibilitychange', _wakeLockHandler);
+
 	try {
 		const result = await _activeGeneration;
 		_generationResult = result.diff;
@@ -79,6 +113,7 @@ export async function runGeneration(options: GenerateOptions): Promise<GenerateR
 	} finally {
 		_generating = false;
 		_activeGeneration = null;
+		void releaseWakeLock();
 	}
 }
 

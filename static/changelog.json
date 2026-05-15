@@ -8,7 +8,9 @@
       "changes": [
         { "type": "feature", "text": "Model picker for each pipeline step (search, curation, synthesis) in the provider key modal", "in": "4.3.0" },
         { "type": "feature", "text": "Per-diff cost shown alongside each step header and updates live as you hover a model", "in": "4.3.0" },
-        { "type": "feature", "text": "Newer models added: Sonnet 4.6, Opus 4.7, DeepSeek V4 Flash/Pro, Gemini 3.1 Flash Lite/Pro and 3 Flash, Perplexity Sonar Reasoning Pro", "in": "4.3.0" }
+        { "type": "feature", "text": "Newer models added: Sonnet 4.6, Opus 4.7, DeepSeek V4 Flash/Pro, Gemini 3.1 Flash Lite/Pro and 3 Flash, Perplexity Sonar Reasoning Pro", "in": "4.3.0" },
+        { "type": "fix", "text": "Screen Wake Lock keeps mobile generation alive when the phone screen sleeps", "in": "4.3.1" },
+        { "type": "fix", "text": "Corrected Gemini 3 model IDs to use the `-preview` suffix Google ships them under", "in": "4.3.1" }
       ]
     },
     {

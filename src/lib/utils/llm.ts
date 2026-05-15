@@ -505,8 +505,8 @@ async function synthesizeWithGemini(
   // Calculate cost based on model
   const usage = result.usageMetadata;
   const cost = usage
-    ? (usage.promptTokenCount * (model === 'gemini-3-flash' ? 0.50 : model === 'gemini-3.1-pro' ? 2.00 : 0.25)
-     + usage.candidatesTokenCount * (model === 'gemini-3-flash' ? 3.00 : model === 'gemini-3.1-pro' ? 12.00 : 1.50)) / 1_000_000
+    ? (usage.promptTokenCount * (model === 'gemini-3-flash-preview' ? 0.50 : model === 'gemini-3.1-pro-preview' ? 2.00 : 0.25)
+     + usage.candidatesTokenCount * (model === 'gemini-3-flash-preview' ? 3.00 : model === 'gemini-3.1-pro-preview' ? 12.00 : 1.50)) / 1_000_000
     : undefined;
 
   const { title, content: stripped } = extractTitle(content);

@@ -104,13 +104,13 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     models: {
       curation: [
         { id: 'gemini-3.1-flash-lite', label: '3.1 Flash Lite', isDefault: true },
-        { id: 'gemini-3-flash', label: '3 Flash', isDefault: false },
+        { id: 'gemini-3-flash-preview', label: '3 Flash', isDefault: false },
         { id: 'gemini-2.5-flash', label: '2.5 Flash', isDefault: false, deprecated: true, previousDefault: true },
       ],
       synthesis: [
         { id: 'gemini-3.1-flash-lite', label: '3.1 Flash Lite', isDefault: true },
-        { id: 'gemini-3-flash', label: '3 Flash', isDefault: false },
-        { id: 'gemini-3.1-pro', label: '3.1 Pro', isDefault: false },
+        { id: 'gemini-3-flash-preview', label: '3 Flash', isDefault: false },
+        { id: 'gemini-3.1-pro-preview', label: '3.1 Pro', isDefault: false },
         { id: 'gemini-2.5-flash', label: '2.5 Flash', isDefault: false, deprecated: true, previousDefault: true },
       ],
     },
