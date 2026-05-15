@@ -44,6 +44,16 @@ export function load({ url }) {
 			}
 		}
 
+		// Merge stored selections with auto-select fallback so a partially-empty
+		// providerSelections object (e.g. all-null) doesn't block the wizard.
+		const auto = autoSelectProviders(providerStates);
+		const stored = p.providerSelections || {};
+		const selections = {
+			search: stored.search ?? auto.search,
+			curation: stored.curation ?? auto.curation,
+			synthesis: stored.synthesis ?? auto.synthesis,
+		};
+
 		return {
 			isEditing: true,
 			initialStep: parseInt(editStep),
@@ -64,7 +74,7 @@ export function load({ url }) {
 				topics: customTopics
 			},
 			providerStates,
-			selections: p.providerSelections || autoSelectProviders(providerStates),
+			selections,
 			modelSelections: p.modelSelections || { search: null, curation: null, synthesis: null }
 		};
 	}
