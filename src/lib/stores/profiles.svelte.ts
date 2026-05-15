@@ -1,21 +1,44 @@
 import { browser } from '$app/environment';
 import { persist } from './persist.svelte';
 import { getAnthropicKey, type Profile } from '$lib/utils/sync';
+import { getPreviousDefaultModel, type ProviderStep } from '$lib/utils/providers';
 
 // Persisted state
 const _profiles = persist<Record<string, Profile>>('difflog-profiles', {});
 
-// One-time migration: move legacy apiKey → apiKeys.anthropic
+/**
+ * Seed `modelSelections` from the implicit previous defaults for any profile
+ * that predates the per-step model picker. Pure function, no side effects.
+ * Returns true if the profile was changed.
+ */
+function seedLegacyModelSelections(profile: Profile): boolean {
+	if (profile.modelSelections) return false;
+	const seeded: Record<string, string | null> = { search: null, curation: null, synthesis: null };
+	const sel = profile.providerSelections;
+	if (sel) {
+		for (const s of ['search', 'curation', 'synthesis'] as ProviderStep[]) {
+			const pid = sel[s];
+			if (pid) seeded[s] = getPreviousDefaultModel(pid, s);
+		}
+	}
+	profile.modelSelections = seeded as Profile['modelSelections'];
+	return true;
+}
+
+// One-time migrations
 if (browser) {
 	let migrated = false;
 	const current = _profiles.value;
 	for (const profile of Object.values(current)) {
+		// Legacy apiKey → apiKeys.anthropic
 		const legacy = (profile as Record<string, unknown>).apiKey as string | undefined;
 		if (legacy) {
 			profile.apiKeys = { ...profile.apiKeys, anthropic: profile.apiKeys?.anthropic || legacy };
 			delete (profile as Record<string, unknown>).apiKey;
 			migrated = true;
 		}
+		// Seed modelSelections for profiles that predate the picker
+		if (seedLegacyModelSelections(profile)) migrated = true;
 	}
 	if (migrated) {
 		_profiles.value = { ...current };
@@ -59,6 +82,7 @@ export function createProfileBase(data: {
 	name: string;
 	apiKeys?: Profile['apiKeys'];
 	providerSelections?: Profile['providerSelections'];
+	modelSelections?: Profile['modelSelections'];
 	languages: string[];
 	frameworks: string[];
 	tools: string[];
@@ -72,6 +96,7 @@ export function createProfileBase(data: {
 		name: data.name,
 		apiKeys: data.apiKeys,
 		providerSelections: data.providerSelections,
+		modelSelections: data.modelSelections,
 		languages: data.languages,
 		frameworks: data.frameworks,
 		tools: data.tools,

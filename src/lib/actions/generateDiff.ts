@@ -8,6 +8,7 @@ import type { ResolvedMapping, ApiKeys } from '$lib/utils/sync';
 import { getUnmappedItems, resolveSourcesForItem, curateGeneralFeeds, formatItemsForPrompt, formatWebSearchForPrompt, type FeedItem } from '$lib/utils/feeds';
 import { searchWeb } from '$lib/utils/search';
 import { synthesizeDiff } from '$lib/utils/llm';
+import { resolveModel } from '$lib/utils/providers';
 import { DEPTH_TOKEN_LIMITS, type GenerationDepth } from '$lib/utils/constants';
 
 export interface GenerateOptions {
@@ -20,6 +21,7 @@ export interface GenerateOptions {
 		depth: GenerationDepth;
 		resolvedMappings?: Record<string, ResolvedMapping>;
 		providerSelections?: { search?: string; curation?: string; synthesis?: string };
+		modelSelections?: { search?: string | null; curation?: string | null; synthesis?: string | null };
 		apiKeys?: Partial<ApiKeys>;
 	};
 	selectedDepth: GenerationDepth;
@@ -185,7 +187,9 @@ export async function generateDiffContent(options: GenerateOptions): Promise<Gen
 				const generalItems: FeedItem[] = [...(feeds.hn || []), ...(feeds.lobsters || [])];
 				let curatedGeneral: FeedItem[] = generalItems;
 				if (generalItems.length > 0) {
-					curatedGeneral = await curateGeneralFeeds(keys, generalItems, currentProfile, profile.providerSelections?.curation);
+					const curationProvider = profile.providerSelections?.curation;
+					const curationModel = resolveModel(curationProvider, 'curation', profile.modelSelections);
+					curatedGeneral = await curateGeneralFeeds(keys, generalItems, currentProfile, curationProvider, curationModel);
 				}
 
 				const allItems: FeedItem[] = [
@@ -226,13 +230,15 @@ export async function generateDiffContent(options: GenerateOptions): Promise<Gen
 	}
 
 	const synthesisProvider = profile.providerSelections?.synthesis || 'anthropic';
+	const synthesisModel = resolveModel(synthesisProvider, 'synthesis', profile.modelSelections);
 	const maxTokens = DEPTH_TOKEN_LIMITS[selectedDepth] || 8192;
 
 	const { title, content: rawContent, cost } = await synthesizeDiff(
 		keys,
 		synthesisProvider,
 		prompt,
-		maxTokens
+		maxTokens,
+		synthesisModel
 	);
 
 	// Clear cache on successful synthesis

@@ -500,7 +500,8 @@ export async function curateGeneralFeeds(
   keys: ApiKeys,
   items: FeedItem[],
   profile: Profile,
-  preferredProvider?: string | null
+  preferredProvider?: string | null,
+  modelOverride?: string | null
 ): Promise<FeedItem[]> {
   if (items.length === 0) return [];
 
@@ -547,7 +548,7 @@ Return the indices of relevant items.`;
     required: ['indices']
   };
 
-  const result = await completeJson<{ indices: number[] }>(keys, prompt, schema, { preferredProvider });
+  const result = await completeJson<{ indices: number[] }>(keys, prompt, schema, { preferredProvider, model: modelOverride });
 
   if (!result?.indices) {
     console.warn('Feed curation returned no indices, returning all items');

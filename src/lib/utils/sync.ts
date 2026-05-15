@@ -38,6 +38,7 @@ export type {
   PendingDeletion,
   ApiKeys,
   ProviderSelections,
+  ModelSelections,
   EncryptedKeysBlob,
   ResolvedMapping,
   SyncStatus,
@@ -273,7 +274,7 @@ export async function checkStatus(
         localDiffsHash = await computeContentHash(history);
         localStarsHash = await computeStarsHash(stars);
         localTldrsHash = await computeTldrsHash(tldrs);
-        localKeysHash = await computeKeysHash(profile.apiKeys, profile.providerSelections);
+        localKeysHash = await computeKeysHash(profile.apiKeys, profile.providerSelections, profile.modelSelections);
 
         needsSync = localDiffsHash !== status.diffs_hash ||
           localStarsHash !== status.stars_hash ||
@@ -310,15 +311,16 @@ export async function shareProfile(
   const anthropicKey = getAnthropicKey(profile);
   if (!anthropicKey) throw new Error('Profile missing API key');
 
-  // Build expanded blob: apiKeys + providerSelections
+  // Build expanded blob: apiKeys + providerSelections + modelSelections
   const apiKeysRecord = buildApiKeysRecord(profile.apiKeys);
   const blob: EncryptedKeysBlob = {
     apiKeys: apiKeysRecord,
-    providerSelections: profile.providerSelections
+    providerSelections: profile.providerSelections,
+    modelSelections: profile.modelSelections
   };
 
   const { encrypted, salt } = await encryptApiKeys(blob as unknown as Record<string, string>, password);
-  const keysHash = await computeKeysHash(profile.apiKeys, profile.providerSelections);
+  const keysHash = await computeKeysHash(profile.apiKeys, profile.providerSelections, profile.modelSelections);
   const existingPasswordSalt = profile.passwordSalt;
   const passwordHash = await hashPasswordForTransport(password, existingPasswordSalt);
 
@@ -377,13 +379,14 @@ export async function importProfile(
   }>(`${base}/api/profile/${id}?password_hash=${encodeURIComponent(passwordHash)}`, undefined, fetcher);
 
   // Decrypt the blob (handles all legacy formats)
-  const { apiKeys, providerSelections } = await decryptKeysBlob(data.encrypted_api_key, password, data.salt);
+  const { apiKeys, providerSelections, modelSelections } = await decryptKeysBlob(data.encrypted_api_key, password, data.salt);
 
   const profile: Profile = {
     id: data.id,
     name: data.name,
     apiKeys,
     providerSelections,
+    modelSelections: modelSelections as Profile['modelSelections'],
     salt: data.salt,
     passwordSalt: shareData.password_salt,
     languages: data.languages || [],
@@ -466,10 +469,11 @@ export async function uploadContent(
     const apiKeysRecord = buildApiKeysRecord(profile.apiKeys);
     const blob: EncryptedKeysBlob = {
       apiKeys: apiKeysRecord,
-      providerSelections: profile.providerSelections
+      providerSelections: profile.providerSelections,
+      modelSelections: profile.modelSelections
     };
     encryptedApiKey = await encryptData(blob, password, salt);
-    keysHash = await computeKeysHash(profile.apiKeys, profile.providerSelections);
+    keysHash = await computeKeysHash(profile.apiKeys, profile.providerSelections, profile.modelSelections);
   }
 
   await postJson(`/api/profile/${profileId}/sync`, buildSyncPayload({
@@ -598,6 +602,10 @@ export async function downloadContent(
         ...result.providerSelections,
         ...profile.providerSelections
       };
+      profileUpdates.modelSelections = {
+        ...result.modelSelections,
+        ...profile.modelSelections
+      } as Profile['modelSelections'];
       // If local has keys the server doesn't, flag for re-upload
       const serverKeyCount = Object.keys(result.apiKeys).filter(k => result.apiKeys[k]).length;
       const mergedKeyCount = Object.keys(merged).filter(k => merged[k as keyof ApiKeys]).length;
@@ -668,7 +676,8 @@ export async function downloadContent(
   // Compute keys hash from the final state (after potential merge from server)
   const finalApiKeys = profileUpdates?.apiKeys || profile.apiKeys;
   const finalProviderSelections = profileUpdates?.providerSelections || profile.providerSelections;
-  const keysHash = await computeKeysHash(finalApiKeys, finalProviderSelections);
+  const finalModelSelections = profileUpdates?.modelSelections || profile.modelSelections;
+  const keysHash = await computeKeysHash(finalApiKeys, finalProviderSelections, finalModelSelections);
 
   // Keep all pending modifications - they still need to be uploaded even if server has the item
   // (e.g., local changes like isPublic flag need to be pushed to server)

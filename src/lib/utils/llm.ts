@@ -15,6 +15,8 @@ export interface JsonSchema {
 interface CompletionOptions {
   maxTokens?: number;
   preferredProvider?: string | null;
+  /** Override the default model for the selected provider */
+  model?: string | null;
 }
 
 // Anthropic API response types
@@ -57,13 +59,13 @@ export async function completeJson<T>(
   if (preferredProvider) {
     switch (preferredProvider) {
       case 'deepseek':
-        if (keys.deepseek) return completeWithDeepSeek<T>(keys.deepseek, prompt, schema, maxTokens);
+        if (keys.deepseek) return completeWithDeepSeek<T>(keys.deepseek, prompt, schema, maxTokens, options.model);
         break;
       case 'gemini':
-        if (keys.gemini) return completeWithGemini<T>(keys.gemini, prompt, schema, maxTokens);
+        if (keys.gemini) return completeWithGemini<T>(keys.gemini, prompt, schema, maxTokens, options.model);
         break;
       case 'anthropic':
-        if (keys.anthropic) return completeWithAnthropic<T>(keys.anthropic, prompt, schema, maxTokens);
+        if (keys.anthropic) return completeWithAnthropic<T>(keys.anthropic, prompt, schema, maxTokens, options.model);
         break;
     }
     // Preferred provider key not available — fall through to chain
@@ -96,7 +98,8 @@ async function completeWithDeepSeek<T>(
   apiKey: string,
   prompt: string,
   schema: JsonSchema,
-  maxTokens: number
+  maxTokens: number,
+  modelOverride?: string | null
 ): Promise<T | null> {
   try {
     const res = await fetch('https://api.deepseek.com/chat/completions', {
@@ -106,7 +109,7 @@ async function completeWithDeepSeek<T>(
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: modelOverride || 'deepseek-v4-flash',
         max_tokens: maxTokens,
         response_format: { type: 'json_object' },
         messages: [
@@ -142,11 +145,13 @@ async function completeWithGemini<T>(
   apiKey: string,
   prompt: string,
   schema: JsonSchema,
-  maxTokens: number
+  maxTokens: number,
+  modelOverride?: string | null
 ): Promise<T | null> {
+  const model = modelOverride || 'gemini-3.1-flash-lite';
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -185,7 +190,8 @@ async function completeWithAnthropic<T>(
   apiKey: string,
   prompt: string,
   schema: JsonSchema,
-  maxTokens: number
+  maxTokens: number,
+  modelOverride?: string | null
 ): Promise<T | null> {
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -197,7 +203,7 @@ async function completeWithAnthropic<T>(
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5',
+        model: modelOverride || 'claude-haiku-4-5',
         max_tokens: maxTokens,
         messages: [{ role: 'user', content: prompt }],
         tools: [{
@@ -300,7 +306,8 @@ export async function synthesizeDiff(
   keys: ApiKeys,
   provider: string | null,
   prompt: DiffPrompt,
-  maxTokens: number = 8192
+  maxTokens: number = 8192,
+  modelOverride?: string | null
 ): Promise<DiffResult> {
   // Default to anthropic if no provider specified
   const selectedProvider = provider || 'anthropic';
@@ -308,20 +315,20 @@ export async function synthesizeDiff(
   switch (selectedProvider) {
     case 'deepseek':
       if (!keys.deepseek) throw new Error('DeepSeek API key not configured');
-      return synthesizeWithDeepSeek(keys.deepseek, prompt, maxTokens);
+      return synthesizeWithDeepSeek(keys.deepseek, prompt, maxTokens, modelOverride);
 
     case 'gemini':
       if (!keys.gemini) throw new Error('Gemini API key not configured');
-      return synthesizeWithGemini(keys.gemini, prompt, maxTokens);
+      return synthesizeWithGemini(keys.gemini, prompt, maxTokens, modelOverride);
 
     case 'perplexity':
       if (!keys.perplexity) throw new Error('Perplexity API key not configured');
-      return synthesizeWithPerplexity(keys.perplexity, prompt, maxTokens);
+      return synthesizeWithPerplexity(keys.perplexity, prompt, maxTokens, modelOverride);
 
     case 'anthropic':
     default:
       if (!keys.anthropic) throw new Error('Anthropic API key not configured');
-      return synthesizeWithAnthropic(keys.anthropic, prompt, maxTokens);
+      return synthesizeWithAnthropic(keys.anthropic, prompt, maxTokens, modelOverride);
   }
 }
 
@@ -331,8 +338,10 @@ export async function synthesizeDiff(
 async function synthesizeWithAnthropic(
   apiKey: string,
   prompt: DiffPrompt,
-  maxTokens: number
+  maxTokens: number,
+  modelOverride?: string | null
 ): Promise<DiffResult> {
+  const model = modelOverride || 'claude-sonnet-4-6';
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -342,7 +351,7 @@ async function synthesizeWithAnthropic(
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
+      model,
       max_tokens: maxTokens,
       system: prompt.system,
       messages: [{ role: 'user', content: prompt.user }],
@@ -372,10 +381,10 @@ async function synthesizeWithAnthropic(
     throw new Error('No content returned from Anthropic API');
   }
 
-  // Calculate cost (Claude Sonnet 4.5: $3/1M input, $15/1M output)
+  // Calculate cost based on model
   const usage = result.usage;
   const cost = usage
-    ? (usage.input_tokens * 3 + usage.output_tokens * 15) / 1_000_000
+    ? (usage.input_tokens * (model === 'claude-opus-4-7' ? 5 : 3) + usage.output_tokens * (model === 'claude-opus-4-7' ? 25 : 15)) / 1_000_000
     : undefined;
 
   return {
@@ -386,13 +395,15 @@ async function synthesizeWithAnthropic(
 }
 
 /**
- * DeepSeek synthesis using deepseek-chat with plain text output
+ * DeepSeek synthesis using deepseek-v4-flash with plain text output
  */
 async function synthesizeWithDeepSeek(
   apiKey: string,
   prompt: DiffPrompt,
-  maxTokens: number
+  maxTokens: number,
+  modelOverride?: string | null
 ): Promise<DiffResult> {
+  const model = modelOverride || 'deepseek-v4-flash';
   const res = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: {
@@ -400,7 +411,7 @@ async function synthesizeWithDeepSeek(
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'deepseek-chat',
+      model,
       max_tokens: maxTokens,
       messages: [
         { role: 'system', content: prompt.system },
@@ -428,10 +439,11 @@ async function synthesizeWithDeepSeek(
     throw new Error('No content returned from DeepSeek API');
   }
 
-  // Calculate cost (DeepSeek: $0.14/1M input, $0.28/1M output)
+  // Calculate cost based on model
   const usage = result.usage;
+  const isPro = model === 'deepseek-v4-pro';
   const cost = usage
-    ? (usage.prompt_tokens * 0.14 + usage.completion_tokens * 0.28) / 1_000_000
+    ? (usage.prompt_tokens * (isPro ? 1.74 : 0.14) + usage.completion_tokens * (isPro ? 3.48 : 0.28)) / 1_000_000
     : undefined;
 
   const { title, content: stripped } = extractTitle(content);
@@ -439,16 +451,18 @@ async function synthesizeWithDeepSeek(
 }
 
 /**
- * Gemini synthesis using gemini-2.5-flash with plain text output
+ * Gemini synthesis using gemini-3.1-flash-lite with plain text output
  */
 async function synthesizeWithGemini(
   apiKey: string,
   prompt: DiffPrompt,
-  maxTokens: number
+  maxTokens: number,
+  modelOverride?: string | null
 ): Promise<DiffResult> {
+  const model = modelOverride || 'gemini-3.1-flash-lite';
   const thinkingBudget = 8192;
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -488,10 +502,11 @@ async function synthesizeWithGemini(
     throw new Error('No content returned from Gemini API');
   }
 
-  // Calculate cost (Gemini 2.5 Flash: $0.15/1M input, $0.60/1M output)
+  // Calculate cost based on model
   const usage = result.usageMetadata;
   const cost = usage
-    ? (usage.promptTokenCount * 0.15 + usage.candidatesTokenCount * 0.60) / 1_000_000
+    ? (usage.promptTokenCount * (model === 'gemini-3-flash' ? 0.50 : model === 'gemini-3.1-pro' ? 2.00 : 0.25)
+     + usage.candidatesTokenCount * (model === 'gemini-3-flash' ? 3.00 : model === 'gemini-3.1-pro' ? 12.00 : 1.50)) / 1_000_000
     : undefined;
 
   const { title, content: stripped } = extractTitle(content);
@@ -504,8 +519,10 @@ async function synthesizeWithGemini(
 async function synthesizeWithPerplexity(
   apiKey: string,
   prompt: DiffPrompt,
-  maxTokens: number
+  maxTokens: number,
+  modelOverride?: string | null
 ): Promise<DiffResult> {
+  const model = modelOverride || 'sonar-pro';
   const res = await fetch('https://api.perplexity.ai/chat/completions', {
     method: 'POST',
     headers: {
@@ -513,7 +530,7 @@ async function synthesizeWithPerplexity(
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'sonar-pro',
+      model,
       max_tokens: maxTokens,
       messages: [
         { role: 'system', content: prompt.system },

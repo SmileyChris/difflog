@@ -1,5 +1,11 @@
 import { expect, test, describe } from 'bun:test';
-import { calculateSearchCost, calculateLLMCost, estimateDiffCost, PRICING } from './pricing';
+import {
+  calculateSearchCost,
+  calculateLLMCost,
+  estimateDiffCost,
+  estimateModelStepCost,
+  getModelPricing,
+} from './pricing';
 
 describe('pricing.ts', () => {
   describe('calculateSearchCost', () => {
@@ -22,21 +28,38 @@ describe('pricing.ts', () => {
   });
 
   describe('calculateLLMCost', () => {
-    test('curation step', () => {
-      // anthropic curation: haiku — $0.80 input, $4 output per 1M
-      const cost = calculateLLMCost('anthropic', 'curation', 1_000_000, 1_000_000);
-      expect(cost).toBeCloseTo(0.80 + 4);
+    test('haiku 4.5', () => {
+      const cost = calculateLLMCost('claude-haiku-4-5', 1_000_000, 1_000_000);
+      expect(cost).toBeCloseTo(1 + 5);
     });
 
-    test('synthesis step', () => {
-      // deepseek: $0.14 input, $0.28 output per 1M
-      const cost = calculateLLMCost('deepseek', 'synthesis', 500_000, 500_000);
+    test('deepseek v4 flash', () => {
+      const cost = calculateLLMCost('deepseek-v4-flash', 500_000, 500_000);
       expect(cost).toBeCloseTo((0.14 + 0.28) / 2);
     });
 
-    test('provider without step returns 0', () => {
-      expect(calculateLLMCost('serper', 'curation', 1000, 1000)).toBe(0);
-      expect(calculateLLMCost('perplexity', 'curation', 1000, 1000)).toBe(0);
+    test('unknown model returns 0', () => {
+      expect(calculateLLMCost('made-up-model', 1000, 1000)).toBe(0);
+    });
+  });
+
+  describe('getModelPricing', () => {
+    test('known model', () => {
+      const p = getModelPricing('claude-sonnet-4-6');
+      expect(p?.inputPer1M).toBe(3);
+      expect(p?.outputPer1M).toBe(15);
+    });
+
+    test('unknown model returns null', () => {
+      expect(getModelPricing('does-not-exist')).toBeNull();
+    });
+  });
+
+  describe('estimateModelStepCost', () => {
+    test('synthesis uses larger token bucket than curation', () => {
+      const synth = estimateModelStepCost('claude-sonnet-4-6', 'synthesis');
+      const cur = estimateModelStepCost('claude-sonnet-4-6', 'curation');
+      expect(synth).toBeGreaterThan(cur);
     });
   });
 
@@ -64,6 +87,15 @@ describe('pricing.ts', () => {
       expect(result.min).toBeGreaterThan(0);
       expect(result.breakdown).toHaveLength(1);
       expect(result.breakdown[0]).toContain('gemini');
+    });
+
+    test('model override changes cost', () => {
+      const baseline = estimateDiffCost({ synthesis: 'anthropic' });
+      const opus = estimateDiffCost(
+        { synthesis: 'anthropic' },
+        { synthesis: 'claude-opus-4-7' },
+      );
+      expect(opus.min).toBeGreaterThan(baseline.min);
     });
   });
 });

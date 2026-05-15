@@ -72,6 +72,7 @@ export function createProfile(data: {
 	name: string;
 	apiKeys?: Profile['apiKeys'];
 	providerSelections?: Profile['providerSelections'];
+	modelSelections?: Profile['modelSelections'];
 	languages: string[];
 	frameworks: string[];
 	tools: string[];

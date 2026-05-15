@@ -76,6 +76,9 @@ export async function startGeneration(callbacks: StartGenerationCallbacks): Prom
 				providerSelections: {
 					synthesis: profile.providerSelections?.synthesis || undefined,
 				},
+				modelSelections: {
+					synthesis: profile.modelSelections?.synthesis ?? null,
+				},
 			},
 			selectedDepth,
 			lastDiffDate: lastDiff?.generated_at ?? null,

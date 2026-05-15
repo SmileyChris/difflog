@@ -62,10 +62,18 @@ export interface ProviderSelections {
   synthesis?: string | null;
 }
 
+/** Per-step model override (e.g. claude-opus-4-7 for synthesis) */
+export interface ModelSelections {
+  search?: string | null;
+  curation?: string | null;
+  synthesis?: string | null;
+}
+
 /** Shape of the expanded encrypted blob (apiKeys + providerSelections) */
 export interface EncryptedKeysBlob {
   apiKeys: Record<string, string>;
   providerSelections?: ProviderSelections;
+  modelSelections?: ModelSelections;
 }
 
 /** Core profile fields shared between web and CLI */
@@ -79,6 +87,7 @@ export interface ProfileCore {
   depth: GenerationDepth | string;
   customFocus: string;
   providerSelections?: ProviderSelections;
+  modelSelections?: ModelSelections;
 }
 
 // --- Web-only types (co-located for convenience) ---

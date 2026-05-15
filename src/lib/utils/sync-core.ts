@@ -9,6 +9,7 @@ import type {
   PendingDeletion,
   EncryptedKeysBlob,
   ProviderSelections,
+  ModelSelections,
   ApiKeys,
   ProfileCore,
   Star,
@@ -329,7 +330,7 @@ export async function decryptKeysBlob(
   encryptedApiKey: string,
   password: string,
   salt: string
-): Promise<{ apiKeys: Record<string, string>; providerSelections: ProviderSelections }> {
+): Promise<{ apiKeys: Record<string, string>; providerSelections: ProviderSelections; modelSelections?: ModelSelections }> {
   try {
     const decrypted = await decryptData<EncryptedKeysBlob | Record<string, string>>(
       encryptedApiKey, password, salt
@@ -339,7 +340,8 @@ export async function decryptKeysBlob(
       const blob = decrypted as EncryptedKeysBlob;
       return {
         apiKeys: blob.apiKeys,
-        providerSelections: blob.providerSelections || {}
+        providerSelections: blob.providerSelections || {},
+        modelSelections: blob.modelSelections || undefined
       };
     }
 
@@ -456,7 +458,8 @@ export function buildApiKeysRecord(apiKeys?: ApiKeys): Record<string, string> {
 /** Compute a deterministic hash over API keys and provider selections. */
 export async function computeKeysHash(
   apiKeys?: ApiKeys,
-  providerSelections?: ProviderSelections
+  providerSelections?: ProviderSelections,
+  modelSelections?: ModelSelections
 ): Promise<string> {
   const payload = {
     apiKeys: apiKeys ? Object.fromEntries(
@@ -464,6 +467,9 @@ export async function computeKeysHash(
     ) : {},
     providerSelections: providerSelections ? Object.fromEntries(
       Object.entries(providerSelections).filter(([, v]) => v != null).sort()
+    ) : {},
+    modelSelections: modelSelections ? Object.fromEntries(
+      Object.entries(modelSelections).filter(([, v]) => v != null).sort()
     ) : {}
   };
   const data = new TextEncoder().encode(JSON.stringify(payload));

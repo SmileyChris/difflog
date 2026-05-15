@@ -26,9 +26,17 @@
 		PROVIDERS,
 		PROVIDER_LIST,
 		STEPS,
+		getModelsForStep,
+		getDefaultModel,
 		type ProviderStep,
+		type ProviderModelOption,
 	} from "$lib/utils/providers";
-	import { estimateDiffCost } from "$lib/utils/pricing";
+	import {
+		estimateDiffCost,
+		estimateModelStepCost,
+		getModelPricing,
+		calculateSearchCost,
+	} from "$lib/utils/pricing";
 
 	let { data: pageData } = $props();
 
@@ -74,6 +82,11 @@
 			curation: null as string | null,
 			synthesis: null as string | null,
 		},
+		modelSelections: (pageData as any).modelSelections ?? {
+			search: null as string | null,
+			curation: null as string | null,
+			synthesis: null as string | null,
+		},
 	}))();
 
 	const isEditing = _init.isEditing;
@@ -101,6 +114,30 @@
 		curation: string | null;
 		synthesis: string | null;
 	}>(_init.selections);
+
+	let modelSelections = $state<{
+		search: string | null;
+		curation: string | null;
+		synthesis: string | null;
+	}>(_init.modelSelections);
+
+	// Per-provider preferred model for each step the provider supports.
+	// modelSelections tracks the active model for the currently-selected
+	// provider; providerModelPrefs remembers the choice across provider swaps.
+	let providerModelPrefs = $state<Record<string, Partial<Record<ProviderStep, string>>>>(
+		(() => {
+			const prefs: Record<string, Partial<Record<ProviderStep, string>>> = {};
+			for (const s of ["search", "curation", "synthesis"] as ProviderStep[]) {
+				const pid = _init.selections[s];
+				const mid = _init.modelSelections[s];
+				if (pid && mid) {
+					prefs[pid] = prefs[pid] || {};
+					prefs[pid][s] = mid;
+				}
+			}
+			return prefs;
+		})(),
+	);
 
 	// Get existing keys from other profiles (excluding current profile if editing)
 	function getExistingKeys(): Record<string, string> {
@@ -191,7 +228,7 @@
 			search: selections.search as any,
 			curation: selections.curation as any,
 			synthesis: selections.synthesis as any,
-		}),
+		}, modelSelections),
 	);
 
 	function formatCost(cost: number): string {
@@ -217,15 +254,111 @@
 			// Don't allow deselecting required steps
 			if (capStep !== "synthesis" && capStep !== "curation") {
 				selections[capStep] = null;
+				modelSelections[capStep] = null;
 			}
 		} else {
 			selections[capStep] = providerId;
+			modelSelections[capStep] =
+				providerModelPrefs[providerId]?.[capStep] ??
+				getDefaultModel(providerId, capStep);
 		}
+	}
+
+	/** Steps where the given provider exposes at least one model. */
+	function getProviderModelSteps(providerId: string): ProviderStep[] {
+		const out: ProviderStep[] = [];
+		for (const s of ["search", "curation", "synthesis"] as ProviderStep[]) {
+			if (getModelsForStep(providerId, s).length > 0) out.push(s);
+		}
+		return out;
+	}
+
+	/** Models shown in the picker: skip deprecated unless it's the current pref. */
+	function getVisibleModelsForStep(
+		providerId: string,
+		step: ProviderStep,
+		current: string,
+	): ProviderModelOption[] {
+		return getModelsForStep(providerId, step).filter(
+			(m) => !m.deprecated || m.id === current,
+		);
+	}
+
+	function getProviderPref(providerId: string, step: ProviderStep): string {
+		const pref = providerModelPrefs[providerId]?.[step];
+		if (pref && getModelsForStep(providerId, step).some((m) => m.id === pref)) {
+			return pref;
+		}
+		return getDefaultModel(providerId, step) ?? "";
+	}
+
+	function setProviderPref(providerId: string, step: ProviderStep, modelId: string) {
+		if (!providerModelPrefs[providerId]) providerModelPrefs[providerId] = {};
+		providerModelPrefs[providerId][step] = modelId;
+		// If this provider is the active choice for the step, mirror to live selection.
+		if (selections[step] === providerId) {
+			modelSelections[step] = modelId;
+		}
+	}
+
+	function formatRate(model: string): string {
+		const p = getModelPricing(model);
+		if (!p) return "";
+		return `$${p.inputPer1M}/$${p.outputPer1M} per 1M`;
+	}
+
+	function formatPerDiff(model: string, step: ProviderStep): string {
+		const cost = estimateModelStepCost(model, step);
+		if (cost === 0) return "";
+		if (cost < 0.01) return `~$${cost.toFixed(4)}/diff`;
+		return `~$${cost.toFixed(2)}/diff`;
+	}
+
+	const SEARCH_REQUESTS_PER_DIFF = 5;
+
+	function formatStepPerDiff(
+		providerId: string,
+		model: string,
+		step: ProviderStep,
+	): string {
+		if (step === "search") {
+			const cost = calculateSearchCost(providerId, SEARCH_REQUESTS_PER_DIFF);
+			if (cost === 0) return "";
+			if (cost < 0.01) return `~$${cost.toFixed(4)}/diff`;
+			return `~$${cost.toFixed(2)}/diff`;
+		}
+		return formatPerDiff(model, step);
+	}
+
+	function formatStepRate(
+		providerId: string,
+		model: string,
+		step: ProviderStep,
+	): string {
+		if (step === "search") {
+			return `$${(calculateSearchCost(providerId, 1) * 1000).toFixed(2)}/1k req`;
+		}
+		return formatRate(model);
+	}
+
+	// Hovered model per step (overrides the displayed price in the modal header).
+	let modelHover = $state<Record<ProviderStep, string | null>>({
+		search: null,
+		curation: null,
+		synthesis: null,
+	});
+
+	function getDisplayedModel(
+		providerId: string,
+		step: ProviderStep,
+	): string {
+		return modelHover[step] ?? getProviderPref(providerId, step);
 	}
 
 	function openKeyModal(providerId: string) {
 		editingProvider = providerId;
 		originalEditingKey = providers[providerId].key;
+		modelHover = { search: null, curation: null, synthesis: null };
 	}
 
 	function closeKeyModal() {
@@ -250,12 +383,14 @@
 	function clearProviderKey(providerId: string) {
 		providers[providerId].key = "";
 		providers[providerId].status = "idle";
-		// Clear selections using this provider
+		// Clear selections and models using this provider
 		for (const s of ["search", "curation", "synthesis"] as ProviderStep[]) {
 			if (selections[s] === providerId) {
 				selections[s] = null;
+				modelSelections[s] = null;
 			}
 		}
+		delete providerModelPrefs[providerId];
 	}
 
 	const VALIDATORS: Record<string, (key: string) => Promise<boolean>> = {
@@ -367,6 +502,7 @@
 					...formData,
 					...keys,
 					providerSelections: selections,
+					modelSelections,
 				});
 				goto("/profiles");
 			} else {
@@ -374,6 +510,7 @@
 					...formData,
 					...keys,
 					providerSelections: selections,
+					modelSelections,
 				});
 				goto("/");
 			}
@@ -872,6 +1009,57 @@
 										<span class="status-invalid"
 											>&#10007; Invalid key</span
 										>
+									</div>
+								{/if}
+
+								{#if providers[editingProvider].status === "valid" && getProviderModelSteps(editingProvider).length > 0}
+									<div class="model-picker-list">
+										{#each getProviderModelSteps(editingProvider) as step}
+											{@const stepLabel = STEPS.find((s) => s.id === step)?.label ?? step}
+											{@const current = getProviderPref(editingProvider, step)}
+											{@const models = getVisibleModelsForStep(editingProvider, step, current)}
+											{@const displayed = getDisplayedModel(editingProvider, step)}
+											<div class="model-picker-group">
+												<div class="model-picker-header">
+													<span class="model-picker-label">{stepLabel}</span>
+													<span
+														class="model-picker-rate"
+														class:model-picker-rate-hover={modelHover[step] !== null}
+													>{formatStepPerDiff(editingProvider!, displayed, step) || formatStepRate(editingProvider!, displayed, step)}</span>
+												</div>
+												<div class="model-chip-row">
+													{#each models as m}
+														{#if models.length > 1}
+															<button
+																type="button"
+																class="model-chip"
+																class:model-chip-selected={current === m.id}
+																class:model-chip-deprecated={m.deprecated}
+																onclick={() =>
+																	setProviderPref(
+																		editingProvider!,
+																		step,
+																		m.id,
+																	)}
+																onmouseenter={() => (modelHover[step] = m.id)}
+																onmouseleave={() => (modelHover[step] = null)}
+																onfocus={() => (modelHover[step] = m.id)}
+																onblur={() => (modelHover[step] = null)}
+															>
+																{m.label}{#if m.deprecated}<span class="model-chip-tag">legacy</span>{/if}
+															</button>
+														{:else}
+															<div
+																class="model-chip model-chip-selected model-chip-static"
+																class:model-chip-deprecated={m.deprecated}
+															>
+																{m.label}{#if m.deprecated}<span class="model-chip-tag">legacy</span>{/if}
+															</div>
+														{/if}
+													{/each}
+												</div>
+											</div>
+										{/each}
 									</div>
 								{/if}
 							</div>
@@ -1484,6 +1672,95 @@
 	.cell-icon-none {
 		color: var(--text-disabled);
 		opacity: 0.3;
+	}
+
+	.model-picker-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		margin-top: 1rem;
+		padding-top: 1rem;
+		border-top: 1px solid var(--border);
+	}
+
+	.model-picker-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+
+	.model-picker-header {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+
+	.model-picker-label {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	.model-picker-rate {
+		font-size: 0.7rem;
+		color: var(--text-muted);
+		font-variant-numeric: tabular-nums;
+		transition: color 0.1s;
+	}
+
+	.model-picker-rate-hover {
+		color: var(--accent);
+	}
+
+	.model-chip-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+	}
+
+	.model-chip {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.35rem 0.6rem;
+		font-family: inherit;
+		font-size: 0.8rem;
+		line-height: 1.2;
+		background: var(--bg-input);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-sm);
+		color: var(--text);
+		cursor: pointer;
+		transition: border-color 0.1s, background 0.1s, color 0.1s;
+	}
+
+	.model-chip:not(.model-chip-static):hover {
+		border-color: var(--accent-border);
+		color: var(--accent);
+	}
+
+	.model-chip-selected {
+		border-color: var(--accent);
+		background: var(--accent-bg, var(--bg-input));
+	}
+
+	.model-chip-static {
+		cursor: default;
+		border-color: var(--accent-border);
+		background: transparent;
+	}
+
+	.model-chip-tag {
+		margin-left: 0.4rem;
+		padding: 0 0.3rem;
+		font-size: 0.6rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		opacity: 0.7;
+		border: 1px solid currentColor;
+		border-radius: var(--radius-sm);
 	}
 
 	.key-cell {

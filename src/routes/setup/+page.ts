@@ -64,7 +64,8 @@ export function load({ url }) {
 				topics: customTopics
 			},
 			providerStates,
-			selections: p.providerSelections || autoSelectProviders(providerStates)
+			selections: p.providerSelections || autoSelectProviders(providerStates),
+			modelSelections: p.modelSelections || { search: null, curation: null, synthesis: null }
 		};
 	}
 
