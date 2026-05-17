@@ -10,7 +10,7 @@ Individual diffs can be shared publicly via a URL, allowing anyone to view a spe
 
 | Aspect | Detail |
 |--------|--------|
-| **URL Format** | `/d?{diffId}` (e.g., `/d?abc123`) |
+| **URL Format** | `/d/{diffId}` (e.g., `/d/abc123`) |
 | **Requirement** | Profile must be synced |
 | **Storage** | Plaintext JSON (not encrypted) |
 | **Caching** | 24-hour CDN cache |
@@ -79,6 +79,19 @@ Clicking the icon opens a dropdown:
 !!! note "Sync Required"
     The share dropdown only appears for synced profiles. Users must have an active sync password to modify share status.
 
+### CLI Share Menu
+
+The interactive CLI viewer (`difflog show`) has an equivalent share menu (`src/cli/interactive.ts`):
+
+| Key | Action |
+|-----|--------|
+| `s` | Toggle share state (private ↔ public) |
+| `b` | Open public URL in default browser |
+| `c` | Copy public URL to clipboard |
+| `p` | Direct toggle of public/private from the main viewer |
+
+The CLI uses the same `shareDiff` / `unshareDiff` sync path as the web client.
+
 ## API
 
 ### `GET /api/diff/{id}/public`
@@ -92,9 +105,12 @@ Retrieve a public diff. Returns 404 for private diffs.
   "content": "# Your Dev Digest\n\n...",
   "title": "Weekly Update",
   "generated_at": "2026-01-28T10:00:00Z",
-  "profile_name": "Chris"
+  "profile_name": "Chris",
+  "window_days": 7
 }
 ```
+
+`profile_name` falls back to `"Anonymous"` if the profile lookup returns no name (`src/routes/api/diff/[id]/public/+server.ts:80`). `window_days` is optional and only included when the source diff records it.
 
 **Response (404):**
 ```json
@@ -126,7 +142,7 @@ unshareDiff(diffId: string): boolean
 isDiffPublic(diffId: string): boolean
 
 // Get shareable URL
-getPublicDiffUrl(diffId: string): string  // → "https://difflog.app/d?{id}"
+getPublicDiffUrl(diffId: string): string  // → "https://difflog.app/d/{id}"
 ```
 
 ### Sync Serialization
@@ -162,6 +178,7 @@ if (encrypted_data.startsWith('{')) {
     Public diffs are **not encrypted**. The full diff content (markdown) is stored in plaintext and accessible to anyone with the URL.
 
 - Diff IDs are UUIDs — not guessable, but not secret if shared
-- Profile name is included in the public response
+- Profile name is included in the public response (falls back to `"Anonymous"`)
 - API keys and other profile data remain encrypted
 - Stars (bookmarks) are always encrypted
+- Password rotation preserves public status: the password-change flow reuses the shared `encryptDiffs` helper, which branches on `isPublic` and keeps public diffs as plaintext JSON

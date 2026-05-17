@@ -8,15 +8,15 @@ diff·log uses a multi-step AI pipeline to generate personalized diffs. Each ste
 
 ## Providers
 
-| Provider | Search | Curation | Synthesis | Model(s) |
-|----------|:------:|:--------:|:---------:|----------|
-| **Anthropic** | ✓ | ✓ | ✓ | Haiku 4.5 (curation), Sonnet 4.5 (search/synthesis) |
+| Provider | Search | Curation | Synthesis | Default model(s) |
+|----------|:------:|:--------:|:---------:|------------------|
+| **Anthropic** | ✓ | ✓ | ✓ | Haiku 4.5 (curation), Sonnet 4.6 (search + synthesis); Opus 4.7 selectable for synthesis |
 | **Serper** | ✓ | | | Google News API |
-| **Perplexity** | ✓ | | ✓ | Sonar (search), Sonar Pro (synthesis) |
-| **DeepSeek** | | ✓ | ✓ | DeepSeek Chat |
-| **Gemini** | | ✓ | ✓ | Gemini 2.5 Flash |
+| **Perplexity** | ✓ | | ✓ | Sonar (search), Sonar Pro (synthesis); Sonar Reasoning Pro selectable |
+| **DeepSeek** | | ✓ | ✓ | V4 Flash (default); V4 Pro selectable for synthesis |
+| **Gemini** | | ✓ | ✓ | 3.1 Flash Lite (default); 3 Flash and 3.1 Pro selectable |
 
-Users configure API keys for one or more providers, then assign a provider to each pipeline step. Curation and synthesis require a provider; search is optional.
+Users configure API keys for one or more providers, then assign a provider to each pipeline step. Curation and synthesis require a provider; search is optional. Per-step models can be picked from the provider's API key modal; defaults are marked in `src/lib/utils/providers.ts`.
 
 ## Overview
 
@@ -97,9 +97,9 @@ The search provider finds recent news relevant to the user's profile.
 
 | Provider | Method | Notes |
 |----------|--------|-------|
-| **Serper** | Google News API queries | Cheapest (~$0.001/request). Builds targeted queries from profile. |
+| **Serper** | Google News API queries | Cheapest (~$0.001/request). Builds targeted queries from profile. Time window mapped to `qdr:d/w/m` based on intelligence window. |
 | **Perplexity** | Sonar model with built-in search | Mid-tier. Has native web search capability. |
-| **Anthropic** | Sonnet with `web_search` tool | Most expensive. Uses Claude's web search tool (max 5 searches). |
+| **Anthropic** | Sonnet 4.6 with `web_search` tool | Most expensive. Uses Claude's web search tool (max 5 searches). |
 
 **Process** (`searchWeb()` in `src/lib/utils/search.ts`):
 
@@ -114,36 +114,36 @@ Web search runs in parallel with feed fetching for performance.
 
 The main generation combines all sources into a single prompt for the selected synthesis provider.
 
-| Provider | Model | Cost (per 1M tokens) |
-|----------|-------|---------------------|
-| **DeepSeek** | `deepseek-chat` | $0.14 input / $0.28 output |
-| **Gemini** | `gemini-2.5-flash` | $0.15 input / $0.60 output |
-| **Anthropic** | `claude-sonnet-4-5` | $3 input / $15 output |
+| Provider | Default model | Cost (per 1M tokens) |
+|----------|---------------|---------------------|
+| **DeepSeek** | `deepseek-v4-flash` | $0.14 input / $0.28 output (V4 Flash); V4 Pro priced separately |
+| **Gemini** | `gemini-3.1-flash-lite` | $0.25 input / $1.50 output |
+| **Anthropic** | `claude-sonnet-4-6` | $3 input / $15 output (Opus 4.7 is higher; see `llm.ts`) |
 | **Perplexity** | `sonar-pro` | $3 input / $15 output |
 
-Anthropic uses structured output via `tool_choice` (`submit_diff` tool). Other providers use plain text output with system instructions and a title extracted from the first `##` heading.
+Anthropic synthesis uses structured output via `tool_choice` (`submit_diff` tool, `llm.ts:359`). The generic JSON helper `completeJson` uses a separate `submit_result` tool for non-synthesis structured calls (curation, source resolution, TLDR). Other providers use plain text output with system instructions and a title extracted from the first `##` heading.
 
-**Prompt structure** (`buildPrompt()` in `src/lib/utils/prompt.ts`):
+**Prompt structure** (`buildPrompt()` in `src/lib/utils/prompt.ts`) — split between system and user messages:
 
 ```
-FORMAT instructions (link formatting, score display)
-PROFILE (name, technologies, topics, custom focus)
-DEPTH instruction
-WEB SEARCH RESULTS (if available)
-REAL-TIME FEED DATA (curated items with URLs)
-SECTION GUIDANCE (suggested sections with emoji prefixes)
-PREVIOUS DIFF (to avoid repetition)
+System message:
+  FORMAT instructions (link formatting, score display)
+  SECTION GUIDANCE (suggested sections with emoji prefixes)
+
+User message:
+  PROFILE (name, technologies, topics, custom focus)
+  DEPTH instruction
+  WEB SEARCH RESULTS (if available)
+  REAL-TIME FEED DATA (curated items with URLs)
+  Sources note (no fabrication)
+  PREVIOUS DIFF (to avoid repetition)
 ```
 
-**Output:**
+**Output** from the synthesis call: `{ title, content, cost }`. `generateDiff.ts` wraps that into the stored `Diff` record by attaching `id`, `generated_at`, `duration_seconds`, and `window_days`.
 
-- `title` — Short creative title (3-8 words)
-- `content` — Full markdown starting with date line
-- `cost` — Estimated cost based on token usage
+### 5. TLDR Summaries (synthesis provider preferred, on-demand)
 
-### 5. TLDR Summaries (curation provider, on-demand)
-
-When a user clicks the TLDR button on a paragraph, the app fetches the linked article and generates a context-aware summary using the curation provider chain.
+When a user clicks the TLDR button on a paragraph, the app fetches the linked article and generates a context-aware summary. `summarizeArticle` passes the paragraph's recorded `provider` (the synthesis provider that wrote it) to `completeJson` as the preferred provider; the fallback chain (DeepSeek → Gemini → Anthropic Haiku) is the same as curation if that provider isn't configured.
 
 **Article fetching** (`fetchArticleText()` in `src/lib/utils/tldr.ts`):
 
@@ -166,9 +166,9 @@ Users select a reading depth that controls how detailed the generated diff will 
 
 | Level | ID | Prompt Instruction |
 |-------|----|--------------------|
-| Quick Scan | `quick` | 1-2 bullet points per section max. Headlines and key facts only. |
+| Quick Scan | `quick` | Max 3 sections, 1-2 bullet points each. Headlines and key facts only. Target ~500 words total. |
 | Standard Brief | `standard` | 2-4 bullet points per section with key details and context. |
-| Deep Dive | `deep` | Comprehensive analysis with background context and implications. |
+| Deep Dive | `deep` | Comprehensive analysis with background context, implications, and detail per item. |
 
 The depth is passed to the generation prompt via `DEPTH_INSTRUCTIONS` in `src/lib/utils/prompt.ts`.
 

@@ -33,29 +33,35 @@ This is a simple key-value map from profile ID to password string.
 
 ## Password Resolution Order
 
-When the app needs the sync password, it checks these sources in order:
+When the app needs the sync password, `getCachedPassword()` checks these sources in order:
 
-1. **Session storage** - Current tab's cached password
-2. **Remembered passwords** - localStorage, keyed by active profile ID
+1. **Reactive session state** (`_sessionPassword`) - Current tab's cached password
+2. **Remembered passwords** - localStorage, keyed by active profile ID (read-only fallback)
 3. **User prompt** - Show password input in sync dropdown
 
-If a remembered password is found, it's automatically promoted to session storage for the current tab:
-
 ```typescript
-function getSyncPasswordWithFallback(): string | null {
-  const sessionPwd = getSyncPassword();
-  if (sessionPwd) return sessionPwd;
-
-  const profileId = activeProfileId.value;
-  if (profileId) {
-    const remembered = getRememberedPassword(profileId);
-    if (remembered) {
-      // Promote to session storage for this tab
-      setSyncPassword(remembered);
-      return remembered;
-    }
+export function getCachedPassword(): string | null {
+  if (!browser) return null;
+  if (_sessionPassword) return _sessionPassword;
+  if (activeProfileId.value) {
+    return getRememberedPassword(activeProfileId.value);
   }
   return null;
+}
+```
+
+`getCachedPassword` is read-only — it does **not** mutate session state. Promotion happens via the separate `restoreSessionPassword()` helper, called from explicit lifecycle points like `switchProfileWithSync`:
+
+```typescript
+export function restoreSessionPassword(): void {
+  if (!browser || _sessionPassword) return;
+  if (activeProfileId.value) {
+    const remembered = getRememberedPassword(activeProfileId.value);
+    if (remembered) {
+      _sessionPassword = remembered;
+      setSyncPassword(remembered);
+    }
+  }
 }
 ```
 
@@ -65,8 +71,8 @@ function getSyncPasswordWithFallback(): string | null {
 |-------|--------|
 | User checks "Remember password" + syncs successfully | Password saved to localStorage |
 | User clicks "forget saved password" | Cleared from both session and localStorage |
-| User deletes profile | Password cleared from localStorage |
-| User switches profiles | Session storage cleared (remembered stays) |
+| User deletes profile | Remembered password for that profile cleared (session storage untouched) |
+| User switches profiles | Session cleared, then `restoreSessionPassword()` auto-promotes the new profile's remembered password (if any) |
 | Browser session ends | Session storage cleared (remembered stays) |
 | **Sync fails with invalid password (401)** | **Cleared from both session and localStorage** |
 
@@ -106,7 +112,7 @@ The "forget password" button text changes based on whether the password is remem
 - **Session only**: "forget password"
 - **Remembered**: "forget saved password"
 
-Clicking either clears both session and remembered passwords.
+Clicking either calls `forgetPassword()`, which clears the reactive session password and the remembered password for the active profile.
 
 ## API
 
@@ -129,8 +135,17 @@ hasRememberedPassword(profileId: string): boolean
 ### sync.svelte.ts (store)
 
 ```typescript
-// Check if active profile has a remembered password
-isPasswordRemembered(): boolean
+// Read the password (session, falling back to remembered) without mutating state
+getCachedPassword(): string | null
+
+// Promote remembered → session for the active profile (lifecycle hook)
+restoreSessionPassword(): void
+
+// Active profile has a remembered password
+getHasRememberedPassword(): boolean
+
+// Specific profile has a remembered password
+hasRememberedPasswordFor(profileId: string): boolean
 
 // Remember password for active profile
 rememberPassword(password: string): void

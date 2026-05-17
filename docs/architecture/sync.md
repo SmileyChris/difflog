@@ -118,17 +118,27 @@ sequenceDiagram
 
 ## Change Tracking
 
-Changes are tracked in `pendingSync` (persisted to localStorage):
+Changes are tracked in `pendingSync` (persisted to localStorage). The current shape includes TLDRs and an API-keys flag, and tracks deletions as `{id, deletedAt}` tombstones so stale deletions can be reconciled against the server:
 
 ```typescript
+interface PendingDeletion {
+  id: string;
+  deletedAt: string; // ISO timestamp
+}
+
 interface PendingChanges {
-  modifiedDiffs: string[];    // IDs of new/changed diffs
-  modifiedStars: string[];    // IDs of new/changed stars
-  deletedDiffs: string[];     // IDs of deleted diffs
-  deletedStars: string[];     // IDs of deleted stars
-  profileModified?: boolean;  // Profile metadata changed
+  modifiedDiffs: string[];
+  modifiedStars: string[];
+  modifiedTldrs: string[];
+  deletedDiffs: PendingDeletion[];
+  deletedStars: PendingDeletion[];
+  deletedTldrs: PendingDeletion[];
+  profileModified?: boolean;
+  keysModified?: boolean;     // API keys / provider / model selections changed
 }
 ```
+
+`keysModified` is the trigger for re-encrypting and re-uploading the keys blob (see [Keys Blob Sync](#keys-blob-sync) below).
 
 ### Auto-Sync
 
@@ -146,26 +156,30 @@ function scheduleAutoSync(): void {
   _autoSyncTimeout = setTimeout(() => autoSync(), 2000);
 }
 
-function syncIfStale(): void {
-  const profile = getProfile();
-  if (!password || !profile?.syncedAt) return;
-  const lastSync = new Date(profile.syncedAt).getTime();
-  const oneHour = 60 * 60 * 1000;
-  if (Date.now() - lastSync > oneHour) {
-    autoSync();
-  }
-}
-
 async function autoSync(): Promise<void> {
+  if (_syncing) return;
   if (_autoSyncTimeout) clearTimeout(_autoSyncTimeout);
-  // Download first (merges server content into local)
-  await downloadContentInternal(password);
-  // Then upload (sends all local content + deletions)
-  if (hasPendingChanges()) {
-    await uploadContentInternal(password);
+  _syncing = true;
+  try {
+    await syncContent();             // download → upload
+  } catch (err) {
+    if (is401(err)) {
+      // Try refreshing passwordSalt once before giving up
+      const refreshed = await refreshPasswordSalt();
+      if (refreshed) {
+        return autoSync();
+      }
+      handleSyncError(err);
+    } else {
+      handleSyncError(err);
+    }
+  } finally {
+    _syncing = false;
   }
 }
 ```
+
+The real implementation lives in `src/lib/stores/sync.svelte.ts`; the snippet above mirrors its shape. `syncContent` itself downloads first, then uploads if pending changes exist.
 
 !!! important "Deletion Preservation"
     The download phase preserves `deletedDiffs` and `deletedStars` so they're available when upload runs. Without this, deletions would be lost between download and upload.
@@ -220,19 +234,43 @@ useSelectiveUpload = serverDiffsMatch && serverStarsMatch;
 
 ### Deletions
 
-Deleted items are tracked separately and sent to the server:
+Deleted items are tracked as `{id, deletedAt}` tombstones and sent to the server:
 
 ```typescript
 body: JSON.stringify({
   diffs: diffsToUpload,
   stars: starsToUpload,
-  deleted_diff_ids: pending?.deletedDiffs || [],
-  deleted_star_ids: pending?.deletedStars || [],
+  tldrs: tldrsToUpload,
+  deleted_diff_ids: pending?.deletedDiffs.map(d => d.id) || [],
+  deleted_star_ids: pending?.deletedStars.map(d => d.id) || [],
+  deleted_tldr_ids: pending?.deletedTldrs.map(d => d.id) || [],
 })
 ```
 
 !!! note "Cascade Deletes"
     When a diff is deleted, all stars referencing it are automatically deleted too. This happens both for manual deletions and when regenerating a same-day diff (which replaces the previous one). The old diff is tracked as deleted so it gets removed from the server on sync.
+
+### Keys Blob Sync
+
+API keys, `providerSelections`, and `modelSelections` are bundled into an `EncryptedKeysBlob`, encrypted with the sync password, and stored alongside the profile (`profiles.encrypted_api_key`). A `keys_hash` is sent on every sync request/response so the server and client can skip re-uploading or re-downloading the blob when it hasn't changed:
+
+- The local profile sets `pending.keysModified = true` whenever apiKeys / providerSelections / modelSelections change (`trackKeysModified` in `src/lib/stores/sync.svelte.ts`).
+- During upload, a `true` flag re-encrypts the blob with the current salt and POSTs `encrypted_api_key` + `keys_hash`.
+- Download includes `encrypted_api_key`, `keys_hash`, and `keys_skipped` (true when the local `keys_hash` matched the server's).
+- After a successful merge, `keys_hash` is stored on the profile for future skip checks.
+
+### TLDR Sync
+
+TLDR summaries are first-class synced content. The status, content, and sync endpoints all accept and return `tldrs`, `tldrs_hash`, `tldrs_skipped`, and `deleted_tldr_ids` fields with the same shape as diffs and stars. TLDRs participate in selective upload/download via `tldrs_hash`, and the profile records a `tldrsHash` cache for skip decisions.
+
+### `modelSelections` Migration Flag
+
+Existing profiles that pre-date the per-step model picker get a one-time seed of `modelSelections` derived from each provider's `previousDefault`. The migration is recorded on the profile as `migrations.modelSelectionsSeeded: true`. On merge, the rule is:
+
+- If **remote** ran the seed and **local** hasn't → adopt remote `modelSelections` wholesale. This prevents a freshly-installed client from clobbering deliberate picks with its own seeded defaults.
+- Otherwise → local-precedence merge over remote (the usual rule).
+
+See `src/lib/utils/sync.ts:610-626`.
 
 ## Download Logic
 
@@ -243,35 +281,40 @@ The client passes local content hashes to the server to skip unchanged collectio
 ```typescript
 const data = await postJson(`/api/profile/${profileId}/content`, {
   password_hash: passwordHash,
-  diffs_hash: localDiffsHash,  // Server skips diffs if hash matches
-  stars_hash: localStarsHash   // Server skips stars if hash matches
+  diffs_hash: localDiffsHash,
+  stars_hash: localStarsHash,
+  tldrs_hash: localTldrsHash,
+  keys_hash: localKeysHash
 });
 ```
 
-The server compares hashes and returns `diffs_skipped: true` or `stars_skipped: true` when collections are unchanged, avoiding unnecessary data transfer.
+The server compares hashes and returns `diffs_skipped`, `stars_skipped`, `tldrs_skipped`, or `keys_skipped: true` when the corresponding collection is unchanged, avoiding unnecessary data transfer.
 
 ### Merge Logic
 
-When content is fetched, it's merged into local state:
+When content is fetched, it's merged into local state. The actual merge (in `src/lib/utils/sync-core.ts`) also reconciles stale deletion tombstones — if the local pending list says "I deleted X" but the server still has X, the deletion is dropped from the pending list and replayed against the server on next upload:
 
 ```typescript
-// Add items from server that don't exist locally
+// Add items from server that don't exist locally and aren't pending deletion
 for (const encryptedDiff of data.diffs) {
   const diff = await decryptData(encryptedDiff.encrypted_data, password, salt);
-
-  // Skip if already local OR pending deletion
+  const isPendingDelete = pendingDeletedDiffs.has(encryptedDiff.id);
   const existingIdx = mergedHistory.findIndex(d => d.id === encryptedDiff.id);
-  if (existingIdx === -1 && !pendingDeletedDiffs.has(encryptedDiff.id)) {
+  if (existingIdx === -1 && !isPendingDelete) {
     mergedHistory.push(diff);
   }
 }
 
-// Remove local items not on server (deleted by another device)
-// Keep items that are: on server, pending local deletion, or pending local upload
+// Stale-tombstone reconciliation: drop deletions for items still on server
+const remainingDeletions = pendingDeletions.filter(d => !serverIds.has(d.id));
+
+// Remove local items missing from server (deleted by another device)
 mergedHistory = mergedHistory.filter(d =>
-  serverDiffIds.has(d.id) || pendingDeletedDiffs.has(d.id) || pendingModifiedDiffs.has(d.id)
+  serverDiffIds.has(d.id) || pendingModifiedDiffs.has(d.id)
 );
 ```
+
+The merge returns `remainingDeletions` so the sync store can rewrite `pending.deletedDiffs/Stars/Tldrs` after each download, keeping tombstones only for items the server still needs to be told about.
 
 !!! note "Skipped Collections"
     When a collection is skipped (hash matched), the merge and filter logic is also skipped for that collection. This prevents an empty server response from being interpreted as "delete all local items."
@@ -335,9 +378,9 @@ The server stores the hash of the plaintext content (sent by the client after up
 
 The sync password is cached in `sessionStorage` for the browser session:
 
-- Cached **only after successful sync** (not before attempting)
+- Cached on successful download (and on `shareProfile`/`importProfile` before the content step, so a mid-flow failure doesn't lose the password)
 - Enables auto-sync without re-entering password
-- **Cleared when switching profiles** (password is profile-specific)
+- **Cleared on profile switch** by `switchProfileWithSync`, which then immediately calls `restoreSessionPassword` to promote any remembered password for the newly active profile
 - **Cleared on 401 "Invalid password" error** (prevents retry loops)
 - Lost when browser tab closes
 
@@ -365,8 +408,8 @@ Users can permanently delete their synced profile from the server via the setup 
 The `removeFromServer(password)` function:
 
 1. Verifies the password against the server's stored hash
-2. Calls `DELETE /api/profile/{id}` to remove all server data (profile, diffs, stars)
-3. Clears local sync state (`syncedAt`, `passwordSalt`, `salt`, hashes)
+2. Calls `DELETE /api/profile/{id}` to remove all server data (profile, diffs, stars, TLDRs)
+3. Clears local sync state — `syncedAt`, `passwordSalt`, `salt`, `diffsHash`, `starsHash`, `tldrsHash`, `keysHash`
 4. Clears cached and remembered passwords
 5. Clears pending sync queue
 
@@ -382,16 +425,16 @@ The profile reverts to local-only — all local data (diffs, stars, settings) is
 
     - Salts are not secrets (stored alongside hashes in standard password systems)
     - The hash itself is never exposed
-    - Rate limiting prevents brute-force attacks (5 attempts → 15 min lockout)
+    - Rate limiting prevents brute-force attacks (5 attempts → 10 min lockout)
 
 ### Rate Limiting
 
-Failed password attempts are tracked per-profile:
+Failed password attempts are tracked per-profile (`src/routes/api/types.ts`):
 
 ```typescript
 const RATE_LIMIT = {
   MAX_ATTEMPTS: 5,           // Lock after 5 failed attempts
-  LOCKOUT_MINUTES: 15,       // Lock for 15 minutes
-  ATTEMPT_WINDOW_MINUTES: 5, // Reset counter after 5 min of no attempts
+  LOCKOUT_MINUTES: 10,       // Lock for 10 minutes
+  ATTEMPT_WINDOW_MINUTES: 5  // Reset counter after 5 min of no attempts
 };
 ```

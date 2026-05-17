@@ -19,7 +19,7 @@ bun run deploy
 This builds the app and deploys to Cloudflare Pages. The command:
 
 1. Runs `bun run build` to bundle TypeScript and CSS
-2. Runs `wrangler pages deploy dist` to upload to Cloudflare
+2. Runs `wrangler pages deploy .svelte-kit/cloudflare` to upload to Cloudflare
 
 ### Database Migrations
 
@@ -29,7 +29,22 @@ Apply migrations to the production D1 database:
 bun run db:migrate
 ```
 
-For local development, migrations are applied automatically when running `bun run dev`.
+For local development, migrations are applied automatically when running `bun run dev` (via `bun run dev:migrate && vite dev`).
+
+## CLI Releases
+
+Releases of the standalone `difflog` CLI are driven by `.github/workflows/cli.yml`.
+
+The workflow watches `package.json` on pushes to `main`. When it sees a new `cliVersion` value (and no matching `cli-vX.Y.Z` GitHub release yet), it:
+
+1. Builds three binaries with `bun build --compile`:
+   - `difflog-linux-x64`
+   - `difflog-darwin-arm64`
+   - `difflog-darwin-x64`
+2. Creates a GitHub release tagged `cli-vX.Y.Z` with auto-generated release notes (`--generate-notes`) using the previous `cli-v*` tag as the comparison base
+3. Uploads the three binaries as release assets
+
+To cut a CLI release: bump `cliVersion` in `package.json`, commit (e.g. `release: cli vX.Y.Z`), and push to `main`. The workflow handles the rest. The web version (`version` field) is independent — they do not need to move together.
 
 ## Maintenance
 

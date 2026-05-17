@@ -34,18 +34,25 @@ src/
 │   ├── generate/              # Diff generation page
 │   ├── d/[id]/                # Public diff view
 │   ├── design/                # Design system (dev only)
+│   ├── cli/                   # CLI auth callback pages
 │   └── api/                   # Server endpoints
+├── cli/                       # Standalone CLI (Bun-compiled binary)
 ├── lib/
 │   ├── stores/                # Svelte 5 state management
+│   │   ├── index.ts           # Barrel re-exports
 │   │   ├── profiles.svelte.ts # Profile CRUD
 │   │   ├── history.svelte.ts  # Diff history, streaks
 │   │   ├── stars.svelte.ts    # Bookmarks
-│   │   ├── tldrs.svelte.ts   # TLDR summaries (local-only)
+│   │   ├── tldrs.svelte.ts    # TLDR summaries
 │   │   ├── sync.svelte.ts     # Cloud sync state
 │   │   ├── ui.svelte.ts       # Transient UI state
+│   │   ├── mobile.svelte.ts   # Mobile-specific UI state
+│   │   ├── tick.svelte.ts     # Reactive clock for "X ago" timestamps
 │   │   ├── operations.svelte.ts # Cross-domain composite operations
 │   │   └── persist.svelte.ts  # localStorage/sessionStorage helpers
 │   ├── components/            # Reusable Svelte components
+│   ├── constants/             # Static constants
+│   ├── types/                 # Shared TypeScript types
 │   ├── utils/                 # Pure utility functions
 │   │   ├── providers.ts       # AI provider configuration
 │   │   ├── llm.ts             # Multi-provider LLM abstraction
@@ -53,15 +60,21 @@ src/
 │   │   ├── feeds.ts           # Feed fetching and curation
 │   │   ├── prompt.ts          # Prompt construction
 │   │   ├── sync.ts            # Sync utilities, types
+│   │   ├── sync-core.ts       # Sync primitives shared with the CLI
 │   │   ├── crypto.ts          # Client-side encryption
 │   │   ├── markdown.ts        # Markdown rendering
 │   │   ├── tldr.ts            # Article fetching and summarization
 │   │   └── ...                # api, constants, time, pricing, etc.
 │   └── actions/               # Svelte actions
 │       ├── clickOutside.ts    # Click-outside detection
-│       └── generateDiff.ts    # Diff generation orchestration
+│       ├── generateDiff.ts    # Diff generation orchestration
+│       ├── startGeneration.ts # Entry point for generate buttons
+│       └── swipeToReveal.svelte.ts # Mobile swipe gesture
+├── styles/                    # Auxiliary CSS modules
 └── app.css                    # Global styles and design system
 ```
+
+See the [CLI Usage](../cli.md) page for the `src/cli/` entry point and binary build flow.
 
 ### Store Architecture
 
@@ -77,7 +90,7 @@ addDiff(entry);
 updateProfile({ name: 'New Name' });
 ```
 
-localStorage keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-tldrs`, `difflog-active-profile`, `difflog-pending-sync`.
+localStorage keys: `difflog-profiles`, `difflog-histories`, `difflog-bookmarks`, `difflog-tldrs`, `difflog-active-profile`, `difflog-pending-sync`, `difflog-changelog-seen`, `difflog-remembered-passwords`. Authoritative list in `src/lib/utils/constants.ts`.
 
 ## Server Architecture
 
@@ -88,17 +101,22 @@ API endpoints are `+server.ts` files under `src/routes/api/`:
 ```
 src/routes/api/
 ├── feeds/+server.ts              # Fetch developer news feeds
+├── fetch-article/+server.ts      # Server-side article extraction for TLDRs
 ├── diff/[id]/public/+server.ts   # Public diff view
 ├── profile/
-│   ├── create/+server.ts         # Create/update profile
+│   ├── create/+server.ts         # Create profile
 │   ├── [id]/+server.ts           # Get/update/delete profile
 │   └── [id]/
 │       ├── content/+server.ts    # Download encrypted content
 │       ├── password/+server.ts   # Update password
 │       ├── status/+server.ts     # Sync status check
 │       └── sync/+server.ts       # Upload content
-├── share/[id]/+server.ts         # Public profile info
-├── auth.ts                       # Shared auth helpers
+├── share/[id]/+server.ts         # Public profile info (shared profiles)
+├── share-code/                   # Short-lived 4-char codes for cross-device imports
+│   ├── +server.ts                # POST: mint, GET: list
+│   └── [code]/+server.ts         # GET/HEAD: resolve, DELETE: revoke
+├── cli/auth/[code]/+server.ts    # CLI login relay (browser ↔ CLI handoff)
+├── auth.ts                       # Shared auth helpers (hashing, rate limit)
 └── types.ts                      # Shared types
 ```
 
@@ -120,6 +138,7 @@ CREATE TABLE profiles (
   resolved_sources TEXT,    -- JSON object
   diffs_hash TEXT,
   stars_hash TEXT,
+  tldrs_hash TEXT,
   keys_hash TEXT,
   password_salt TEXT,
   content_updated_at TEXT,
@@ -146,7 +165,17 @@ CREATE TABLE stars (
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
 );
+
+CREATE TABLE tldrs (
+  id TEXT PRIMARY KEY,              -- "diffId:pIndex"
+  profile_id TEXT NOT NULL,
+  encrypted_data TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+);
 ```
+
+The current schema is the union of migrations `0001_initial.sql` through `0004_add_tldrs.sql` in `migrations/`.
 
 ## Data Flow
 

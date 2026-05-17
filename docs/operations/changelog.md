@@ -28,20 +28,19 @@ This keeps the UI clean while still allowing "new since last visit" highlighting
 
 ## Data Format
 
-`public/changelog.json`:
+`static/changelog.json` (served as `/changelog.json`):
 
 ```json
 {
   "versions": [
     {
-      "version": "2.0",
-      "date": "2026-01-31",
-      "summary": "Streak tracking and stability improvements",
-      "description": "Track your diff·log usage with a new streak system. See your weekly activity at a glance and build consistency in staying up to date.",
+      "version": "4.3",
+      "date": "2026-05-15",
+      "summary": "Pick a specific model for each pipeline step",
+      "description": "Each provider now exposes a per-step model picker right inside its API key modal.",
       "changes": [
-        { "type": "feature", "text": "Streak tracking with weekly activity calendar", "in": "2.0.0" },
-        { "type": "feature", "text": "Ctrl+click demo profile creation on setup", "in": "2.0.0" },
-        { "type": "fix", "text": "Star hashing and Alpine.js key generation", "in": "2.0.1" }
+        { "type": "feature", "text": "Model picker for each pipeline step", "in": "4.3.0" },
+        { "type": "fix", "text": "Screen Wake Lock keeps mobile generation alive", "in": "4.3.1" }
       ]
     }
   ]
@@ -68,26 +67,31 @@ This keeps the UI clean while still allowing "new since last visit" highlighting
 
 ## Build Integration
 
-The build script injects the current version from `package.json` into the page as a data attribute on the changelog button. This allows the "new" dot indicator to work without fetching the changelog.
+The current version from `package.json` is injected at build time via Vite's `define` config as the `__APP_VERSION__` global (`vite.config.ts`), which `ChangelogModal.svelte` reads directly. No `data-version` attribute is needed — the version is baked into the bundle.
 
-```html
-<button class="changelog-btn" data-version="2.0.1">
+```typescript
+// vite.config.ts
+define: {
+  __APP_VERSION__: JSON.stringify(pkg.version)
+}
 ```
 
 ## Client Behavior
 
+The changelog is rendered by `src/lib/components/ChangelogModal.svelte`.
+
 ### New Indicator
 
-1. Page loads with version injected from `package.json`
-2. Compare against `localStorage['difflog-changelog-seen']`
-3. If different → show dot on changelog button
+1. Component reads compiled-in `__APP_VERSION__`
+2. Compare against `localStorage['difflog-changelog-seen']` using semver
+3. If current > last seen → set `hasUnseen` flag (parent shows dot)
+4. If no previous value, seed with current version (first-load suppression)
 
 ### Opening the Changelog
 
-1. Fetch `/changelog.json` (cached after first load)
-2. Display versions with their changes
-3. Highlight items where `in > lastSeen`
-4. Update `localStorage['difflog-changelog-seen']` to current version
+1. Lazy-fetch `/changelog.json` on first open (cached for the session)
+2. Filter to versions containing any change where `in > lastSeen`; otherwise show only the latest version with a "show all" toggle
+3. Update `localStorage['difflog-changelog-seen']` to current version on close
 
 ### localStorage
 
@@ -97,44 +101,43 @@ The build script injects the current version from `package.json` into the page a
 
 ## Adding a New Release
 
-### New Major/Minor (e.g., 2.1.0)
+(See also the "Releasing" section in `CLAUDE.md`.)
 
-1. Update `package.json` version
-2. Add new entry to `changelog.json`:
+### New Major/Minor (e.g., 4.4.0)
+
+1. Bump `version` in `package.json`
+2. Prepend a new entry to `versions[]` in `static/changelog.json`:
 
 ```json
 {
-  "version": "2.1",
-  "date": "2026-02-15",
+  "version": "4.4",
+  "date": "2026-06-15",
   "summary": "Brief description of this release",
   "changes": [
-    { "type": "feature", "text": "New feature description", "in": "2.1.0" }
+    { "type": "feature", "text": "New feature description", "in": "4.4.0" }
   ]
 }
 ```
 
-### Patch Release (e.g., 2.0.2)
+3. Commit: `release: vX.Y.Z`
+4. Tag and push: `git tag vX.Y.Z && git push --tags`
 
-1. Update `package.json` version
-2. Add changes to existing version entry:
+### Patch Release (e.g., 4.3.2)
 
-```json
-{
-  "version": "2.0",
-  "date": "2026-01-31",
-  "summary": "...",
-  "changes": [
-    { "type": "feature", "text": "...", "in": "2.0.0" },
-    { "type": "fix", "text": "New fix description", "in": "2.0.2" }
-  ]
-}
-```
+1. Bump `version` in `package.json`
+2. Append changes to the existing major.minor entry's `changes` array with `"in": "x.y.z"`
+3. Commit + tag as above
+
+### CLI Releases
+
+CLI versioning is independent — bumping `cliVersion` in `package.json` triggers `.github/workflows/cli.yml`, which builds binaries and publishes a `cli-vX.Y.Z` GitHub release automatically. No `static/changelog.json` entry is needed for CLI bumps; release notes are auto-generated from commit history between tags.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `public/changelog.json` | Changelog data (static, no backend) |
-| `src/components/changelog.ts` | Alpine component for dialog |
-| `partials/site-footer.html` | Changelog button in footer |
-| `src/lib/constants.ts` | `STORAGE_KEYS.CHANGELOG_SEEN` |
+| `static/changelog.json` | Changelog data (static, no backend) |
+| `src/lib/components/ChangelogModal.svelte` | Svelte 5 modal component |
+| `src/routes/+layout.svelte` | Renders the modal and changelog button |
+| `src/lib/utils/constants.ts` | `STORAGE_KEYS.CHANGELOG_SEEN` |
+| `vite.config.ts` | Injects `__APP_VERSION__` from `package.json` |

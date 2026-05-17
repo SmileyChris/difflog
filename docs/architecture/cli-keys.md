@@ -98,31 +98,39 @@ Direct `setPassword` / `deletePassword` calls in `src/cli/commands/config/ai.ts`
 
 ### 3. Entry via Login
 
-When logging in from a shared profile (`difflog login`), the browser sends encrypted profile data including API keys. The CLI:
+`difflog login` does **not** receive API keys via the browser relay (the relay only carries an encrypted `{profileId}`). Instead, the CLI:
 
-1. Decrypts the session payload (AES-256-GCM, see [CLI Login Architecture](cli-login.md))
-2. Extracts API keys from the decrypted profile
-3. Stores each key via `setPassword`
+1. Decrypts the relay blob to recover the `profileId`
+2. Prompts the user for the profile password in the terminal
+3. Calls `importProfile(profileId, password)` against the standard sync API, which downloads the server-side encrypted keys blob and decrypts it locally
+4. Stores each provider key via `setPassword(SERVICE_NAME, provider, key)`
+
+The CLI is also tolerant of legacy keys-blob formats on download. `decryptKeysBlob` (in `src/lib/utils/sync-core.ts`) handles three shapes seen historically:
+
+- `EncryptedKeysBlob` — `{ apiKeys, providerSelections }` (current format)
+- `Record<string, string>` — raw map of provider → key
+- A single string — interpreted as a bare Anthropic key for very early profiles
+
+On download, the CLI merges new keys into the keychain additively (existing local keys are not deleted just because they're absent from the remote blob). See `src/cli/sync.ts`.
+
+See [CLI Login Architecture](cli-login.md) for the full flow.
 
 ### 4. Retrieval During Generation
 
-`difflog generate` (`src/cli/commands/generate.ts`) retrieves keys via `getApiKeys()` in `src/cli/config.ts`, which iterates over `PROVIDER_IDS` (from `src/lib/utils/providers.ts`) with an environment variable fallback:
+`difflog generate` retrieves keys via `getApiKeys()` in `src/cli/config.ts`. For each provider it tries the keychain first (wrapped in try/catch so a failing backend doesn't abort iteration), then falls back to an environment variable only when the keychain returned no value:
 
 ```typescript
-import { PROVIDER_IDS } from '../lib/utils/providers';
-import { SERVICE_NAME } from './ui';
-
-async function getApiKeys() {
+async function getApiKeys(): Promise<Record<string, string>> {
+    const keys: Record<string, string> = {};
     for (const provider of PROVIDER_IDS) {
-        // 1. Try OS keychain first
-        const keychainValue = await getPassword(SERVICE_NAME, provider);
-        if (keychainValue) {
-            keys[provider] = keychainValue;
-        } else {
-            // 2. Fall back to environment variable
-            keys[provider] = process.env[`${provider.toUpperCase()}_API_KEY`];
-        }
+        try {
+            const key = await getPassword(SERVICE_NAME, provider);
+            if (key) { keys[provider] = key; continue; }
+        } catch { /* skip */ }
+        const envVar = `${provider.toUpperCase()}_API_KEY`;
+        if (process.env[envVar]) keys[provider] = process.env[envVar]!;
     }
+    return keys;
 }
 ```
 
@@ -139,7 +147,7 @@ The environment variable fallback (`ANTHROPIC_API_KEY`, `SERPER_API_KEY`, etc.) 
 | **No plaintext on disk** | Keys exist only in the OS credential store, not in any config file |
 | **Process isolation** | OS credential managers restrict access to the calling application |
 | **No key echo** | The interactive wizard and CLI commands never print key values back |
-| **Scoped deletion** | Removing a key also clears any provider selections that depended on it |
+| **Scoped deletion** | `clearProviderSelections(provider)` clears any `providerSelections` entries pointing at that provider when its key is removed. **Note:** `modelSelections` are not currently cleared in the same pass, so re-adding a key may resurface a previously chosen model. |
 | **Env var fallback** | For headless/CI environments where keychain is unavailable |
 
 ## File Locations
@@ -148,11 +156,16 @@ For reference, these are the CLI's on-disk files — **none contain API keys**:
 
 | File | Contents |
 |------|----------|
-| `~/.config/difflog/session.json` | Profile ID, password salt |
-| `~/.config/difflog/profile.json` | Name, languages, frameworks, topics, depth, provider selections |
+| `~/.config/difflog/session.json` | Profile ID, profile password (plaintext, mode 0600), password salt, content salt |
+| `~/.config/difflog/profile.json` | Name, languages, frameworks, topics, depth, provider selections, model selections, resolved mappings, migration flags |
 | `~/.config/difflog/diffs.json` | Cached diff history |
 | `~/.config/difflog/read-state.json` | Article read/unread tracking |
 | `~/.config/difflog/stars.json` | Starred (bookmarked) articles |
+| `~/.config/difflog/pending.json` | Pending sync changes (modified/deleted IDs since last sync) |
+| `~/.config/difflog/sync-meta.json` | Sync metadata: last server hashes, last sync timestamps |
+
+!!! warning "Profile Password Stored in Plaintext"
+    `session.json` keeps the user-typed profile password in plaintext (mode 0600) so background sync can resume without re-prompting. API keys themselves are still in the OS keychain, but anyone with read access to the home directory can recover the sync password and use it to decrypt the cloud-stored content.
 
 ## Supported Providers
 

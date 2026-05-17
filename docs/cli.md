@@ -37,10 +37,10 @@ Requires [Bun](https://bun.sh) to be installed:
 git clone https://github.com/SmileyChris/difflog.git
 cd difflog
 bun install
-bun cli:build
+bun run cli:build
 ```
 
-The compiled binary will be at `./dist/difflog`.
+The compiled binary will be at `./difflog` (project root). The `cli:build` script is `bun build src/cli/main.ts --compile --outfile difflog`.
 
 ## Quick Start
 
@@ -103,14 +103,14 @@ If you know your profile ID and password, you can log in directly:
 difflog login --profile YOUR_PROFILE_ID --password YOUR_PASSWORD
 ```
 
-This bypasses the browser and authenticates directly with the difflog API. Useful for:
+If `--password` is omitted, the CLI prompts for it interactively. This bypasses the browser and authenticates directly with the difflog API. Useful for:
 
 - Automated scripts and CI/CD
 - Headless servers
 - Environments without a browser
 
 !!! warning "Shared Profiles Only"
-    Direct login requires a shared profile with a sync password. Local-only profiles don't have passwords and must use web-assisted login.
+    All `difflog login` paths require a shared profile with a sync password — the browser flow rejects local-only profiles too. Share a profile from the web app first if you only have a local one.
 
 ## Commands
 
@@ -186,19 +186,19 @@ List your diff history.
 ```bash
 $ difflog ls
 
-2026-02-12  Next.js 15.1, Bun 1.2, React 19 patterns
-2026-02-10  TypeScript 5.7, Deno 2.0, Vite 6.0
-2026-02-08  SvelteKit 3.0, Astro 5.0, Tailwind 4.0
+  1  3 days ago   Next.js 15.1, Bun 1.2, React 19 patterns
+  2  5 days ago   TypeScript 5.7, Deno 2.0, Vite 6.0
+  3  1 week ago   SvelteKit 3.0, Astro 5.0, Tailwind 4.0
 ```
 
 Diffs are listed with an index number, relative time, and title. Use the index with `difflog show` to read a specific diff.
 
-### `difflog show <id>`
+### `difflog show <index|id>`
 
-Read a specific diff in the terminal.
+Read a specific diff in the terminal. Pass either the 1-based index from `difflog ls` or a UUID prefix.
 
 ```bash
-difflog show <id>
+difflog show <index|id> [--full]
 ```
 
 **Output:**
@@ -210,14 +210,17 @@ difflog show <id>
 **Examples:**
 
 ```bash
-# Show a specific diff
-difflog show 2026-02-12
+# Show the most recent diff (index 1)
+difflog show 1
+
+# Show by UUID prefix
+difflog show abc123
 
 # Pipe to a pager
-difflog show 2026-02-12 | less -R
+difflog show 1 | less -R
 
 # Pipe to a markdown reader
-difflog show 2026-02-12 | glow -
+difflog show 1 | glow -
 ```
 
 ### `difflog generate`
@@ -244,6 +247,19 @@ This runs the full AI pipeline (fetch feeds, curate, search, synthesize) using y
 - [DeepSeek](https://platform.deepseek.com/)
 - [Google AI](https://ai.google.dev/)
 - [Perplexity](https://www.perplexity.ai/)
+
+### `difflog profile`
+
+Manage the active profile's sharing/sync status.
+
+```bash
+difflog profile [--sync] [--verbose]
+difflog profile share          # Share local profile to difflog.dev (sets password)
+difflog profile password       # Change the sync password
+difflog profile unshare        # Remove from server (keeps local copy)
+```
+
+With no subcommand, prints a summary (name, ID, depth, AI step assignments). `--sync` triggers an immediate sync push/pull. `--verbose` prints stored API key entries and additional sync detail.
 
 ### `difflog config`
 
@@ -313,7 +329,7 @@ difflog config ai set serper deepseek anthropic  # Set providers (search/curatio
 - **Depth & Focus** - Generation depth (quick/standard/detailed) and custom focus
 
 **Profile Creation:**
-If no profile exists, `difflog config` will prompt for a profile name and create a new local-only profile with default settings (standard depth, DeepSeek for curation, Anthropic for synthesis).
+If no profile exists, `difflog config` will prompt for a profile name and create a new local-only profile with `depth: 'standard'` and no provider selections — pick search/curation/synthesis assignments yourself in the AI section (or run `difflog config ai set ...`).
 
 **API Keys Storage:**
 All API keys are stored securely in your OS credential manager:
@@ -327,30 +343,29 @@ Keys are never stored in plaintext configuration files.
 
 The CLI uses the same encryption and sync system as the web app:
 
-1. **Local-first storage**: Profile, diffs, and stars stored in `~/.config/difflog/` (or OS equivalent)
+1. **Local-first storage**: Profile, diffs, stars, and pending changes stored in `~/.config/difflog/`
 2. **Client-side encryption**: All synced data is encrypted with your password
-3. **Full sync**: Diffs, stars, API keys, and profile metadata all sync between web and CLI
+3. **Sync coverage**: Diffs, stars, API keys, and profile metadata sync between web and CLI. TLDR summaries are **not** managed by the CLI — they remain a web-only feature for now.
 4. **Shared codebase**: Uses the same TypeScript code as the web app, compiled to a standalone binary
 
 For details on the web login flow, see [CLI Login Architecture](architecture/cli-login.md). For API key storage, see [CLI Key Storage](architecture/cli-keys.md).
 
 ## Configuration
 
-The CLI stores data in standard OS locations:
-
-| Platform | Location |
-|----------|----------|
-| Linux | `~/.config/difflog/` |
-| macOS | `~/.config/difflog/` |
-| Windows | `%APPDATA%\difflog\` |
+The CLI stores all on-disk data under `~/.config/difflog/` on every platform — including Windows (`os.homedir()/.config/difflog`). No `%APPDATA%` branch exists. Files are written with `0600` permissions and the directory with `0700`.
 
 **Files:**
 
-- `session.json` - Authentication session (profile ID, password salt)
-- `profile.json` - Profile metadata (name, languages, frameworks, topics, depth, provider selections, resolved mappings)
+- `session.json` - Authentication session (profile ID, plaintext password, password salt, content salt)
+- `profile.json` - Profile metadata (name, languages, frameworks, topics, depth, provider selections, model selections, resolved mappings)
 - `diffs.json` - Cached diff history
 - `read-state.json` - Article read/unread tracking for interactive viewer
 - `stars.json` - Starred (bookmarked) articles
+- `pending.json` - Pending sync changes (modified/deleted IDs)
+- `sync-meta.json` - Sync metadata (last hashes, last-sync timestamps)
+
+!!! warning "Session File Contains Plaintext Password"
+    `session.json` stores the sync password in plaintext (mode 0600). This is required for offline sync resume, but means anyone with read access to the home directory can recover it. The API keys themselves remain in the OS keychain.
 
 **API Keys:**
 
@@ -376,13 +391,13 @@ The CLI outputs clean markdown. Pipe it to your favorite reader:
 
 ```bash
 # glow
-difflog show latest | glow -
+difflog show 1 | glow -
 
 # bat
-difflog show latest | bat -l md
+difflog show 1 | bat -l md
 
 # mdcat
-difflog show latest | mdcat
+difflog show 1 | mdcat
 ```
 
 ### Aliases
@@ -402,7 +417,7 @@ Use direct login in CI pipelines:
 ```bash
 #!/bin/bash
 difflog login --profile "$DIFFLOG_PROFILE_ID" --password "$DIFFLOG_PASSWORD"
-difflog show latest > CHANGELOG.md
+difflog show 1 > CHANGELOG.md
 ```
 
 Store credentials as secrets in GitHub Actions, GitLab CI, etc.

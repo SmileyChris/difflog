@@ -75,31 +75,21 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
 
 ### API Keys & Provider Selections Encryption
 
-When sharing a profile, API keys and provider selections are encrypted together as a single blob:
+When sharing a profile, API keys and provider selections are bundled into a single JSON object and encrypted as one blob. The crypto helper itself is shape-agnostic — it accepts any `Record<string, string>` and serializes it:
 
 ```typescript
-interface EncryptedKeysBlob {
-  apiKeys: Record<string, string>;
-  providerSelections?: {
-    search?: string | null;
-    curation?: string | null;
-    synthesis?: string | null;
-  };
-}
-
-async function encryptApiKeys(blob: EncryptedKeysBlob, password: string) {
+async function encryptApiKeys(
+  apiKeys: Record<string, string>,
+  password: string
+): Promise<{ encrypted: string; salt: string }> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const saltBase64 = uint8ToBase64(salt);
-
-  // Encrypt the entire blob (keys + selections) as JSON
-  const encrypted = await encryptData(blob, password, saltBase64);
-
-  return {
-    encrypted,
-    salt: saltBase64
-  };
+  const encrypted = await encryptData(apiKeys, password, saltBase64);
+  return { encrypted, salt: saltBase64 };
 }
 ```
+
+Callers build the blob (keys + selections) and cast it to `Record<string, string>` before passing in. The companion `encryptApiKeysWithSalt(apiKeys, password, salt)` re-encrypts with an existing salt during password changes.
 
 **Supported Keys:**
 - `anthropic` - Anthropic API key
@@ -112,7 +102,7 @@ All keys and provider selections are encrypted together and stored as a single e
 
 ### Content Encryption
 
-Diffs and stars are encrypted as JSON:
+`encryptData` is the generic per-item primitive. It is used for diffs, stars, TLDRs, and the keys blob — anything JSON-serializable:
 
 ```typescript
 async function encryptData(data: any, password: string, salt: string) {
@@ -135,6 +125,8 @@ async function encryptData(data: any, password: string, salt: string) {
 ```
 
 ## Decrypting Data
+
+`decryptData` is `encryptData`'s inverse. The legacy single-key helper `decryptApiKey(encrypted, salt, password)` uses a different parameter order (salt before password) for backwards compatibility — only `decryptApiKeys` and `decryptData` should be used for new code.
 
 ```typescript
 async function decryptData<T>(encrypted: string, password: string, salt: string): Promise<T> {
@@ -179,7 +171,7 @@ Example: `zi7g35hMWZ4GjQlu32aFQg==:T1j5DDOgm4xOh+l9WBl8bpcHrkpJaTtdC+FGPWpymD4=`
 
 ### Server-Side Hash (Stored in DB)
 
-The server applies PBKDF2 (100,000 iterations, SHA-256) to the transport hash before storing:
+The server applies PBKDF2 (100,000 iterations, SHA-256) to the transport hash before storing. This step lives in `src/routes/api/auth.ts` (server-only), not in the client crypto module:
 
 ```typescript
 async function hashPasswordServer(transportHash: string): Promise<string> {
@@ -206,20 +198,23 @@ The `v2:` prefix distinguishes server-hashed passwords from legacy v1 hashes (pl
 
 ## Content Hash
 
-For [sync comparison](sync.md#hash-comparison), a hash is computed over all encrypted content:
+For [sync comparison](sync.md#hash-comparison), the current code uses `computeContentHash`, which hashes plaintext items by ID for deterministic results across re-encryptions (since AES-GCM produces a different ciphertext every time):
 
 ```typescript
-async function computeHash(items: string[]): Promise<string> {
-  const combined = [...items].sort().join('|');
-  const data = encoder.encode(combined);
+async function computeContentHash(
+  items: Array<{ id: string; [key: string]: unknown }>
+): Promise<string> {
+  const sorted = [...items].sort((a, b) => a.id.localeCompare(b.id));
+  const serialized = sorted.map(item =>
+    JSON.stringify(item, Object.keys(item).sort())
+  );
+  const data = new TextEncoder().encode(serialized.join('|'));
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+  return uint8ToBase64(new Uint8Array(hashBuffer));
 }
 ```
 
-This hash is computed over encrypted data, so it can be stored on the server to detect changes without revealing content.
+The hash is base64-encoded and computed client-side, then stored on the server to detect changes. An older helper `computeHash(items: string[])` (hex output, hashed over encrypted ciphertext) is `@deprecated` and retained only for legacy compatibility.
 
 ## Security Model
 
