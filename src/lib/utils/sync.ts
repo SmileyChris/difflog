@@ -764,26 +764,11 @@ export async function updatePassword(
   };
   const newEncryptedApiKey = await encryptData(blob, newPassword, newSalt);
 
-  // Re-encrypt all diffs with new password + new salt
-  const encryptedDiffs: { id: string; encrypted_data: string }[] = [];
-  for (const diff of history) {
-    const encrypted = await encryptData(diff, newPassword, newSalt);
-    encryptedDiffs.push({ id: diff.id, encrypted_data: encrypted });
-  }
-
-  // Re-encrypt all stars with new password + new salt
-  const encryptedStars: { id: string; encrypted_data: string }[] = [];
-  for (const star of stars) {
-    const encrypted = await encryptData(star, newPassword, newSalt);
-    encryptedStars.push({ id: starId(star), encrypted_data: encrypted });
-  }
-
-  // Re-encrypt all TLDRs with new password + new salt
-  const encryptedTldrs: { id: string; encrypted_data: string }[] = [];
-  for (const tldr of tldrs) {
-    const encrypted = await encryptData(tldr, newPassword, newSalt);
-    encryptedTldrs.push({ id: tldrId(tldr), encrypted_data: encrypted });
-  }
+  // Re-serialize all content with new password + new salt.
+  // Public diffs stay as plaintext JSON so /api/diff/{id}/public keeps working.
+  const encryptedDiffs = await encryptDiffs(history, null, newPassword, newSalt);
+  const encryptedStars = await encryptStars(stars, null, newPassword, newSalt);
+  const encryptedTldrs = await encryptTldrs(tldrs, null, newPassword, newSalt);
 
   // POST to server
   await postJson(`/api/profile/${profileId}/password`, {
