@@ -188,10 +188,10 @@ Streaks track user engagement by counting consecutive diffs with an 8-day tolera
 
 - Badge shows 🔥 emoji with streak count (size scales with streak length)
 - Dropdown displays current week calendar with:
-  - Active days marked with ◆
-  - Today highlighted with accent border
-  - Gap days shown with middot (·)
-  - Expiration warning when ≤3 days remain
+    - Active days marked with ◆
+    - Today highlighted with accent border
+    - Gap days shown with middot (·)
+    - Expiration warning when ≤3 days remain
 
 ## Iconography
 

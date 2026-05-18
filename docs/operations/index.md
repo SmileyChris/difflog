@@ -38,9 +38,9 @@ Releases of the standalone `difflog` CLI are driven by `.github/workflows/cli.ym
 The workflow watches `package.json` on pushes to `main`. When it sees a new `cliVersion` value (and no matching `cli-vX.Y.Z` GitHub release yet), it:
 
 1. Builds three binaries with `bun build --compile`:
-   - `difflog-linux-x64`
-   - `difflog-darwin-arm64`
-   - `difflog-darwin-x64`
+    - `difflog-linux-x64`
+    - `difflog-darwin-arm64`
+    - `difflog-darwin-x64`
 2. Creates a GitHub release tagged `cli-vX.Y.Z` with auto-generated release notes (`--generate-notes`) using the previous `cli-v*` tag as the comparison base
 3. Uploads the three binaries as release assets
 

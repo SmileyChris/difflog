@@ -93,30 +93,30 @@ When `--password` is omitted, the CLI prompts for it. The browser flow also requ
 #### Web Login Flow
 
 1. **Generate ephemeral relay credentials:**
-   - `code`: first 12 hex chars of a UUID (no dashes)
-   - `expires`: `Date.now() + 5 minutes`
-   - `verification`: last 4 hex chars of `SHA-256(code + expires)`
+    - `code`: first 12 hex chars of a UUID (no dashes)
+    - `expires`: `Date.now() + 5 minutes`
+    - `verification`: last 4 hex chars of `SHA-256(code + expires)`
 
 2. **Open browser:**
-   - URL: `{BASE}/cli/auth?code={code}&expires={expires}`
-   - `openUrl()` spawns `open` (macOS), `xdg-open` (Linux), or `cmd /c start` (Windows)
-   - Prints verification code to stderr for user confirmation
+    - URL: `{BASE}/cli/auth?code={code}&expires={expires}`
+    - `openUrl()` spawns `open` (macOS), `xdg-open` (Linux), or `cmd /c start` (Windows)
+    - Prints verification code to stderr for user confirmation
 
 3. **Poll relay:**
-   - GET `{BASE}/api/cli/auth/{code}` every 2 seconds
-   - Timeout after 5 minutes
-   - Renders a spinner: `| / - \`
+    - GET `{BASE}/api/cli/auth/{code}` every 2 seconds
+    - Timeout after 5 minutes
+    - Renders a spinner: `| / - \`
 
 4. **Decrypt relay:**
-   - Receives encrypted blob from KV
-   - Decrypts with `code` (password) + `base64(String(expires))` (salt)
-   - Plaintext is `{ profileId: string }` — nothing else
+    - Receives encrypted blob from KV
+    - Decrypts with `code` (password) + `base64(String(expires))` (salt)
+    - Plaintext is `{ profileId: string }` — nothing else
 
 5. **Import via sync API:**
-   - Prompt the user for the profile password in the terminal
-   - Call `importProfile(profileId, password)` which exercises `GET /api/profile/{id}` and `GET /api/profile/{id}/content`
-   - Decrypt the keys blob, store each provider key in the OS keychain with `setPassword(SERVICE_NAME, provider, key)`
-   - Save session, profile (without keys), and diffs locally
+    - Prompt the user for the profile password in the terminal
+    - Call `importProfile(profileId, password)` which exercises `GET /api/profile/{id}` and `GET /api/profile/{id}/content`
+    - Decrypt the keys blob, store each provider key in the OS keychain with `setPassword(SERVICE_NAME, provider, key)`
+    - Save session, profile (without keys), and diffs locally
 
 ### 2. Browser Auth Page (`src/routes/cli/auth/+page.svelte`)
 
@@ -255,8 +255,8 @@ API keys are extracted during `importProfile` and stored in the OS keychain via 
 ## Environment Variables
 
 - `DIFFLOG_URL`: Override base URL (default: `https://difflog.dev`)
-  - Used for local development: `DIFFLOG_URL=http://localhost:8788`
-  - CLI uses `localAwareFetch` for IPv6 fallback on localhost
+    - Used for local development: `DIFFLOG_URL=http://localhost:8788`
+    - CLI uses `localAwareFetch` for IPv6 fallback on localhost
 
 ## Implementation Notes
 
